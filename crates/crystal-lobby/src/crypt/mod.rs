@@ -111,7 +111,7 @@ impl Blowfish {
     }
 
     fn apply(&self, data: &mut [u8], block: fn(&Self, u32, u32) -> (u32, u32)) {
-        for chunk in data.chunks_exact_mut(8) {
+        for chunk in data.as_chunks_mut::<8>().0 {
             let l = u32::from_le_bytes(chunk[0..4].try_into().unwrap());
             let r = u32::from_le_bytes(chunk[4..8].try_into().unwrap());
             let (l, r) = block(self, l, r);
