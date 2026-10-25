@@ -142,11 +142,13 @@ CrystalCore-Server/
 Each phase ends with something you can do in the client. The client running against the server is the
 test.
 
-### Phase 0: Skeleton (done 2026-10-25, except CI)
+### Phase 0: Skeleton (done 2026-10-25)
 
 - Cargo workspace with the crates above (empty where not yet needed), `crystal.toml`, `tracing`.
 - `sqlx` with both backends, the three schemas and a first migration (`account`, `session`).
-- CI: build and test for `x86_64-pc-windows-msvc`, `x86_64-unknown-linux-gnu`, `aarch64-linux-android`.
+- CI: build and test for `x86_64-pc-windows-msvc` and `x86_64-unknown-linux-gnu` (the Linux job
+  against PostgreSQL and Redis), plus the MSRV. The Android check waits for Phase 8, when there is
+  an Android client to embed into.
 - `crystal-server --role lobby` listens on 54994 and logs what the client sends (replaces
   `CrystalCore/tools/lobby_sink.py`).
 

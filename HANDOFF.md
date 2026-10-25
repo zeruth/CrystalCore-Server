@@ -6,7 +6,7 @@ Read [ROADMAP.md](ROADMAP.md) first.
 
 ## Where it stands (2026-10-25)
 
-Phase 0 is done apart from CI. Verified against the real β client: its two lobby connections reach
+Phase 0 is done. Verified against the real β client: its two lobby connections reach
 `crystal-server` (running on PostgreSQL + Redis), every frame decodes, and the frames are captured
 byte-exact. The client's Start button stays grayed out: it is waiting for the reply to its encryption
 init, which is Phase 1.
@@ -36,14 +36,14 @@ parse; an end-to-end `Server` that receives the capture and captures it again. C
   frame every 2 s on each until answered.
 - Field names other than size/type/count are borrowed from later clients and unconfirmed.
 
+CI is `.github/workflows/ci.yml`: Windows (fmt, clippy `-D warnings`, test on SQLite + memory),
+Linux (Postgres 18 + Redis 8 service containers, `CRYSTAL_TEST_*` set) and an MSRV check. The MSRV
+is 1.94 (sqlx 0.9 requires it; the old 1.88 could not build). Android is left out of CI until there
+is an Android client (Phase 8). Remote: `origin` = https://github.com/zeruth/CrystalCore-Server.
+
 ## Next
 
-1. **CI** (Phase 0's last item): GitHub Actions on Windows (fmt, clippy, test with SQLite + memory)
-   and Linux (Postgres + Redis service containers, `CRYSTAL_TEST_*` set), plus
-   `cargo ndk -t arm64-v8a check` for the library crates (`cargo-ndk` and NDK 27/28 are installed
-   locally under `%LOCALAPPDATA%\Android\Sdk\ndk`). The Android check has not been run yet. The repo
-   has no remote yet.
-2. **Phase 1**: pull the opcode tables and the lobby's encryption handling out of the client
+1. **Phase 1**: pull the opcode tables and the lobby's encryption handling out of the client
    (Rhipper/Ghidra over the port, per the client repo's working method). First target: the lobby's
    reply to the encryption init and the Blowfish key derivation, which should un-gray Start.
 

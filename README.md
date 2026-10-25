@@ -35,3 +35,7 @@ cargo test -j 2 --workspace
 ```
 
 Use `-j 2`: the machine is shared with long translation jobs.
+
+CI (`.github/workflows/ci.yml`) runs fmt, clippy (`-D warnings`) and the tests on Windows with SQLite and
+in-process state, on Linux against PostgreSQL 18 and Redis 8 containers, and checks the MSRV (1.94, set
+by sqlx 0.9).
