@@ -1,0 +1,6 @@
+/target/
+*.db
+*.db-journal
+*.log
+/crystal.local.toml
+/captures/
