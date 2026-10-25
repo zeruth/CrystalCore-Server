@@ -1,0 +1,22 @@
+[package]
+name = "crystal-runtime"
+description = "A server as a value: connects storage, starts the configured services, shuts them down"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+crystal-common.workspace = true
+crystal-db.workspace = true
+crystal-lobby.workspace = true
+crystal-net.workspace = true
+crystal-state.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+hex.workspace = true
+tempfile = "3"

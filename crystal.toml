@@ -1,0 +1,32 @@
+# crystal-server configuration. Every key can be overridden by an environment variable:
+# CRYSTAL_<SECTION>__<KEY>, e.g. CRYSTAL_STATE__REDIS_URL, CRYSTAL_DATABASE__LOGIN__URL.
+# Defaults run everything in one process on SQLite with in-process state; a hosted setup uses
+# PostgreSQL and Redis (tools/dev.ps1 runs both locally).
+
+roles = ["lobby"]
+
+[log]
+filter = "info"
+
+[database]
+auto_migrate = true
+
+[database.login]
+url = "sqlite:var/login.db?mode=rwc"
+# url = "postgres://crystal@127.0.0.1:5432/crystal_login"
+
+[database.characters]
+url = "sqlite:var/characters.db?mode=rwc"
+# url = "postgres://crystal@127.0.0.1:5432/crystal_characters"
+
+[database.world]
+url = "sqlite:var/world.db?mode=rwc"
+# url = "postgres://crystal@127.0.0.1:5432/crystal_world"
+
+[state]
+prefix = "crystal"
+# redis_url = "redis://127.0.0.1:6379"
+
+[lobby]
+bind = "127.0.0.1:54994"
+# capture_dir = "protocol/672261/captures"

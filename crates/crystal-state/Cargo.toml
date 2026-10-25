@@ -1,0 +1,22 @@
+[package]
+name = "crystal-state"
+description = "Shared state between services: key/value with expiry and pub/sub, on Redis or in-process"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[features]
+default = ["redis"]
+# Hosted servers. The embedded build leaves it out and runs on the in-process backend only.
+redis = ["dep:redis"]
+
+[dependencies]
+bytes.workspace = true
+crystal-common.workspace = true
+futures-util.workspace = true
+parking_lot.workspace = true
+redis = { workspace = true, optional = true }
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true

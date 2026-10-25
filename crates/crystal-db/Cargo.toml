@@ -1,0 +1,17 @@
+[package]
+name = "crystal-db"
+description = "The login, characters and world databases, on PostgreSQL or SQLite"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+crystal-common.workspace = true
+sqlx.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tempfile = "3"

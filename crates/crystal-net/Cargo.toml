@@ -1,0 +1,19 @@
+[package]
+name = "crystal-net"
+description = "Packet framing, segments, compression and the connection listener"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+bytes.workspace = true
+flate2.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+futures-util.workspace = true
+hex.workspace = true

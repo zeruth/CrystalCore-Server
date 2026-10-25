@@ -1,0 +1,16 @@
+[package]
+name = "crystal-server"
+description = "The server binary: runs any of the lobby, zone and chat services"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+crystal-common.workspace = true
+crystal-runtime.workspace = true
+mimalloc.workspace = true
+tokio.workspace = true
+tracing.workspace = true

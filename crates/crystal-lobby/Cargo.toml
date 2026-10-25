@@ -1,0 +1,18 @@
+[package]
+name = "crystal-lobby"
+description = "The lobby service: login, worlds, characters"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+bytes.workspace = true
+crystal-db.workspace = true
+crystal-net.workspace = true
+crystal-state.workspace = true
+futures-util.workspace = true
+hex.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+tracing.workspace = true

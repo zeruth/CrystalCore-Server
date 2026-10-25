@@ -66,6 +66,21 @@ Take from how Square built it, because the client expects it or because it is be
   each backend gets its own file.
 - Characters are loaded into the zone that owns them and saved on a timer and on logout, the same
   way AzerothCore saves players. The database is never queried in the middle of a tick.
+- The three databases have separate URLs, so they can live on different hosts (and `characters`
+  can later be split per world).
+
+### Shared state and scaling: Redis
+
+- **Redis (or Valkey)** holds what several processes must see at once and what expires: sessions
+  and lobby→zone handoff tokens, presence (who is online, in which zone), and pub/sub for chat,
+  tells, linkshells and cross-zone messages. `crystal-state` wraps it; the embedded build uses its
+  in-process backend with the same semantics (the `redis` cargo feature drops the dependency).
+- One process per role is the unit of scaling: lobbies are stateless (sessions in Redis) and can sit
+  behind a load balancer; zone processes own sets of zones and instances; chat fans out over pub/sub.
+  The same binary runs any mix of roles.
+- Performance rules: no I/O on a tick; per-zone single-threaded loops; one multiplexed Redis
+  connection for commands and one for subscriptions per process, fanned out locally; zero-copy
+  packet payloads (`bytes`); mimalloc in the binary; thin LTO in release.
 
 ### Embedded mode ("the client as a server module")
 
@@ -105,6 +120,8 @@ CrystalCore-Server/
 │  ├─ crystal-protocol   packet definitions and opcode tables, one module per client build
 │  ├─ crystal-data       SqPack, EXD, LGB, navmesh readers (physis or our own)
 │  ├─ crystal-db         sqlx pools, migrations, repositories
+│  ├─ crystal-state      Redis / in-process key-value with expiry and pub/sub
+│  ├─ crystal-runtime    a server as a value: storage + configured services, start/shutdown
 │  ├─ crystal-world      actors, zones, instances, the tick, game systems
 │  ├─ crystal-script     hook registry and the Lua host
 │  ├─ crystal-lobby      lobby service
@@ -125,7 +142,7 @@ CrystalCore-Server/
 Each phase ends with something you can do in the client. The client running against the server is the
 test.
 
-### Phase 0: Skeleton
+### Phase 0: Skeleton (done 2026-10-25, except CI)
 
 - Cargo workspace with the crates above (empty where not yet needed), `crystal.toml`, `tracing`.
 - `sqlx` with both backends, the three schemas and a first migration (`account`, `session`).

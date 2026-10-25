@@ -1,4 +1,7 @@
 /target/
+/.dev/
+/var/
+/.idea/
 *.db
 *.db-journal
 *.log

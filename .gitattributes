@@ -1,0 +1,4 @@
+# LF everywhere: sqlx checksums migration files, so a CRLF checkout would fail already-applied migrations.
+* text=auto eol=lf
+*.ps1 text eol=crlf
+*.bin binary
