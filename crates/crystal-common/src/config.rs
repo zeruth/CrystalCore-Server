@@ -20,7 +20,7 @@ pub struct Config {
     pub roles: Vec<Role>,
     pub database: DatabaseConfig,
     pub state: StateConfig,
-    pub lobby: ServiceConfig,
+    pub lobby: LobbyConfig,
     pub zone: ServiceConfig,
     pub chat: ServiceConfig,
 }
@@ -88,6 +88,32 @@ pub struct ServiceConfig {
     pub capture_dir: Option<PathBuf>,
 }
 
+/// The lobby. The client opens one connection to each of its two lobby hosts (`DEV.LobbyHost01`/
+/// `02`, `DEV.LobbyPort01`/`02`), and each feeds its own region of the world list (JP, NA/EU).
+/// Both connections look alike on the wire, so to tell them apart give the second host its own
+/// port.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct LobbyConfig {
+    /// Lobby host 01 (or both, when `bind_2` is unset).
+    pub bind: SocketAddr,
+    /// Lobby host 02.
+    pub bind_2: Option<SocketAddr>,
+    /// When the hosts are apart: the host (1 or 2) that shows the Lobby world, where characters
+    /// are made (and not played). The other shows Crystal, to play on. The client makes characters
+    /// through host 01 (its JP region), so this is 1. With one port for both, every region shows
+    /// Crystal, open for both.
+    pub create_host: u8,
+    /// When set, every connection's received frames are written here, raw, for replay tests.
+    pub capture_dir: Option<PathBuf>,
+}
+
+impl Default for LobbyConfig {
+    fn default() -> Self {
+        Self { bind: SocketAddr::from(([127, 0, 0, 1], 54994)), bind_2: None, create_host: 1, capture_dir: None }
+    }
+}
+
 impl Default for Config {
     fn default() -> Self {
         Self {
@@ -95,7 +121,7 @@ impl Default for Config {
             roles: vec![Role::Lobby],
             database: DatabaseConfig::default(),
             state: StateConfig { redis_url: None, prefix: "crystal".into() },
-            lobby: ServiceConfig::at(54994),
+            lobby: LobbyConfig::default(),
             zone: ServiceConfig::at(54992),
             chat: ServiceConfig::at(54993),
         }

@@ -13,6 +13,7 @@ crystal-net.workspace = true
 crystal-state.workspace = true
 futures-util.workspace = true
 hex.workspace = true
+md-5.workspace = true
 tokio.workspace = true
 tokio-util.workspace = true
 tracing.workspace = true

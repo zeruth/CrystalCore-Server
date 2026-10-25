@@ -28,5 +28,11 @@ prefix = "crystal"
 # redis_url = "redis://127.0.0.1:6379"
 
 [lobby]
+# The client's two lobby hosts, each feeding one region of the world list (01: JP, 02: NA/EU).
+# Point the client's DEV.LobbyPort01 at `bind` and DEV.LobbyPort02 at `bind_2`. `create_host` shows
+# the Lobby world, where characters are made (and not played); the other shows Crystal, to play
+# on. Without `bind_2`, both hosts share `bind` and both regions show Crystal.
 bind = "127.0.0.1:54994"
+bind_2 = "127.0.0.1:54995"
+create_host = 1
 # capture_dir = "protocol/672261/captures"

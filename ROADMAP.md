@@ -155,7 +155,7 @@ test.
 **Done when:** the β client's lobby connection is accepted and its first packets are logged and
 decoded as frames, by the Rust server.
 
-### Phase 1: Protocol and lobby
+### Phase 1: Protocol and lobby (lobby flow working to game login, 2026-10-25; storage next)
 
 - Extract the opcode tables for 672261 from the port (lobby, zone, chat; client to server and server
   to client) into `protocol/672261/`.

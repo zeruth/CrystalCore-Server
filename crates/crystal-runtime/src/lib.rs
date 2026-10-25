@@ -9,12 +9,18 @@ use std::sync::Arc;
 use anyhow::{Context, bail};
 use crystal_common::{Config, Role};
 use crystal_db::Databases;
-use crystal_lobby::Lobby;
+use crystal_lobby::{HostRole, Lobby};
 use crystal_net::Listener;
 use crystal_state::State;
 use tokio_util::sync::CancellationToken;
 use tokio_util::task::TaskTracker;
 use tracing::info;
+
+/// Which of the client's lobby hosts a lobby port serves.
+enum Host {
+    Both,
+    One(u8),
+}
 
 pub struct Server {
     pub db: Databases,
@@ -47,12 +53,27 @@ impl Server {
         for role in &config.roles {
             match role {
                 Role::Lobby => {
-                    let listener = Listener::bind("lobby", config.lobby.bind).await.context("lobby")?;
-                    addrs.insert(Role::Lobby, listener.local_addr()?);
-                    let lobby = Arc::new(Lobby::new(db.clone(), state.clone(), config.lobby.capture_dir.clone()));
-                    tasks.spawn(crystal_net::serve(listener, shutdown.clone(), move |stream, peer, stop| {
-                        lobby.clone().handle(stream, peer, stop)
-                    }));
+                    let c = &config.lobby;
+                    let lobby = Arc::new(Lobby::new(db.clone(), state.clone(), c.capture_dir.clone()));
+                    let hosts = match c.bind_2 {
+                        None => vec![(c.bind, Host::Both)],
+                        Some(bind_2) => vec![(c.bind, Host::One(1)), (bind_2, Host::One(2))],
+                    };
+                    for (i, (bind, host)) in hosts.into_iter().enumerate() {
+                        let listener = Listener::bind("lobby", bind).await.context("lobby")?;
+                        if i == 0 {
+                            addrs.insert(Role::Lobby, listener.local_addr()?);
+                        }
+                        let role = match host {
+                            Host::Both => HostRole::Both,
+                            Host::One(n) if n == c.create_host => HostRole::Create,
+                            Host::One(_) => HostRole::Play,
+                        };
+                        let lobby = lobby.clone();
+                        tasks.spawn(crystal_net::serve(listener, shutdown.clone(), move |stream, peer, stop| {
+                            lobby.clone().handle(stream, peer, role, stop)
+                        }));
+                    }
                 }
                 Role::Zone | Role::Chat => unreachable!(),
             }

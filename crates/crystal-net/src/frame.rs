@@ -1,8 +1,9 @@
 //! The frame ("bundle") and segment layouts, as the 672261 client sends them.
 //!
-//! Layouts are read from captures of the client (`protocol/672261/captures`); confirm each field
-//! against the client's code when it is extracted in Phase 1. Later ARR clients use a 0x28-byte
-//! frame header with a timestamp; this build's header is 0x20 bytes.
+//! Layouts are read from captures of the client (`protocol/672261/captures`) and its code (addresses
+//! are ffxiv.exe 672261's). Later ARR clients use a 0x28-byte frame header with a timestamp; this
+//! build's header is 0x20 bytes. The client reads `size` @0x10 and inflates the body when the byte
+//! @0x19 is 1 (@0xe36cf0).
 
 use bytes::{BufMut, Bytes, BytesMut};
 
@@ -161,15 +162,36 @@ impl From<ConnectionType> for u16 {
     }
 }
 
-/// Segment types. Names from later ARR clients; 9 (encryption init) is seen in captures.
+/// Segment types. Names from later ARR clients, except where the 672261 client's code says more.
+///
+/// The client's segment reader (@0xe37c10) takes each non-IPC type at one size only, header
+/// included, and drops it at any other: 1 and 2 at 0x38, 7 and 8 at 0x18, 9 at 0x278 and 10 at
+/// 0x290. IPC (3) is up to 0x8c8.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SegmentType {
     SessionInit,
     Ipc,
     KeepAlive,
     KeepAliveResponse,
+    /// Client to lobby: the key phrase and key the connection's Blowfish key is made from.
     EncryptionInit,
+    /// Lobby to client: answers [`Self::EncryptionInit`]. Its payload is encrypted; its first
+    /// `u32`, decrypted, becomes the connection's id and must not be zero (@0xe38140, @0xe392e0).
+    EncryptionReply,
     Unknown(u16),
+}
+
+impl SegmentType {
+    /// The one size, header included, the client accepts a segment of this type at.
+    pub fn fixed_size(self) -> Option<u32> {
+        match self {
+            Self::SessionInit | Self::Unknown(2) => Some(0x38),
+            Self::KeepAlive | Self::KeepAliveResponse => Some(0x18),
+            Self::EncryptionInit => Some(0x278),
+            Self::EncryptionReply => Some(0x290),
+            Self::Ipc | Self::Unknown(_) => None,
+        }
+    }
 }
 
 impl From<u16> for SegmentType {
@@ -180,6 +202,7 @@ impl From<u16> for SegmentType {
             7 => Self::KeepAlive,
             8 => Self::KeepAliveResponse,
             9 => Self::EncryptionInit,
+            10 => Self::EncryptionReply,
             v => Self::Unknown(v),
         }
     }
@@ -193,6 +216,7 @@ impl From<SegmentType> for u16 {
             SegmentType::KeepAlive => 7,
             SegmentType::KeepAliveResponse => 8,
             SegmentType::EncryptionInit => 9,
+            SegmentType::EncryptionReply => 10,
             SegmentType::Unknown(v) => v,
         }
     }

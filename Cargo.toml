@@ -23,6 +23,7 @@ figment = { version = "0.10", features = ["toml", "env"] }
 flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
 futures-util = { version = "0.3", default-features = false, features = ["std", "sink"] }
 hex = "0.4"
+md-5 = "0.10"
 mimalloc = "0.1"
 parking_lot = "0.12"
 redis = { version = "1.8", default-features = false, features = ["tokio-comp", "connection-manager"] }

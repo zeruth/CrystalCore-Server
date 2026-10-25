@@ -3,4 +3,4 @@
 pub mod config;
 pub mod log;
 
-pub use config::{Config, Role};
+pub use config::{Config, LobbyConfig, Role};
