@@ -3,7 +3,7 @@
 # Defaults run everything in one process on SQLite with in-process state; a hosted setup uses
 # PostgreSQL and Redis (tools/dev.ps1 runs both locally).
 
-roles = ["lobby"]
+roles = ["lobby", "zone"]
 
 [log]
 filter = "info"
@@ -35,4 +35,8 @@ prefix = "crystal"
 bind = "127.0.0.1:54994"
 bind_2 = "127.0.0.1:54995"
 create_host = 1
+
+[zone]
+# Also the address game login sends the client to.
+bind = "127.0.0.1:54992"
 # capture_dir = "protocol/672261/captures"

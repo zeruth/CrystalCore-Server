@@ -12,6 +12,7 @@ use crystal_db::Databases;
 use crystal_lobby::{HostRole, Lobby};
 use crystal_net::Listener;
 use crystal_state::State;
+use crystal_zone::Zone;
 use tokio_util::sync::CancellationToken;
 use tokio_util::task::TaskTracker;
 use tracing::info;
@@ -35,8 +36,8 @@ impl Server {
         if config.roles.is_empty() {
             bail!("no roles configured (lobby, zone, chat)");
         }
-        if let Some(role) = config.roles.iter().find(|r| **r != Role::Lobby) {
-            bail!("the {role:?} service arrives in Phase 2; run lobby only for now");
+        if config.roles.contains(&Role::Chat) {
+            bail!("the chat service is not there yet; run lobby and zone");
         }
 
         let db = Databases::connect(&config.database).await.context("databases")?;
@@ -54,7 +55,8 @@ impl Server {
             match role {
                 Role::Lobby => {
                     let c = &config.lobby;
-                    let lobby = Arc::new(Lobby::new(db.clone(), state.clone(), c.capture_dir.clone()));
+                    let lobby =
+                        Arc::new(Lobby::new(db.clone(), state.clone(), config.zone.bind, c.capture_dir.clone()));
                     let hosts = match c.bind_2 {
                         None => vec![(c.bind, Host::Both)],
                         Some(bind_2) => vec![(c.bind, Host::One(1)), (bind_2, Host::One(2))],
@@ -75,7 +77,15 @@ impl Server {
                         }));
                     }
                 }
-                Role::Zone | Role::Chat => unreachable!(),
+                Role::Zone => {
+                    let listener = Listener::bind("zone", config.zone.bind).await.context("zone")?;
+                    addrs.insert(Role::Zone, listener.local_addr()?);
+                    let zone = Arc::new(Zone::new(db.clone(), state.clone(), config.zone.capture_dir.clone()));
+                    tasks.spawn(crystal_net::serve(listener, shutdown.clone(), move |stream, peer, stop| {
+                        zone.clone().handle(stream, peer, stop)
+                    }));
+                }
+                Role::Chat => unreachable!(),
             }
         }
         tasks.close();

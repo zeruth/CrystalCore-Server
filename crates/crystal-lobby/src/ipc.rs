@@ -10,47 +10,7 @@
 //!   error for any operation (`LobbyOperation` slot 2 @0xe4fb00).
 
 use bytes::{BufMut, Bytes, BytesMut};
-
-/// ```text
-/// 0x00  u16  0x14
-/// 0x02  u16  opcode
-/// 0x04  u16  0
-/// 0x06  u16  server id
-/// 0x08  u32  timestamp (unix seconds)
-/// 0x0C  u32  0
-/// ```
-/// As the client writes it; it reads only the opcode back (@0xe3b8f0).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct IpcHeader {
-    pub magic: u16,
-    pub opcode: u16,
-    pub server_id: u16,
-    pub timestamp: u32,
-}
-
-impl IpcHeader {
-    pub const SIZE: usize = 0x10;
-    pub const MAGIC: u16 = 0x14;
-
-    pub fn parse(b: &[u8]) -> Option<Self> {
-        let b = b.get(..Self::SIZE)?;
-        Some(Self {
-            magic: u16::from_le_bytes([b[0], b[1]]),
-            opcode: u16::from_le_bytes([b[2], b[3]]),
-            server_id: u16::from_le_bytes([b[6], b[7]]),
-            timestamp: u32::from_le_bytes(b[8..12].try_into().unwrap()),
-        })
-    }
-
-    pub fn write(&self, out: &mut BytesMut) {
-        out.put_u16_le(self.magic);
-        out.put_u16_le(self.opcode);
-        out.put_u16_le(0);
-        out.put_u16_le(self.server_id);
-        out.put_u32_le(self.timestamp);
-        out.put_u32_le(0);
-    }
-}
+pub use crystal_net::ipc::{IpcHeader, packet};
 
 pub mod opcode {
     /// Up: the client's version (0x100 bytes): sequence @0, 0x6e0000 @8, 0x1347 @0xc, the session
@@ -87,6 +47,8 @@ pub mod opcode {
     /// content id @8. Sent after a character is made or picked; the client then shows the loading
     /// screen and waits for 0x0f (read @0xe408c0; it carries the zone server, Phase 2).
     pub const GAME_LOGIN: u16 = 0x04;
+    /// Down: the answer to [`GAME_LOGIN`]; see [`super::game_login_reply`].
+    pub const GAME_LOGIN_REPLY: u16 = 0x0f;
 }
 
 /// An [`opcode::ERROR`] body for the operation whose request carried `sequence`: the code @8 (the
@@ -231,21 +193,54 @@ pub fn server_list(sequence: u64, worlds: &[World]) -> Bytes {
 /// so with none it never fires and the screen stays empty. An entry whose content id (@8) is 0 is
 /// waited on as row 0.
 pub fn empty_chara_list(sequence: u64) -> Bytes {
-    let mut body = BytesMut::zeroed(0x18 + 2 * 0x450);
-    body[..8].copy_from_slice(&sequence.to_le_bytes());
-    body[8] = 1;
-    body[9] = 1;
-    body[0x10..0x12].copy_from_slice(&MAX_CHARAS_PER_WORLD.to_le_bytes());
-    body[0x12..0x14].copy_from_slice(&CHARA_SLOTS.to_le_bytes());
-    body.freeze()
+    chara_list(sequence, &[CharaEntry::default()]).swap_remove(0)
 }
 
-/// An IPC segment payload: the header, then `body`.
-pub fn packet(opcode: u16, timestamp: u32, body: &[u8]) -> BytesMut {
-    let mut out = BytesMut::with_capacity(IpcHeader::SIZE + body.len());
-    IpcHeader { magic: IpcHeader::MAGIC, opcode, server_id: 0, timestamp }.write(&mut out);
-    out.extend_from_slice(body);
-    out
+/// [`opcode::CHARA_LIST`] for `charas`, as many packets as it takes (two entries each). The list
+/// must not be empty (see [`empty_chara_list`]). Each entry's index byte @0x10 is set to its place
+/// in the list: the client merges entries whose index matches (@0xe3fdf0).
+pub fn chara_list(sequence: u64, charas: &[CharaEntry]) -> Vec<Bytes> {
+    let pages: Vec<&[CharaEntry]> = charas.chunks(2).collect();
+    let last = pages.len().saturating_sub(1);
+    pages
+        .iter()
+        .enumerate()
+        .map(|(page, entries)| {
+            let mut body = BytesMut::zeroed(0x18 + 2 * CharaEntry::SIZE);
+            body[..8].copy_from_slice(&sequence.to_le_bytes());
+            // bits 1..: the page (0 starts the list over); bit 0: the last page
+            body[8] = ((page as u8) << 1) | (page == last) as u8;
+            body[9] = entries.len() as u8;
+            body[0x10..0x12].copy_from_slice(&MAX_CHARAS_PER_WORLD.to_le_bytes());
+            body[0x12..0x14].copy_from_slice(&CHARA_SLOTS.to_le_bytes());
+            for (i, chara) in entries.iter().enumerate() {
+                let at = 0x18 + i * CharaEntry::SIZE;
+                chara.write(&mut body[at..at + CharaEntry::SIZE]);
+                body[at + 0x10] = (page * 2 + i) as u8 & 0x3f;
+            }
+            body.freeze()
+        })
+        .collect()
+}
+
+/// The answer to [`opcode::GAME_LOGIN`]: [`opcode::GAME_LOGIN_REPLY`] (read @0xe408c0). The client
+/// keeps the u32 @8, the text @0x1c (0x40), the port @0x5e, the host @0x60 (0x20) and a second host
+/// @0x80 (0x20); later ARR servers send the character's id @8, its content id @0x10 and a session
+/// id @0x1c, and connect the client to the zone server at host:port.
+pub fn game_login_reply(sequence: u64, actor_id: u32, content_id: u64, session: &str, host: &str, port: u16) -> Bytes {
+    let mut body = BytesMut::zeroed(0xa0);
+    body[..8].copy_from_slice(&sequence.to_le_bytes());
+    body[8..0xc].copy_from_slice(&actor_id.to_le_bytes());
+    body[0x10..0x18].copy_from_slice(&content_id.to_le_bytes());
+    let put = |body: &mut BytesMut, at: usize, len: usize, s: &str| {
+        let n = s.len().min(len - 1);
+        body[at..at + n].copy_from_slice(&s.as_bytes()[..n]);
+    };
+    put(&mut body, 0x1c, 0x40, session);
+    body[0x5e..0x60].copy_from_slice(&port.to_le_bytes());
+    put(&mut body, 0x60, 0x20, host);
+    put(&mut body, 0x80, 0x20, host);
+    body.freeze()
 }
 
 /// The sequence number a request carries @0, echoed in its answer.
@@ -320,6 +315,30 @@ mod tests {
         assert_eq!(&reply[0x28..0x2a], &1u16.to_le_bytes());
         assert_eq!(&reply[0x2a..0x36], b"Null Crystal");
         assert_eq!(&reply[0x5a..0x5c], b"{}");
+    }
+
+    #[test]
+    fn chara_list_pages() {
+        let charas: Vec<CharaEntry> =
+            (1..=3).map(|i| CharaEntry { content_id: i, world_id: 1, ..Default::default() }).collect();
+        let pages = chara_list(9, &charas);
+        assert_eq!(pages.len(), 2);
+        assert_eq!((pages[0][8], pages[0][9]), (0, 2));
+        assert_eq!((pages[1][8], pages[1][9]), (3, 1));
+        assert_eq!(pages[1][0x18 + 0x10], 2, "index byte");
+        assert_eq!(&pages[1][0x18 + 8..0x18 + 0x10], &3u64.to_le_bytes());
+        let empty = empty_chara_list(9);
+        assert_eq!((empty[8], empty[9]), (1, 1));
+        assert_eq!(empty.len(), 0x18 + 2 * 0x450);
+    }
+
+    #[test]
+    fn game_login_reply_layout() {
+        let body = game_login_reply(5, 0x1000_0001, 0x40_0000_0000_0001, "abc", "127.0.0.1", 54992);
+        assert_eq!(&body[8..0xc], &0x1000_0001u32.to_le_bytes());
+        assert_eq!(&body[0x1c..0x1f], b"abc");
+        assert_eq!(&body[0x5e..0x60], &54992u16.to_le_bytes());
+        assert_eq!(&body[0x60..0x69], b"127.0.0.1");
     }
 
     #[test]

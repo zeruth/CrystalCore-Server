@@ -47,6 +47,26 @@ async fn exercise(db: &Databases) {
         .get(0);
     assert_eq!(name, "Tester Name");
 
+    // the characters repository
+    let account = db.login.ensure_account("test", 1).await.unwrap();
+    assert_eq!(db.login.ensure_account("TEST", 2).await.unwrap(), account);
+    let chars = &db.characters;
+    assert_eq!(chars.max_content_id().await.unwrap(), 0);
+    let content_id = 0x0040_0000_0000_0001u64;
+    assert!(chars.character_name_free(1, "Null Crystal").await.unwrap());
+    chars.create_character(account, content_id, 1, "Null Crystal", "{}", 1).await.unwrap();
+    assert!(!chars.character_name_free(1, "null crystal").await.unwrap());
+    assert!(chars.create_character(account, content_id + 1, 1, "NULL CRYSTAL", "{}", 1).await.is_err());
+    assert_eq!(chars.max_content_id().await.unwrap(), content_id);
+    let list = chars.characters_of(account).await.unwrap();
+    assert_eq!(list.len(), 1);
+    assert_eq!((list[0].content_id, list[0].world_id, list[0].name.as_str()), (content_id, 1, "Null Crystal"));
+    assert_eq!(list[0].position, None);
+    let at = Position { zone_id: 132, x: 1.5, y: 2.0, z: -3.25, rotation: 0.5 };
+    chars.save_position(content_id, at).await.unwrap();
+    let back = chars.character_by_content_id(content_id).await.unwrap().unwrap();
+    assert_eq!(back.position, Some(at));
+
     let build: i32 = sqlx::query("SELECT build FROM patch WHERE version = $1")
         .bind("2013.08.09.0001.0000")
         .fetch_one(&db.world.pool)

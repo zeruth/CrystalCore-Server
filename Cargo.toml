@@ -15,6 +15,7 @@ crystal-lobby = { path = "crates/crystal-lobby" }
 crystal-net = { path = "crates/crystal-net" }
 crystal-runtime = { path = "crates/crystal-runtime" }
 crystal-state = { path = "crates/crystal-state" }
+crystal-zone = { path = "crates/crystal-zone" }
 
 anyhow = "1"
 bytes = "1"
@@ -28,6 +29,7 @@ mimalloc = "0.1"
 parking_lot = "0.12"
 redis = { version = "1.8", default-features = false, features = ["tokio-comp", "connection-manager"] }
 serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 sqlx = { version = "0.9", default-features = false, features = ["runtime-tokio", "any", "postgres", "sqlite", "migrate", "macros"] }
 thiserror = "2"
 tokio = { version = "1.54", features = ["rt-multi-thread", "macros", "net", "sync", "time", "signal", "io-util"] }

@@ -384,6 +384,7 @@ dependencies = [
 name = "crystal-lobby"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "bytes",
  "crystal-db",
  "crystal-net",
@@ -391,6 +392,7 @@ dependencies = [
  "futures-util",
  "hex",
  "md-5 0.10.6",
+ "serde_json",
  "tokio",
  "tokio-util",
  "tracing",
@@ -420,6 +422,7 @@ dependencies = [
  "crystal-lobby",
  "crystal-net",
  "crystal-state",
+ "crystal-zone",
  "hex",
  "tempfile",
  "tokio",
@@ -451,6 +454,22 @@ dependencies = [
  "redis",
  "thiserror",
  "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "crystal-zone"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bytes",
+ "crystal-db",
+ "crystal-net",
+ "crystal-state",
+ "futures-util",
+ "hex",
+ "tokio",
+ "tokio-util",
  "tracing",
 ]
 

@@ -13,6 +13,7 @@ crystal-db.workspace = true
 crystal-lobby.workspace = true
 crystal-net.workspace = true
 crystal-state.workspace = true
+crystal-zone.workspace = true
 tokio.workspace = true
 tokio-util.workspace = true
 tracing.workspace = true

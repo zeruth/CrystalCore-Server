@@ -2,6 +2,7 @@
 
 pub mod codec;
 pub mod frame;
+pub mod ipc;
 pub mod listener;
 
 pub use codec::{CodecError, FrameCodec};

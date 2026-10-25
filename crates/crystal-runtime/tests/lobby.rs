@@ -52,6 +52,6 @@ async fn lobby_receives_and_captures_client_frames() {
 
 #[tokio::test]
 async fn refuses_roles_from_later_phases() {
-    let config = Config { roles: vec![Role::Zone], ..Config::default() };
+    let config = Config { roles: vec![Role::Chat], ..Config::default() };
     assert!(Server::start(config).await.is_err());
 }

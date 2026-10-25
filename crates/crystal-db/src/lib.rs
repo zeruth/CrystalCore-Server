@@ -164,5 +164,31 @@ fn create_sqlite_dir(url: &str) -> std::io::Result<()> {
     }
 }
 
+impl Database {
+    /// The id of the account named `username`, made (with no password) if it does not exist. For
+    /// the client's test ticket until accounts and sessions are real.
+    pub async fn ensure_account(&self, username: &str, now: i64) -> Result<i64> {
+        use sqlx::Row;
+        let found = sqlx::query("SELECT id FROM account WHERE lower(username) = lower($1)")
+            .bind(username)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|source| DbError::Sql { db: self.name, source })?;
+        if let Some(row) = found {
+            return Ok(row.get(0));
+        }
+        sqlx::query("INSERT INTO account (username, password_hash, created_at) VALUES ($1, '', $2) RETURNING id")
+            .bind(username)
+            .bind(now)
+            .fetch_one(&self.pool)
+            .await
+            .map(|row| row.get(0))
+            .map_err(|source| DbError::Sql { db: self.name, source })
+    }
+}
+
+pub mod characters;
+pub use characters::{Character, Position};
+
 #[cfg(test)]
 mod tests;
