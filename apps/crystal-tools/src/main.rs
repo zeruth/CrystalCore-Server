@@ -42,7 +42,7 @@ enum Command {
         #[arg(long, default_value_t = 129)]
         territory: u16,
         /// The middle of their circles, x,y,z (Limsa Lominsa's start by default).
-        #[arg(long, default_value = "-62,18,-4", value_parser = parse_point)]
+        #[arg(long, default_value = "-62,18,-4", value_parser = parse_point, allow_hyphen_values = true)]
         at: [f32; 3],
         /// How far from the middle they walk (yalms; each bot gets its own circle within this).
         #[arg(long, default_value_t = 15.0)]
