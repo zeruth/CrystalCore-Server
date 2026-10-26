@@ -3,6 +3,7 @@
 
 use std::collections::VecDeque;
 use std::io::Write;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
@@ -42,6 +43,51 @@ struct Inner {
     version: AtomicU64,
     /// Also print to stdout (after the UI has closed, for the shutdown's lines).
     passthrough: AtomicBool,
+    file: Mutex<Option<LogFile>>,
+}
+
+/// The log on disk: started fresh, moved to `<path>.1` when it reaches `max` bytes.
+struct LogFile {
+    path: PathBuf,
+    max: u64,
+    written: u64,
+    out: std::fs::File,
+}
+
+impl LogFile {
+    fn create(path: &Path, max: u64) -> std::io::Result<Self> {
+        if let Some(dir) = path.parent()
+            && !dir.as_os_str().is_empty()
+        {
+            std::fs::create_dir_all(dir)?;
+        }
+        Ok(Self { path: path.to_owned(), max, written: 0, out: std::fs::File::create(path)? })
+    }
+
+    fn write(&mut self, line: &str) {
+        if self.written + line.len() as u64 > self.max {
+            let mut old = self.path.clone().into_os_string();
+            old.push(".1");
+            // std opens files shareable for deletion, so the open file can be renamed on Windows too
+            let _ = std::fs::rename(&self.path, &old);
+            if let Ok(fresh) = std::fs::File::create(&self.path) {
+                self.out = fresh;
+                self.written = 0;
+            }
+        }
+        if self.out.write_all(line.as_bytes()).is_ok() {
+            self.written += line.len() as u64;
+        }
+    }
+}
+
+fn file_line(line: &Line) -> String {
+    match line.kind {
+        Kind::Log(level) => format!("{} {:5} {}\n", line.time, level.as_str(), line.text),
+        Kind::Input => format!("{} > {}\n", line.time, line.text),
+        Kind::Output => format!("{}   {}\n", line.time, line.text),
+        Kind::Error => format!("{} ! {}\n", line.time, line.text),
+    }
 }
 
 /// The log buffer, shared by the `tracing` writer and the UI.
@@ -56,13 +102,25 @@ impl Sink {
         }
         let time = chrono::Local::now().format("%H:%M:%S").to_string();
         let mut lines = self.0.lines.lock();
+        let mut file = self.0.file.lock();
         for part in text.split('\n') {
             if lines.len() == SCROLLBACK {
                 lines.pop_front();
             }
-            lines.push_back(Line { time: time.clone(), kind, text: part.trim_end().to_owned() });
+            let line = Line { time: time.clone(), kind, text: part.trim_end().to_owned() };
+            if let Some(f) = file.as_mut() {
+                f.write(&file_line(&line));
+            }
+            lines.push_back(line);
         }
         self.0.version.fetch_add(1, Ordering::Release);
+    }
+
+    /// Also writes every line to `path` (truncated now), keeping it under `max_bytes` by moving
+    /// it to `<path>.1` when full.
+    pub fn log_to_file(&self, path: &Path, max_bytes: u64) -> std::io::Result<()> {
+        *self.0.file.lock() = Some(LogFile::create(path, max_bytes.max(4096))?);
+        Ok(())
     }
 
     pub fn version(&self) -> u64 {
@@ -174,6 +232,26 @@ mod tests {
         assert_eq!(texts, ["one", "two"]);
         sink.clear();
         assert_eq!(sink.with_lines(|l| l.len()), 0);
+    }
+
+    #[test]
+    fn the_file_starts_fresh_and_rolls_over() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("log/server.log");
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(&path, "an old run\n").unwrap();
+        let sink = Sink::default();
+        sink.log_to_file(&path, 4096).unwrap();
+        sink.push(Kind::Input, "who");
+        let text = std::fs::read_to_string(&path).unwrap();
+        assert!(text.ends_with(" > who\n") && !text.contains("old run"), "{text}");
+        for i in 0..100 {
+            sink.push(Kind::Log(Level::INFO), format!("line {i} {}", "x".repeat(60)));
+        }
+        let rolled = std::fs::metadata(path.with_extension("log.1")).unwrap().len();
+        let now = std::fs::metadata(&path).unwrap().len();
+        assert!(rolled <= 4096 && now <= 4096, "{rolled} {now}");
+        assert!(std::fs::read_to_string(&path).unwrap().contains("INFO  line 99"));
     }
 
     #[test]

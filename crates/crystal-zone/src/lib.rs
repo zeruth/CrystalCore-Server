@@ -385,7 +385,14 @@ impl Zone {
                     .world
                     .enter(territory, sess.actor_id, sess.look.clone(), sess.pos(), sess.position.rotation as f32)
                     .await;
-                vec![(opcode::SPAWN, me.to_bytes())]
+                // An empty block list, for the client's request key 0 (it has made none yet):
+                // without it the client drops everyone's chat as blocked.
+                vec![(opcode::SPAWN, me.to_bytes()), (opcode::BLACKLIST, ipc::blacklist(0, 0))]
+            }
+            opcode::BLACKLIST => {
+                let (index, key) = ipc::parse_blacklist_request(body).unwrap_or((0, 0));
+                debug!(index, key, "  block list request");
+                vec![(opcode::BLACKLIST, ipc::blacklist(index, key))]
             }
             other => {
                 info!(opcode = format_args!("{other:#06x}"), len = body.len(), body = %hex::encode(body), "  unhandled ipc");
@@ -582,5 +589,5 @@ fn event_segment(sess: &Session, event: Event) -> Segment {
 
 /// A line from the server in the chat log.
 fn system_message(text: &str) -> Bytes {
-    ipc::ChatDown { kind: chat::SERVER_DEBUG, text: text.into(), ..Default::default() }.to_bytes()
+    ipc::ChatDown { kind: chat::SYSTEM, text: text.into(), ..Default::default() }.to_bytes()
 }

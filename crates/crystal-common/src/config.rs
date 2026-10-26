@@ -61,6 +61,10 @@ impl std::str::FromStr for Role {
 pub struct LogConfig {
     /// `tracing` filter directives, as in `RUST_LOG`.
     pub filter: String,
+    /// The console also writes its log here, started fresh each run; past `file_max_mb` it
+    /// moves to `<file>.1` and starts again. Unset: no file.
+    pub file: Option<PathBuf>,
+    pub file_max_mb: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -157,7 +161,7 @@ impl Default for Config {
 
 impl Default for LogConfig {
     fn default() -> Self {
-        Self { filter: "info".into() }
+        Self { filter: "info".into(), file: Some(PathBuf::from("var/log/crystal-server.log")), file_max_mb: 10 }
     }
 }
 

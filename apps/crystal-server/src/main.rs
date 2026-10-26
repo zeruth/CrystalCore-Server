@@ -44,6 +44,11 @@ async fn main() -> anyhow::Result<()> {
 
     // The console: what starting logs is shown in it once it is up.
     let logging = Logging::install(&config.log.filter)?;
+    if let Some(path) = &config.log.file
+        && let Err(e) = logging.sink.log_to_file(path, config.log.file_max_mb * 1024 * 1024)
+    {
+        tracing::warn!(path = %path.display(), "log file: {e}");
+    }
     info!(version = env!("CARGO_PKG_VERSION"), config = %args.config.display(), "crystal-server");
     let server = match Server::start(config).await {
         Ok(server) => server,

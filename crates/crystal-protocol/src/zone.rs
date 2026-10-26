@@ -43,6 +43,12 @@ pub mod opcode {
     /// client's own actor id (the segment's source), it becomes the player (@0xa64860 compares it
     /// with the id game login gave); any other id is another character.
     pub const SPAWN: u16 = 0x190;
+    /// Up and down: the block list; see [`super::blacklist`]. Up (0x18 bytes, from
+    /// `InfoProxyBlacklist::vf4` @0x43fb60 and vf7): the page index wanted @0x10, the request key
+    /// @0x11. Down (case 0x11 → @0xb037e0 → info proxy 4, `InfoProxyBlacklist::vf7` @0x43fa50).
+    /// Until a last page arrives the client treats every speaker as blocked (@0x4355d0: the
+    /// loaded flag @+0x660, set by vf5) and shows no one's chat.
+    pub const BLACKLIST: u16 = 0xe3;
     /// Down: a character goes away; see [`super::despawn`] (case 0x3d → @0xa64000).
     pub const DESPAWN: u16 = 0x191;
     /// Down: another character moves; see [`super::ActorMove`] (case 0x3e → @0xa55ae0, which
@@ -50,10 +56,12 @@ pub mod opcode {
     pub const ACTOR_MOVE: u16 = 0x192;
 }
 
-/// Chat types (the chat log's kinds; the numbers later ARR clients use, which this client's
-/// say and shout agree with).
+/// Chat types: `LogKind` rows. The chat log drops a type every tab filters (@0x43b6e0), and the
+/// tabs' filters are `LogFilter` rows: a type that sheet does not list, like 1 (Debug), is never
+/// shown.
 pub mod chat {
-    pub const SERVER_DEBUG: u16 = 0x01;
+    /// "System Messages" (`LogKind` 57, `LogFilter` 21): the text alone, shown by default.
+    pub const SYSTEM: u16 = 0x39;
     pub const SAY: u16 = 0x0a;
     pub const SHOUT: u16 = 0x0b;
     pub const YELL: u16 = 0x1e;
@@ -237,6 +245,23 @@ pub fn despawn(slot: u8, actor: u32) -> Bytes {
     b[0] = slot;
     b[4..8].copy_from_slice(&actor.to_le_bytes());
     b.freeze()
+}
+
+/// An empty page of [`opcode::BLACKLIST`] down (0x328 bytes): 20 entries of 0x28 (content id u64,
+/// name char[32]; a zero id ends the list), the next page's index @0x320 (0: this is the last),
+/// this page's index @0x321 (0 clears the list first), the request key @0x322. The client takes
+/// a page only when the key is that of its request (`InfoProxyBlacklist` +0xd; 0 before it made
+/// one); the last page marks the list loaded.
+pub fn blacklist(index: u8, key: u8) -> Bytes {
+    let mut b = BytesMut::zeroed(0x328);
+    b[0x321] = index;
+    b[0x322] = key;
+    b.freeze()
+}
+
+/// The page index and request key of an up [`opcode::BLACKLIST`].
+pub fn parse_blacklist_request(b: &[u8]) -> Option<(u8, u8)> {
+    Some((*b.get(0x10)?, *b.get(0x11)?))
 }
 
 /// The slot and actor id of a [`despawn`] body.
