@@ -2,6 +2,7 @@
 //! (`postgres://crystal@127.0.0.1:5432`, see `tools/dev.ps1`). Each Postgres run creates and
 //! drops its own databases.
 
+use std::path::Path;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use crystal_common::config::{DatabaseConfig, DatabaseEndpoint};
@@ -117,6 +118,17 @@ async fn exercise(db: &Databases) {
     assert!(w.bnpc_spawns(BETA_PATCH, Some(135)).await.unwrap().is_empty());
     assert_eq!(back, vec![hand.clone(), hand, spawn]);
     assert_eq!(w.bnpc_spawn_counts(BETA_PATCH).await.unwrap(), vec![(134, 3)]);
+
+    // seed files: written, read back, and loaded only into an empty table
+    let dir = tempfile::tempdir().unwrap();
+    let all = w.bnpc_spawns(BETA_PATCH, None).await.unwrap();
+    seed::write_bnpcs(&dir.path().join(seed::BNPC_SPAWNS), &all).unwrap();
+    assert_eq!(seed::read_bnpcs(&dir.path().join(seed::BNPC_SPAWNS)).unwrap(), all);
+    assert_eq!(seed::seed_world(w, dir.path(), BETA_PATCH).await.unwrap().bnpc_spawns, 0, "not empty: left alone");
+    let other = "2013.12.05.0000.0000";
+    assert_eq!(seed::seed_world(w, dir.path(), other).await.unwrap().bnpc_spawns, 3);
+    assert_eq!(w.bnpc_spawns(other, None).await.unwrap().len(), 3);
+    assert_eq!(seed::seed_world(w, Path::new("no/such/dir"), "x").await.unwrap(), seed::Seeded::default());
 }
 
 #[tokio::test]

@@ -1,7 +1,7 @@
 //! What the zone service asks of the game data: where a territory's layout is, and where a zone
 //! exit leads.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::sync::Arc;
 
@@ -15,6 +15,30 @@ use crate::{DataError, Result};
 
 /// The layout files of a territory that hold the objects the server uses.
 const LAYOUT_FILES: [&str; 3] = ["planmap.lgb", "planevent.lgb", "planner.lgb"];
+/// Every layout file a territory's level folder has, for its layer names.
+const ALL_LAYOUT_FILES: [&str; 7] =
+    ["planmap.lgb", "planevent.lgb", "planner.lgb", "planlive.lgb", "bg.lgb", "sound.lgb", "vfx.lgb"];
+
+/// Why content does not belong in this build.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum Misfit {
+    Territory,
+    BNpcBase,
+    BNpcName,
+    /// Its layout layer is not in the territory's layouts: added by a later patch.
+    Layer,
+}
+
+impl std::fmt::Display for Misfit {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Misfit::Territory => "territory not in this build",
+            Misfit::BNpcBase => "no BNpcBase row",
+            Misfit::BNpcName => "no BNpcName row",
+            Misfit::Layer => "layout layer not in this build",
+        })
+    }
+}
 
 /// Where a zone exit puts the player.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -82,6 +106,8 @@ pub struct WorldData {
     layouts: Mutex<HashMap<u16, Arc<Layout>>>,
     /// Event NPCs by territory, from the `Level` sheet; read on first use.
     npcs: Mutex<Option<HashMap<u16, Vec<NpcPlacement>>>>,
+    /// Every layer name of a territory's layouts, by territory; read on first use.
+    layer_names: Mutex<HashMap<u16, Arc<HashSet<String>>>>,
 }
 
 impl WorldData {
@@ -100,6 +126,7 @@ impl WorldData {
             territories: HashMap::new(),
             layouts: Mutex::new(HashMap::new()),
             npcs: Mutex::new(None),
+            layer_names: Mutex::new(HashMap::new()),
         };
         let sheet = data.sheet("TerritoryType")?;
         let territories = sheet
@@ -175,7 +202,11 @@ impl WorldData {
         for file in LAYOUT_FILES {
             let path = format!("{folder}/{file}");
             match self.pack.read(&path) {
-                Ok(d) => layout.layers.extend(Layout::parse(&path, &d)?.layers),
+                Ok(d) => match Layout::parse(&path, &d) {
+                    Ok(l) => layout.layers.extend(l.layers),
+                    // a few dungeons have files in an older layout format: left out
+                    Err(e) => warn!("{e}"),
+                },
                 Err(DataError::NotFound(_)) => debug!(%path, "no such layout file"),
                 Err(e) => return Err(e),
             }
@@ -186,6 +217,51 @@ impl WorldData {
     }
 
     /// Whether `territory` is a `TerritoryType` row with a layout folder.
+    /// The names of every layer in `territory`'s layout files (empty layers too: later patches
+    /// fill layers the β already has, and add new ones).
+    pub fn layer_names(&self, territory: u16) -> Result<Arc<HashSet<String>>> {
+        if let Some(n) = self.layer_names.lock().get(&territory) {
+            return Ok(n.clone());
+        }
+        let folder = self
+            .territories
+            .get(&(territory as u32))
+            .ok_or_else(|| DataError::NotFound(format!("TerritoryType {territory}")))?;
+        let mut names = HashSet::new();
+        for file in ALL_LAYOUT_FILES {
+            let path = format!("{folder}/{file}");
+            match self.pack.read(&path) {
+                Ok(d) => match Layout::parse(&path, &d) {
+                    Ok(l) => names.extend(l.layers.into_iter().map(|l| l.name)),
+                    Err(e) => debug!("{e}"),
+                },
+                Err(DataError::NotFound(_)) => {}
+                Err(e) => return Err(e),
+            }
+        }
+        let names = Arc::new(names);
+        self.layer_names.lock().insert(territory, names.clone());
+        Ok(names)
+    }
+
+    /// Whether a battle NPC spawn belongs in this build: its territory, `BNpcBase` and `BNpcName`
+    /// rows exist, and so does its layout layer (`layer` empty: placed by hand, not checked).
+    pub fn bnpc_misfit(&self, territory: u16, base_id: u32, name_id: u32, layer: &str) -> Result<Option<Misfit>> {
+        if !self.has_territory(territory) {
+            return Ok(Some(Misfit::Territory));
+        }
+        if self.sheet("BNpcBase")?.row(base_id).is_none() {
+            return Ok(Some(Misfit::BNpcBase));
+        }
+        if self.sheet("BNpcName")?.row(name_id).is_none() {
+            return Ok(Some(Misfit::BNpcName));
+        }
+        if !layer.is_empty() && !self.layer_names(territory)?.contains(layer) {
+            return Ok(Some(Misfit::Layer));
+        }
+        Ok(None)
+    }
+
     pub fn has_territory(&self, territory: u16) -> bool {
         self.territories.contains_key(&(territory as u32))
     }

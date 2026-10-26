@@ -27,12 +27,21 @@ pub struct Config {
 }
 
 /// The client's game data the server reads (EXD sheets, layouts).
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct DataConfig {
     /// The client install's `game` folder (the one holding `sqpack/`). Unset: zone exits and
     /// anything else read from the game data are off.
     pub game: Option<PathBuf>,
+    /// The repository's starting content (`data/`, a folder per client build): loaded into the
+    /// world database's empty tables when the server starts. Unset: none.
+    pub seed: Option<PathBuf>,
+}
+
+impl Default for DataConfig {
+    fn default() -> Self {
+        Self { game: None, seed: Some(PathBuf::from("data")) }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]

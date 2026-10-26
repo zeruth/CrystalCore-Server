@@ -20,6 +20,9 @@ use tokio_util::sync::CancellationToken;
 use tokio_util::task::TaskTracker;
 use tracing::{info, warn};
 
+/// The client build whose folder under `[data] seed` the world is seeded from.
+pub const SEED_BUILD: &str = "672261";
+
 /// Which of the client's lobby hosts a lobby port serves.
 enum Host {
     Both,
@@ -30,6 +33,10 @@ pub struct Server {
     pub db: Databases,
     pub state: State,
     addrs: HashMap<Role, SocketAddr>,
+    /// Where lobby hosts 01 and 02 listen (one address when both share a port).
+    lobby_hosts: Vec<SocketAddr>,
+    /// The client install's `game` folder, when configured.
+    pub game: Option<std::path::PathBuf>,
     /// The zone service's territories.
     worlds: Vec<Arc<World>>,
     shutdown: CancellationToken,
@@ -56,6 +63,7 @@ impl Server {
         let shutdown = CancellationToken::new();
         let tasks = TaskTracker::new();
         let mut addrs = HashMap::new();
+        let mut lobby_hosts = Vec::new();
         let mut worlds = Vec::new();
         for role in &config.roles {
             match role {
@@ -72,6 +80,7 @@ impl Server {
                         if i == 0 {
                             addrs.insert(Role::Lobby, listener.local_addr()?);
                         }
+                        lobby_hosts.push(listener.local_addr()?);
                         let role = match host {
                             Host::Both => HostRole::Both,
                             Host::One(n) if n == c.create_host => HostRole::Create,
@@ -103,6 +112,12 @@ impl Server {
                     };
                     let listener = Listener::bind("zone", config.zone.bind).await.context("zone")?;
                     addrs.insert(Role::Zone, listener.local_addr()?);
+                    // a new server's world gets the repository's starting content
+                    if let Some(seed) = &config.data.seed {
+                        crystal_db::seed::seed_world(&db.world, &seed.join(SEED_BUILD), BETA_PATCH)
+                            .await
+                            .context("seed data")?;
+                    }
                     // battle NPCs from the world database, by territory (read once; a few MB at most)
                     let mut bnpcs: HashMap<u16, Vec<BnpcPlacement>> = HashMap::new();
                     for s in db.world.bnpc_spawns(BETA_PATCH, None).await.context("battle NPC spawns")? {
@@ -155,13 +170,18 @@ impl Server {
             }
         }
         tasks.close();
-        Ok(Self { db, state, addrs, worlds, shutdown, tasks })
+        Ok(Self { db, state, addrs, lobby_hosts, game: config.data.game.clone(), worlds, shutdown, tasks })
     }
 
     /// Where a running service listens (useful when it was bound to port 0).
     /// The zone service's territories, when it runs here.
     pub fn world(&self) -> Option<&Arc<World>> {
         self.worlds.first()
+    }
+
+    /// Where lobby hosts 01 and 02 listen: the client's `DEV.LobbyPort01`/`02`.
+    pub fn lobby_hosts(&self) -> &[SocketAddr] {
+        &self.lobby_hosts
     }
 
     pub fn local_addr(&self, role: Role) -> Option<SocketAddr> {

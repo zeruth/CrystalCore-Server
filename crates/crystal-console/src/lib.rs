@@ -6,6 +6,7 @@
 //! Only the binary uses it; anything not on a terminal logs plainly instead.
 
 pub mod commands;
+mod highlight;
 pub mod logs;
 
 use std::sync::Arc;
@@ -39,6 +40,9 @@ const WHEEL_ROWS: usize = 3;
 mod theme {
     use ratatui::style::Color;
 
+    /// The console's background, and the header's and the prompt's.
+    pub const BG: Color = Color::Rgb(10, 22, 44);
+    pub const PANEL: Color = Color::Rgb(18, 38, 72);
     pub const ACCENT: Color = Color::Rgb(88, 166, 255);
     pub const ACCENT_DEEP: Color = Color::Rgb(31, 111, 235);
     pub const RULE: Color = Color::Rgb(40, 72, 120);
@@ -52,6 +56,7 @@ mod theme {
     pub const DEBUG: Color = Color::Rgb(57, 197, 207);
     pub const TRACE: Color = Color::Rgb(188, 140, 255);
     pub const ONLINE: Color = Color::Rgb(63, 185, 80);
+    pub const GM: Color = Color::Rgb(255, 215, 64);
 }
 
 /// The levels F2 steps through.
@@ -297,7 +302,7 @@ fn on_key(app: &mut App, key: KeyEvent, terminal: &DefaultTerminal) -> Action {
         KeyCode::Tab => {
             let text: String = app.input.iter().collect();
             if !text.contains(char::is_whitespace) {
-                let choices = commands::complete(text.trim_start_matches('/'));
+                let choices = commands::complete(text.trim_start_matches(['/', '.']));
                 match choices.as_slice() {
                     [] => {}
                     [one] => {
@@ -337,7 +342,8 @@ fn draw(f: &mut Frame, app: &App, server: &Server, logging: &Logging) -> usize {
         Constraint::Length(1),
     ])
     .areas(f.area());
-    f.render_widget(Paragraph::new(status_line(app, server, logging)), header);
+    f.render_widget(Block::new().style(Style::new().bg(theme::BG)), f.area());
+    f.render_widget(Paragraph::new(status_line(app, server, logging)).style(Style::new().bg(theme::PANEL)), header);
     f.render_widget(Paragraph::new("━".repeat(rule.width as usize)).fg(theme::RULE), rule);
     let max_scroll = draw_log(f, app, logging, body);
     draw_input(f, app, input);
@@ -404,35 +410,43 @@ fn level_badge(level: Level) -> Span<'static> {
 /// One log line as screen rows `width` wide: a styled prefix, then the text, wrapped under it.
 fn rows(line: &logs::Line, width: usize) -> Vec<Line<'static>> {
     let dim = Style::new().fg(theme::DIM);
-    let (prefix, text_style): (Vec<Span<'static>>, Style) = match line.kind {
+    let (prefix, pieces): (Vec<Span<'static>>, Vec<(String, Style)>) = match line.kind {
         Kind::Log(level) => {
             let (_, text) = level_colors(level);
             (
                 vec![Span::styled(format!("{} ", line.time), dim), level_badge(level), Span::raw(" ")],
-                Style::new().fg(text),
+                highlight::segments(&line.text, Style::new().fg(text)),
             )
         }
-        Kind::Input => (
-            vec![Span::styled(PROMPT.to_string(), Style::new().fg(theme::ACCENT).bold())],
-            Style::new().fg(theme::ACCENT).bold(),
-        ),
-        Kind::Output => (vec![Span::styled("  ⎿ ".to_string(), dim)], Style::new().fg(theme::OUTPUT)),
-        Kind::Error => (vec![Span::styled("  ⎿ ".to_string(), dim)], Style::new().fg(theme::ERROR_TEXT)),
+        Kind::Input => {
+            // the command name bold, its arguments plain
+            let (name, args) = line.text.split_once(' ').unwrap_or((&line.text, ""));
+            let mut p = vec![(name.to_owned(), Style::new().fg(theme::ACCENT).bold())];
+            if !args.is_empty() {
+                p.push((format!(" {args}"), Style::new().fg(theme::TEXT)));
+            }
+            (vec![Span::styled(PROMPT.to_string(), Style::new().fg(theme::ACCENT).bold())], p)
+        }
+        Kind::Output => {
+            // GM changes stand out from the rest of the answers
+            let style = if line.text.contains("GM level") || line.text.contains("GM mode") {
+                Style::new().fg(theme::GM).bold()
+            } else {
+                Style::new().fg(theme::OUTPUT)
+            };
+            (vec![Span::styled("  ⎿ ".to_string(), dim)], highlight::segments(&line.text, style))
+        }
+        Kind::Error => {
+            (vec![Span::styled("  ⎿ ".to_string(), dim)], vec![(line.text.clone(), Style::new().fg(theme::ERROR_TEXT))])
+        }
     };
     let indent: usize = prefix.iter().map(|s| s.content.chars().count()).sum();
     let room = width.saturating_sub(indent).max(10);
-    let chars: Vec<char> = line.text.chars().collect();
     let mut out = Vec::new();
-    let mut chunks = chars.chunks(room);
-    let first: String = chunks.next().map(|c| c.iter().collect()).unwrap_or_default();
-    let mut spans = prefix;
-    spans.push(Span::styled(first, text_style));
-    out.push(Line::from(spans));
-    for chunk in chunks {
-        out.push(Line::from(vec![
-            Span::raw(" ".repeat(indent)),
-            Span::styled(chunk.iter().collect::<String>(), text_style),
-        ]));
+    for (i, row) in highlight::wrap(pieces, room).into_iter().enumerate() {
+        let mut spans = if i == 0 { prefix.clone() } else { vec![Span::raw(" ".repeat(indent))] };
+        spans.extend(row.into_iter().map(|(t, s)| Span::styled(t, s)));
+        out.push(Line::from(spans));
     }
     out
 }
@@ -474,7 +488,10 @@ fn draw_log(f: &mut Frame, app: &App, logging: &Logging, area: Rect) -> usize {
 
 fn draw_input(f: &mut Frame, app: &App, area: Rect) {
     let border = if app.quit_armed.is_some() { theme::WARN } else { theme::ACCENT_DEEP };
-    let block = Block::bordered().border_type(BorderType::Rounded).border_style(Style::new().fg(border));
+    let block = Block::bordered()
+        .border_type(BorderType::Rounded)
+        .border_style(Style::new().fg(border))
+        .style(Style::new().bg(theme::PANEL));
     let inner = block.inner(area);
     let room = (inner.width as usize).saturating_sub(PROMPT.chars().count() + 1).max(1);
     // keep the cursor in view

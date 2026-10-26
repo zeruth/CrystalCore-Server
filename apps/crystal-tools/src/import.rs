@@ -10,7 +10,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::Path;
 
 use anyhow::{Context, bail};
-use crystal_data::WorldData;
+use crystal_data::{Misfit, WorldData};
 use crystal_db::{BETA_PATCH, BnpcSpawn, Databases};
 
 pub const SAPPHIRE: &str = "sapphire";
@@ -131,16 +131,14 @@ pub struct Report {
     pub read: usize,
     pub imported: usize,
     pub unknown_territory: BTreeMap<String, usize>,
-    pub unknown_base: usize,
-    pub unknown_name: usize,
+    /// Rows that do not fit this build, by why (see `WorldData::bnpc_misfit`).
+    pub misfits: BTreeMap<Misfit, usize>,
     pub per_territory: BTreeMap<u16, usize>,
 }
 
 /// Sapphire's battle NPCs, as this build's spawns.
 pub fn sapphire_bnpcs(data: &WorldData, dump: &str) -> anyhow::Result<(Vec<BnpcSpawn>, Report)> {
     let rows = inserts(dump, "battlenpc")?;
-    let bases: HashSet<u32> = data.sheet("BNpcBase")?.rows.iter().map(|r| r.0).collect();
-    let names: HashSet<u32> = data.sheet("BNpcName")?.rows.iter().map(|r| r.0).collect();
     let mut territories: HashMap<String, Option<u16>> = HashMap::new();
     let mut report = Report { read: rows.len(), ..Default::default() };
     let mut spawns = Vec::new();
@@ -161,19 +159,17 @@ pub fn sapphire_bnpcs(data: &WorldData, dump: &str) -> anyhow::Result<(Vec<BnpcS
             *report.unknown_territory.entry(key).or_default() += 1;
             continue;
         };
-        let (base_id, name_id) = (uint("BaseId"), uint("NameId"));
-        if !bases.contains(&base_id) {
-            report.unknown_base += 1;
-            continue;
-        }
-        if !names.contains(&name_id) {
-            report.unknown_name += 1;
+        let (base_id, name_id, layer) = (uint("BaseId"), uint("NameId"), get("GroupName"));
+        // an empty layer would pass as hand placed: Sapphire's rows all have one
+        let layer = if layer.is_empty() { "?" } else { layer };
+        if let Some(why) = data.bnpc_misfit(territory, base_id, name_id, layer)? {
+            *report.misfits.entry(why).or_default() += 1;
             continue;
         }
         spawns.push(BnpcSpawn {
             territory,
             instance_id: Some(uint("instanceId")),
-            layer: get("GroupName").to_owned(),
+            layer: layer.to_owned(),
             base_id,
             name_id,
             level: uint("Level") as u16,
@@ -207,12 +203,11 @@ pub async fn run_sapphire_bnpcs(db: &Databases, data: &WorldData, file: &Path) -
     let (spawns, report) = sapphire_bnpcs(data, &dump)?;
     let written = db.world.replace_bnpc_spawns(BETA_PATCH, SAPPHIRE, &spawns).await?;
     println!("{} rows read, {written} spawns written (patch {BETA_PATCH}, source {SAPPHIRE})", report.read);
-    println!(
-        "left out: {} in territories this build lacks, {} with no BNpcBase row, {} with no BNpcName row",
-        report.unknown_territory.values().sum::<usize>(),
-        report.unknown_base,
-        report.unknown_name
-    );
+    println!("left out, not in this build:");
+    println!("  {:6} in territories it lacks", report.unknown_territory.values().sum::<usize>());
+    for (why, n) in &report.misfits {
+        println!("  {n:6} {why}");
+    }
     if !report.unknown_territory.is_empty() {
         let mut missing: Vec<_> = report.unknown_territory.iter().collect();
         missing.sort_by(|a, b| b.1.cmp(a.1));

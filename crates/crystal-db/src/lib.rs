@@ -28,6 +28,8 @@ pub enum DbError {
     Url { db: &'static str, url: String },
     #[error("{db}: {source}")]
     Io { db: &'static str, source: std::io::Error },
+    #[error("seed {path}: {what}")]
+    Seed { path: String, what: String },
 }
 
 pub type Result<T> = std::result::Result<T, DbError>;
@@ -232,6 +234,7 @@ impl Database {
 }
 
 pub mod characters;
+pub mod seed;
 pub mod world;
 pub use characters::{Character, Position};
 pub use world::{BETA_PATCH, BnpcSpawn, ExdOverride};

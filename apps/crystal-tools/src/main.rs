@@ -3,6 +3,8 @@
 //! - `exd`: browse the client's EXD sheets as the server sees them (overrides applied).
 //! - `override`: change an EXD row for the server (`world.exd_override`).
 //! - `import`: server-only content into the world database (Sapphire's battle NPCs).
+//! - `export`: the world's battle NPC spawns as the repository's seed file.
+//! - `prune`: world content that does not belong in this client build, found (and removed).
 //! - `bots`: headless clients that log into the zone service, walk circles around a point, ping and
 //!   talk, for load tests and for seeing other players from the real client.
 //!
@@ -29,6 +31,7 @@ const PLAYER_ACTOR_BASE: u32 = 0x1000_0000;
 
 mod exd;
 mod import;
+mod prune;
 const BOT_ACCOUNT: &str = "bots";
 
 #[derive(Parser)]
@@ -57,6 +60,18 @@ enum Command {
     Import {
         #[command(subcommand)]
         command: ImportCommand,
+    },
+    /// The world database's battle NPC spawns as the repository's seed file (what a new server
+    /// starts with).
+    Export {
+        #[arg(default_value = "data/672261/bnpc_spawn.csv")]
+        file: PathBuf,
+    },
+    /// Finds world database content that does not belong in this client build (territories,
+    /// sheets, rows or layout layers it lacks), and with --apply removes it.
+    Prune {
+        #[arg(long)]
+        apply: bool,
     },
     /// Runs headless clients against the zone service until Ctrl+C.
     Bots {
@@ -191,6 +206,19 @@ async fn main() -> anyhow::Result<()> {
             match command {
                 ImportCommand::SapphireBnpcs { file } => import::run_sapphire_bnpcs(&db, &data, &file).await?,
             }
+            db.close().await;
+        }
+        Command::Export { file } => {
+            let db = databases(&config).await?;
+            let spawns = db.world.bnpc_spawns(BETA_PATCH, None).await?;
+            crystal_db::seed::write_bnpcs(&file, &spawns)?;
+            println!("{} spawns written to {}", spawns.len(), file.display());
+            db.close().await;
+        }
+        Command::Prune { apply } => {
+            let db = databases(&config).await?;
+            let data = game_data(&config, None, true).await?;
+            prune::run(&db, &data, apply).await?;
             db.close().await;
         }
         Command::Bots { count, territory, at, radius, look, chat_every, rate } => {
