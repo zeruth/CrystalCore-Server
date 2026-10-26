@@ -51,6 +51,9 @@ pub mod opcode {
     pub const CLASS_INFO: u16 = 0x19f;
     /// Down: the player's attributes; see [`super::base_params`] (case 0x4a → @0xa4ecf0).
     pub const BASE_PARAM: u16 = 0x1a1;
+    /// Down: a character's gear changed (sent as that character); see [`super::equip`]
+    /// (case 0x4e → @0xa4f1b0 → @0xaa9680).
+    pub const EQUIP: u16 = 0x1a5;
     /// Down: one item of a container being sent; see [`super::ItemInfo`]. Queued under the
     /// sequence @0 (@0xa55990 → @0xa54d40) until [`ITEM_SIZE`] closes it.
     pub const NORMAL_ITEM: u16 = 0x1af;
@@ -521,6 +524,29 @@ pub fn item_operation_batch(context: u32, operation: u8, error: u8, packets: u8)
     b[0..4].copy_from_slice(&context.to_le_bytes());
     (b[8], b[9], b[0xa]) = (operation, error, packets);
     b.freeze()
+}
+
+/// [`opcode::EQUIP`]'s body (0x40 bytes, as @0xaa9680 reads it): the main weapon's model u64 @0,
+/// the off hand's @8, a flag @0x10 (kept by the character @+0x1680; 0 so far), and the ten gear
+/// models @0x14, in the spawn's order.
+pub fn equip(main_weapon: u64, sub_weapon: u64, models: &[u32; 10]) -> Bytes {
+    let mut b = BytesMut::zeroed(0x40);
+    b[0..8].copy_from_slice(&main_weapon.to_le_bytes());
+    b[8..0x10].copy_from_slice(&sub_weapon.to_le_bytes());
+    for (i, m) in models.iter().enumerate() {
+        b[0x14 + 4 * i..0x18 + 4 * i].copy_from_slice(&m.to_le_bytes());
+    }
+    b.freeze()
+}
+
+/// The weapons and models of an [`equip`] body.
+pub fn parse_equip(b: &[u8]) -> Option<(u64, u64, [u32; 10])> {
+    let b = b.get(..0x3c)?;
+    let mut models = [0u32; 10];
+    for (i, m) in models.iter_mut().enumerate() {
+        *m = u32_at(b, 0x14 + 4 * i)?;
+    }
+    Some((u64::from_le_bytes(b[0..8].try_into().ok()?), u64::from_le_bytes(b[8..0x10].try_into().ok()?), models))
 }
 
 /// [`opcode::ITEM_SIZE`] (0x10 bytes): closes the batch `sequence` of `count` items of `container`.

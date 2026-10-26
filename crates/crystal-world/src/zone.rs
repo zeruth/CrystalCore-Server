@@ -30,6 +30,7 @@ pub(crate) enum Request {
     Chat { id: ActorId, range: ChatRange, kind: u16, text: Arc<str> },
     Locate { id: ActorId, reply: oneshot::Sender<Option<([f32; 3], f32)>> },
     AddBnpc { bnpc: BnpcPlacement, reply: oneshot::Sender<ActorId> },
+    Look { id: ActorId, look: Arc<PlayerLook> },
 }
 
 /// A player's view of the territory: which actor is in which of its client's slots.
@@ -120,6 +121,7 @@ impl ZoneState {
             Request::Leave { id, token } => self.leave(id, token),
             Request::Move { id, pos, rotation, motion } => self.moved(id, pos, rotation, motion),
             Request::Chat { id, range, kind, text } => self.chat(id, range, kind, text),
+            Request::Look { id, look } => self.set_look(id, look),
             Request::AddBnpc { bnpc, reply } => {
                 let _ = reply.send(self.add_bnpc(bnpc));
             }
@@ -170,6 +172,18 @@ impl ZoneState {
     }
 
     /// A player moved; whoever sees it is told.
+    /// A player's gear changed: it and whoever sees it are told.
+    pub fn set_look(&mut self, id: ActorId, look: Arc<PlayerLook>) {
+        let Some(actor) = self.actors.get_mut(&id) else { return };
+        actor.kind = ActorKind::Player(look.clone());
+        let failed = &mut self.failed;
+        for (&vid, viewer) in &self.viewers {
+            if vid == id || viewer.visible.contains_key(&id) {
+                send(vid, viewer, Event::Look { actor: id, look: look.clone() }, failed);
+            }
+        }
+    }
+
     pub fn moved(&mut self, id: ActorId, pos: [f32; 3], rotation: f32, motion: Motion) {
         let Some(actor) = self.actors.get_mut(&id) else { return };
         (actor.pos, actor.rotation) = (pos, rotation);
@@ -415,6 +429,36 @@ mod tests {
         assert_eq!(spawned(&events), vec![first, NPC_ACTOR_BASE + (134 << 12) + 1], "the near one, nearest first");
         let Event::Spawn { actor, .. } = &events[0] else { panic!() };
         assert_eq!(actor.kind, ActorKind::BattleNpc { base_id: 37, name_id: 37, level: 2 });
+    }
+
+    #[test]
+    fn gear_changes_reach_the_player_and_who_sees_it() {
+        let mut zone = ZoneState::new(129, &[], &[]);
+        let (tx_a, mut a) = mpsc::channel(64);
+        let (tx_b, mut b) = mpsc::channel(64);
+        let (tx_c, mut c) = mpsc::channel(64);
+        zone.enter(A, 1, look("Alpha"), [0.0; 3], 0.0, tx_a);
+        zone.enter(B, 2, look("Beta"), [5.0, 0.0, 0.0], 0.0, tx_b);
+        zone.enter(0x1000_0003, 3, look("Gamma"), [500.0, 0.0, 0.0], 0.0, tx_c);
+        for rx in [&mut a, &mut b, &mut c] {
+            drain(rx);
+        }
+        let sword = Arc::new(PlayerLook { main_weapon: 0x1_002b_00c9, ..(*look("Alpha")).clone() });
+        zone.set_look(A, sword.clone());
+        assert!(
+            matches!(&drain(&mut a)[..], [Event::Look { actor: A, look }] if look.main_weapon == sword.main_weapon)
+        );
+        assert!(matches!(&drain(&mut b)[..], [Event::Look { actor: A, .. }]));
+        assert!(drain(&mut c).is_empty(), "too far to see it");
+        // and the territory remembers it: someone spawning Alpha later sees the sword
+        zone.moved(0x1000_0003, [1.0, 0.0, 0.0], 0.0, Motion::default());
+        zone.update_visibility();
+        let to_c = drain(&mut c);
+        let alpha = to_c.iter().find_map(|e| match e {
+            Event::Spawn { actor, .. } if actor.id == A => Some(actor.clone()),
+            _ => None,
+        });
+        assert!(matches!(alpha.unwrap().kind, ActorKind::Player(l) if l.main_weapon == sword.main_weapon));
     }
 
     #[test]

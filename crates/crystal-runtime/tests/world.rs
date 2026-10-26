@@ -109,6 +109,11 @@ async fn players_see_each_other() {
         .unwrap();
     assert!((moved.pos[0] - 2.0).abs() < 0.05 && (moved.pos[2] - 1.0).abs() < 0.05);
 
+    // Alpha puts the sword back on: Beta sees its gear change (sent as Alpha), and so does Alpha
+    alpha.move_item(0x1000_0002, (0, 0), (1000, 0)).await.unwrap();
+    beta.wait_for(T, |d| matches!(d, Down::Equip { actor, .. } if *actor == a).then_some(())).await.unwrap();
+    alpha.wait_for(T, |d| matches!(d, Down::Equip { actor, .. } if *actor == a).then_some(())).await.unwrap();
+
     // and says something
     alpha.chat(chat::SAY, "hello Beta").await.unwrap();
     let heard = beta.wait_for(T, |d| if let Down::Chat(c) = d { Some(c.clone()) } else { None }).await.unwrap();

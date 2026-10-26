@@ -485,6 +485,10 @@ impl Zone {
         // gear changed: the look others get from now on
         if touched.iter().any(|(c, _)| *c == container::EQUIPPED) {
             sess.look = Arc::new(look_of(sess.chara.as_ref(), &sess.inventory, self.data.as_deref()));
+            // the territory tells whoever sees the player, and the player's own client
+            if let Some(entry) = &sess.entry {
+                entry.zone.set_look(sess.actor_id, sess.look.clone());
+            }
         }
         out
     }
@@ -852,6 +856,9 @@ fn event_segment(sess: &Session, event: Event, data: Option<&WorldData>) -> Segm
                 pos,
             };
             sess.segment(actor, opcode::ACTOR_MOVE, &body.to_bytes())
+        }
+        Event::Look { actor, look } => {
+            sess.segment(actor, opcode::EQUIP, &ipc::equip(look.main_weapon, look.sub_weapon, &look.models))
         }
         Event::Chat { actor, content_id, name, kind, text } => {
             let body = ipc::ChatDown { kind, actor, content_id, name: name.to_string(), text: text.to_string() };

@@ -140,6 +140,11 @@ pub enum Event {
         rotation: f32,
         motion: Motion,
     },
+    /// The actor's gear changed (players; the actor's own client is told too).
+    Look {
+        actor: ActorId,
+        look: Arc<PlayerLook>,
+    },
     Chat {
         actor: ActorId,
         content_id: u64,
@@ -278,6 +283,11 @@ pub struct ZoneHandle {
 
 impl ZoneHandle {
     /// The player moved. Dropped when the territory is overloaded (the next move corrects it).
+    /// The player's gear changed.
+    pub fn set_look(&self, id: ActorId, look: Arc<PlayerLook>) {
+        let _ = self.tx.try_send(Request::Look { id, look });
+    }
+
     pub fn moved(&self, id: ActorId, pos: [f32; 3], rotation: f32, motion: Motion) {
         let _ = self.tx.try_send(Request::Move { id, pos, rotation, motion });
     }
