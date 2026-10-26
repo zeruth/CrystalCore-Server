@@ -110,7 +110,7 @@ async fn players_see_each_other() {
     beta.wait_for(T, |d| matches!(d, Down::Spawn { actor, .. } if *actor == a).then_some(())).await.unwrap();
 
     // a battle NPC placed by hand: saved, and Beta (53 yalms off, in range) sees it appear
-    alpha.chat(chat::SAY, ".bnpc add 37 37 2").await.unwrap();
+    alpha.chat(chat::SAY, ".bnpc 37 37 2").await.unwrap();
     let placed = line(&mut alpha).await;
     assert!(placed.starts_with("Placed #37 (base 37, level 2) at 40.0 0.0 40.0"), "{placed}");
     let bnpc = beta
@@ -123,7 +123,7 @@ async fn players_see_each_other() {
     assert_eq!((bnpc.base_id, bnpc.name_id, bnpc.level), (37, 37, 2));
     alpha.chat(chat::SAY, ".bnpc near 5").await.unwrap();
     assert_eq!(line(&mut alpha).await, "1 battle NPCs within 5 yalms:");
-    assert!(line(&mut alpha).await.contains("[hand]"));
+    assert!(line(&mut alpha).await.contains("(hand)"));
 
     // demoted: refused at once (shouted: Alpha is out of say range now)
     server.db.login.set_gm_level_of(gm_account, 0).await.unwrap();

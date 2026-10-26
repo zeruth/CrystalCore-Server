@@ -1,4 +1,5 @@
-//! GM chat commands, in AzerothCore's style. The levels are AzerothCore's: 1 moderator, 2 game
+//! GM chat commands, in AzerothCore's style. Their replies mark optional arguments with
+//! parentheses: the client's chat log drops a line's text from its first `[` on. The levels are AzerothCore's: 1 moderator, 2 game
 //! master, 3 administrator (`crystal-tools account set-gm`).
 //!
 //! `.bnpc` places battle NPCs by hand (Phase 4's third source, after imports and captures).
@@ -24,7 +25,7 @@ pub fn register(commands: &mut Commands) {
     commands.register(Bnpc);
 }
 
-/// `.bnpc add <BNpcBase> <BNpcName> [level]`, `.bnpc near [yalms]`: battle NPCs placed by hand.
+/// `.bnpc add <BNpcBase> <BNpcName> (level)`, `.bnpc near (yalms)`: battle NPCs placed by hand.
 struct Bnpc;
 
 /// The singular name of a `BNpcName` row, when the game data is there.
@@ -41,7 +42,7 @@ impl Command for Bnpc {
         "bnpc"
     }
     fn usage(&self) -> &'static str {
-        "add <BNpcBase> <BNpcName> [level] | near [yalms]"
+        "add <BNpcBase> <BNpcName> (level) | near (yalms)"
     }
     fn help(&self) -> &'static str {
         "places a battle NPC where you stand (saved as source hand), or lists those near you"
@@ -51,11 +52,15 @@ impl Command for Bnpc {
     }
     fn run<'a>(&'a self, cx: &'a mut Context<'_>, args: &'a str) -> BoxFuture<'a, ()> {
         Box::pin(async move {
-            let parts: Vec<&str> = args.split_whitespace().collect();
+            let mut parts: Vec<&str> = args.split_whitespace().collect();
+            // `.bnpc 49 49 3` is `.bnpc add 49 49 3`
+            if parts.first().is_some_and(|p| p.parse::<u32>().is_ok()) {
+                parts.insert(0, "add");
+            }
             match parts.as_slice() {
                 ["add", base, name, rest @ ..] => {
                     let (Ok(base_id), Ok(name_id)) = (base.parse::<u32>(), name.parse::<u32>()) else {
-                        cx.reply("Usage: .bnpc add <BNpcBase> <BNpcName> [level]");
+                        cx.reply("Usage: .bnpc add <BNpcBase> <BNpcName> (level)");
                         return;
                     };
                     let level = rest.first().and_then(|l| l.parse::<u16>().ok()).unwrap_or(1);
@@ -121,7 +126,7 @@ impl Command for Bnpc {
                         .take(15)
                         .map(|(dist, s)| {
                             format!(
-                                "{:.1}y  {} (base {}, level {})  {}  [{}]",
+                                "{:.1}y  {} (base {}, level {})  {}  ({})",
                                 dist,
                                 bnpc_name(cx, s.name_id),
                                 s.base_id,
@@ -135,13 +140,13 @@ impl Command for Bnpc {
                         cx.reply(l);
                     }
                 }
-                _ => cx.reply("Usage: .bnpc add <BNpcBase> <BNpcName> [level] | .bnpc near [yalms]"),
+                _ => cx.reply("Usage: .bnpc add <BNpcBase> <BNpcName> (level) | .bnpc near (yalms)"),
             }
         })
     }
 }
 
-/// `.gm [on|off]`
+/// `.gm (on|off)`
 struct Gm;
 
 impl Command for Gm {
@@ -149,7 +154,7 @@ impl Command for Gm {
         "gm"
     }
     fn usage(&self) -> &'static str {
-        "[on|off]"
+        "(on|off)"
     }
     fn help(&self) -> &'static str {
         "switches GM mode, or tells whether it is on"
@@ -168,7 +173,7 @@ impl Command for Gm {
                     return;
                 }
                 _ => {
-                    cx.reply("Usage: .gm [on|off]");
+                    cx.reply("Usage: .gm (on|off)");
                     return;
                 }
             };
@@ -263,7 +268,7 @@ impl Command for Who {
     }
 }
 
-/// `.tele <territory> [x y z]`
+/// `.tele <territory> (x y z)`
 struct Tele;
 
 impl Command for Tele {
@@ -271,7 +276,7 @@ impl Command for Tele {
         "tele"
     }
     fn usage(&self) -> &'static str {
-        "<territory> [x y z]"
+        "<territory> (x y z)"
     }
     fn help(&self) -> &'static str {
         "goes to a territory (TerritoryType row), at a point or where its exits arrive"
@@ -283,7 +288,7 @@ impl Command for Tele {
         Box::pin(async move {
             let parts: Vec<&str> = args.split_whitespace().collect();
             let Some(territory) = parts.first().and_then(|t| t.parse::<u16>().ok()) else {
-                cx.reply("Usage: .tele <territory> [x y z]");
+                cx.reply("Usage: .tele <territory> (x y z)");
                 return;
             };
             if let Some(data) = cx.data
@@ -307,10 +312,10 @@ impl Command for Tele {
                     let xyz: Option<Vec<f32>> = parts[1..].iter().map(|v| v.parse().ok()).collect();
                     match xyz {
                         Some(v) => cx.teleport(territory, [v[0], v[1], v[2]], cx.player.rotation),
-                        None => cx.reply("Usage: .tele <territory> [x y z]"),
+                        None => cx.reply("Usage: .tele <territory> (x y z)"),
                     }
                 }
-                _ => cx.reply("Usage: .tele <territory> [x y z]"),
+                _ => cx.reply("Usage: .tele <territory> (x y z)"),
             }
         })
     }

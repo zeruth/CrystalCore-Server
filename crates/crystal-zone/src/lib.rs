@@ -85,9 +85,15 @@ struct Session {
 }
 
 impl Session {
-    fn new(actor_id: u32, kind: ConnectionType, chara: Option<Character>, gm_level: u8) -> Self {
+    fn new(
+        actor_id: u32,
+        kind: ConnectionType,
+        chara: Option<Character>,
+        gm_level: u8,
+        data: Option<&WorldData>,
+    ) -> Self {
         let position = chara.as_ref().and_then(|c| c.position).unwrap_or(DEFAULT_POSITION);
-        let look = Arc::new(look_of(chara.as_ref()));
+        let look = Arc::new(look_of(chara.as_ref(), data));
         Self {
             actor_id,
             kind,
@@ -173,11 +179,11 @@ impl Zone {
                 }
                 Input::Event(Some(first)) => {
                     let sess = session.as_mut().expect("events come to a session");
-                    let mut segments = vec![event_segment(sess, first)];
+                    let mut segments = vec![event_segment(sess, first, self.data.as_deref())];
                     while segments.len() < EVENTS_PER_FRAME
                         && let Some(Ok(e)) = sess.entry.as_mut().map(|e| e.events.try_recv())
                     {
-                        segments.push(event_segment(sess, e));
+                        segments.push(event_segment(sess, e, self.data.as_deref()));
                     }
                     replies.push(Frame::new(sess.kind, segments));
                 }
@@ -248,7 +254,7 @@ impl Zone {
                     payload[..4].copy_from_slice(&actor_id.to_le_bytes());
                     let reply = Segment::new(SegmentType::Unknown(2), actor_id, actor_id, payload.into());
                     replies.push(Frame::new(kind, vec![reply]));
-                    *session = Some(Session::new(actor_id, kind, chara, gm_level));
+                    *session = Some(Session::new(actor_id, kind, chara, gm_level, self.data.as_deref()));
                 }
                 SegmentType::KeepAlive => {
                     let pong =
@@ -363,6 +369,11 @@ impl Zone {
                 }
                 vec![]
             }
+            opcode::TALK_EVENT => self.talk_event(sess, body).await,
+            opcode::COMMAND | opcode::DISCOVERY | opcode::LINKSHELL_LIST => {
+                debug!(opcode = format_args!("{op:#06x}"), body = %hex::encode(body), "  not acted on yet");
+                vec![]
+            }
             opcode::LOGOUT => {
                 info!("  logout");
                 self.save_position(sess).await;
@@ -399,6 +410,29 @@ impl Zone {
                 vec![]
             }
         }
+    }
+
+    /// The player talked to something with an event: start it and end it at once, so the client
+    /// is never left waiting (event scripts come with Phase 6), and for a warp (handler type 2)
+    /// move the player where its `Warp` row leads: the client asked the question already.
+    async fn talk_event(&self, sess: &mut Session, body: &[u8]) -> Vec<(u16, Bytes)> {
+        let Some((target, event_id)) = ipc::parse_talk_event(body) else { return vec![] };
+        let handler = (event_id >> 16) as u16;
+        info!(target = format_args!("{target:#x}"), event = format_args!("{event_id:#x}"), handler, "  talk event");
+        let mut out = vec![
+            (opcode::EVENT_START, ipc::event_start(target, event_id, ipc::event::TALK, 0, 0)),
+            (opcode::EVENT_FINISH, ipc::event_finish(event_id, ipc::event::TALK, 1, 0)),
+        ];
+        if handler == ipc::event::WARP {
+            match self.data.as_deref().and_then(|d| d.warp(event_id)) {
+                Some(to) => {
+                    info!(to = to.territory, x = to.pos[0], y = to.pos[1], z = to.pos[2], "  warp");
+                    out.extend(self.move_to(sess, to.territory, to.pos, to.rotation).await);
+                }
+                None => warn!(event = format_args!("{event_id:#x}"), "  warp: no Warp/Level row"),
+            }
+        }
+        out
     }
 
     /// Takes the player out of its territory and has its client load `territory` at `pos`; it
@@ -505,17 +539,22 @@ impl Zone {
     }
 }
 
-/// What others see of a stored character: its CharaMake text gives the appearance and class;
-/// level 1 until stats exist.
-fn look_of(chara: Option<&Character>) -> PlayerLook {
+/// What others see of a stored character: its CharaMake text gives the appearance and class,
+/// the class its starting gear (`CharaMakeClassEquip`) until there is an inventory; level 1
+/// until stats exist.
+fn look_of(chara: Option<&Character>, data: Option<&WorldData>) -> PlayerLook {
     let make = chara.and_then(|c| CharaMake::parse(&c.appearance));
+    let class = make.as_ref().map_or(1, |m| m.class);
+    let (main_weapon, sub_weapon, models) = data.and_then(|d| d.starting_gear(class)).unwrap_or_default();
     PlayerLook {
         name: chara.map_or_else(|| "Crystal".into(), |c| c.name.clone()),
         content_id: chara.map_or(0, |c| c.content_id),
-        class: make.as_ref().map_or(1, |m| m.class),
+        class,
         level: 1,
         customize: make.as_ref().map_or([0; 26], |m| m.customize),
-        ..Default::default()
+        main_weapon,
+        sub_weapon,
+        models,
     }
 }
 
@@ -542,22 +581,31 @@ fn player_spawn(look: &PlayerLook, slot: u8, pos: [f32; 3], rotation: f32) -> ip
     }
 }
 
-fn actor_spawn(slot: u8, actor: &ActorView) -> ipc::Spawn {
+fn actor_spawn(slot: u8, actor: &ActorView, data: Option<&WorldData>) -> ipc::Spawn {
     match &actor.kind {
         ActorKind::Player(look) => player_spawn(look, slot, actor.pos, actor.rotation),
-        ActorKind::BattleNpc { base_id, name_id, level } => ipc::Spawn {
-            base_id: *base_id,
-            name_id: *name_id,
-            index: slot,
-            status: 1,
-            kind: ipc::kind::BATTLE_NPC,
-            rotation: actor.rotation,
-            pos: actor.pos,
-            level: (*level).min(255) as u8,
-            hp: 100,
-            hp_max: 100,
-            ..Default::default()
-        },
+        ActorKind::BattleNpc { base_id, name_id, level } => {
+            // the body is the spawn's (ModelChara, customize, gear), from the BNpcBase row
+            let look = data.and_then(|d| d.bnpc_look(*base_id)).unwrap_or_default();
+            ipc::Spawn {
+                base_id: *base_id,
+                model: look.model,
+                customize: look.customize,
+                main_weapon: look.main_weapon,
+                sub_weapon: look.sub_weapon,
+                models: look.models,
+                name_id: *name_id,
+                index: slot,
+                status: 1,
+                kind: ipc::kind::BATTLE_NPC,
+                rotation: actor.rotation,
+                pos: actor.pos,
+                level: (*level).min(255) as u8,
+                hp: 100,
+                hp_max: 100,
+                ..Default::default()
+            }
+        }
         ActorKind::EventNpc { enpc } => ipc::Spawn {
             base_id: *enpc,
             // ENpcBase and ENpcResident share row ids: the resident row names it
@@ -575,9 +623,11 @@ fn actor_spawn(slot: u8, actor: &ActorView) -> ipc::Spawn {
 }
 
 /// A world event as the packet the client gets, sent as the actor it is about.
-fn event_segment(sess: &Session, event: Event) -> Segment {
+fn event_segment(sess: &Session, event: Event, data: Option<&WorldData>) -> Segment {
     match event {
-        Event::Spawn { slot, actor } => sess.segment(actor.id, opcode::SPAWN, &actor_spawn(slot, &actor).to_bytes()),
+        Event::Spawn { slot, actor } => {
+            sess.segment(actor.id, opcode::SPAWN, &actor_spawn(slot, &actor, data).to_bytes())
+        }
         Event::Despawn { slot, actor } => sess.segment(actor, opcode::DESPAWN, &ipc::despawn(slot, actor)),
         Event::Move { actor, pos, rotation, motion } => {
             let speed = if motion.flags & ipc::ActorMove::FLAG_WALKING != 0 {

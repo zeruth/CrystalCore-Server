@@ -39,6 +39,25 @@ fn lower_decks_npcs() {
 }
 
 #[test]
+fn looks_gear_and_warps() {
+    let Some(game) = game() else { return };
+    let world = WorldData::open(&game).unwrap();
+    // the wharf rat and the little ladybug: ModelChara rows, no customize or gear
+    assert_eq!(world.bnpc_look(347).unwrap().model, 24);
+    assert_eq!(world.bnpc_look(49).unwrap().model, 57);
+    // a gladiator starts with armour model 42 (variant 1) on five slots and a weapon
+    let (main, _, models) = world.starting_gear(1).unwrap();
+    assert_eq!(models[..5], [0x1002a; 5]);
+    assert_ne!(main, 0);
+    // the Limsa lift (Warp 0x20014) goes to the Upper Decks
+    let to = world.warp(0x20014).unwrap();
+    assert_eq!(to.territory, 128);
+    assert!((to.pos[1] - 91.5).abs() < 0.01);
+    // layout files in the older format (f1d1's planner.lgb) are left out, not fatal
+    assert!(world.layer_names(164).is_ok());
+}
+
+#[test]
 fn lower_decks_exit_to_middle_la_noscea() {
     let Some(game) = game() else { return };
     let world = WorldData::open(&game).unwrap();

@@ -49,6 +49,22 @@ pub mod opcode {
     /// Until a last page arrives the client treats every speaker as blocked (@0x4355d0: the
     /// loaded flag @+0x660, set by vf5) and shows no one's chat.
     pub const BLACKLIST: u16 = 0xe3;
+    /// Up (0x10 bytes): the player talked to something with an event: its id u64 @0 (the
+    /// client's own for NPCs it placed from its layouts), the event (handler type << 16 | row)
+    /// @8. The client waits for the event to start and end ([`EVENT_START`], [`EVENT_FINISH`]);
+    /// answered with neither, it hangs.
+    pub const TALK_EVENT: u16 = 0x1c2;
+    /// Down: an event starts; see [`super::event_start`] (case 0x65 → @0x6f0be0).
+    pub const EVENT_START: u16 = 0x1cc;
+    /// Down: an event ends and frees the player; see [`super::event_finish`] (case 0x66 →
+    /// @0x6fd010).
+    pub const EVENT_FINISH: u16 = 0x1cd;
+    /// Up: the client's command / target changes (Sapphire's ClientTrigger family), and the
+    /// discovery of a map area; not acted on yet.
+    pub const COMMAND: u16 = 0x191;
+    pub const DISCOVERY: u16 = 0x194;
+    /// Up (8 bytes, after Init): the linkshell list is wanted; not answered yet.
+    pub const LINKSHELL_LIST: u16 = 0xf6;
     /// Down: a character goes away; see [`super::despawn`] (case 0x3d → @0xa64000).
     pub const DESPAWN: u16 = 0x191;
     /// Down: another character moves; see [`super::ActorMove`] (case 0x3e → @0xa55ae0, which
@@ -268,6 +284,40 @@ pub fn blacklist(index: u8, key: u8) -> Bytes {
 /// The page index and request key of an up [`opcode::BLACKLIST`].
 pub fn parse_blacklist_request(b: &[u8]) -> Option<(u8, u8)> {
     Some((*b.get(0x10)?, *b.get(0x11)?))
+}
+
+/// Event handler types: an event id's top 16 bits.
+pub mod event {
+    pub const QUEST: u16 = 0x0001;
+    pub const WARP: u16 = 0x0002;
+    /// The event kind `EVENT_START` and `EVENT_FINISH` carry for talking.
+    pub const TALK: u8 = 1;
+}
+
+/// [`opcode::TALK_EVENT`]'s target and event id.
+pub fn parse_talk_event(b: &[u8]) -> Option<(u64, u32)> {
+    Some((u64::from_le_bytes(b.get(..8)?.try_into().ok()?), u32_at(b, 8)?))
+}
+
+/// [`opcode::EVENT_START`] (0x18 bytes; the dispatcher passes @8, @0, @4, @0xc, @0x10, @0xd):
+/// the target u64 @0, the event id @8, the event kind @0xc, flags @0xd, an argument @0x10.
+pub fn event_start(target: u64, event_id: u32, kind: u8, flags: u8, arg: u32) -> Bytes {
+    let mut b = BytesMut::zeroed(0x18);
+    b[0..8].copy_from_slice(&target.to_le_bytes());
+    b[8..0xc].copy_from_slice(&event_id.to_le_bytes());
+    (b[0xc], b[0xd]) = (kind, flags);
+    b[0x10..0x14].copy_from_slice(&arg.to_le_bytes());
+    b.freeze()
+}
+
+/// [`opcode::EVENT_FINISH`] (0x10 bytes; the dispatcher passes @0, @4, @8, @5): the event id @0,
+/// its kind @4, the result @5 (1 frees the player), an argument @8.
+pub fn event_finish(event_id: u32, kind: u8, result: u8, arg: u32) -> Bytes {
+    let mut b = BytesMut::zeroed(0x10);
+    b[0..4].copy_from_slice(&event_id.to_le_bytes());
+    (b[4], b[5]) = (kind, result);
+    b[8..0xc].copy_from_slice(&arg.to_le_bytes());
+    b.freeze()
 }
 
 /// The slot and actor id of a [`despawn`] body.
@@ -592,6 +642,19 @@ mod tests {
         assert_eq!(session_actor(&payload), Some(0x1000_0001));
         assert_eq!(&session_init(0x1000_0001)[..], &payload[..]);
         assert_eq!(session_actor(&[0; 8]), None);
+    }
+
+    #[test]
+    fn events_from_client() {
+        // talking to the Limsa lift attendant, as the client sent it
+        let up = hex::decode("b3ab3e00010000001400020048f99b01").unwrap();
+        let (target, event_id) = parse_talk_event(&up).unwrap();
+        assert_eq!((target, event_id), (0x0000_0001_003e_abb3, 0x0002_0014));
+        assert_eq!((event_id >> 16) as u16, event::WARP);
+        let start = event_start(target, event_id, event::TALK, 0, 0);
+        assert_eq!((start.len(), &start[..8], &start[8..0xc], start[0xc]), (0x18, &up[..8], &up[8..0xc], 1));
+        let finish = event_finish(event_id, event::TALK, 1, 0);
+        assert_eq!((&finish[..4], finish[4], finish[5]), (&up[8..0xc], 1, 1));
     }
 
     #[test]

@@ -19,6 +19,22 @@ const LAYOUT_FILES: [&str; 3] = ["planmap.lgb", "planevent.lgb", "planner.lgb"];
 const ALL_LAYOUT_FILES: [&str; 7] =
     ["planmap.lgb", "planevent.lgb", "planner.lgb", "planlive.lgb", "bg.lgb", "sound.lgb", "vfx.lgb"];
 
+/// `NpcEquip`'s ten equipment models (u32 at 0x10-0x37) and their dyes (u8 at 0x3a-0x43), by
+/// column.
+const NPC_EQUIP_MODELS: [usize; 10] = [4, 7, 9, 11, 13, 15, 17, 19, 21, 23];
+const NPC_EQUIP_DYES: [usize; 10] = [5, 8, 10, 12, 14, 16, 18, 20, 22, 24];
+
+/// How an NPC looks, as a spawn carries it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct NpcLook {
+    /// `ModelChara` row.
+    pub model: u16,
+    pub customize: [u8; 26],
+    pub main_weapon: u64,
+    pub sub_weapon: u64,
+    pub models: [u32; 10],
+}
+
 /// Why content does not belong in this build.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Misfit {
@@ -260,6 +276,59 @@ impl WorldData {
             return Ok(Some(Misfit::Layer));
         }
         Ok(None)
+    }
+
+    /// How a battle NPC looks: `BNpcBase` gives its `ModelChara` (col 5), `BNpcCustomize` (6)
+    /// and `NpcEquip` (7) rows; the client builds the body from what the spawn carries, taking
+    /// only the scale from the base row (`ReadSpawn` @0xaac200, case 2).
+    pub fn bnpc_look(&self, base_id: u32) -> Option<NpcLook> {
+        let base = self.sheet("BNpcBase").ok()?;
+        let row = base.row(base_id)?;
+        let col = |i: usize| row.get(i).and_then(|v| v.as_u64()).unwrap_or(0);
+        let mut look = NpcLook { model: col(5) as u16, ..Default::default() };
+        if col(6) != 0
+            && let Some(c) = self.sheet("BNpcCustomize").ok().and_then(|s| s.row(col(6) as u32).map(<[_]>::to_vec))
+        {
+            for (slot, v) in look.customize.iter_mut().zip(&c) {
+                *slot = v.as_u64().unwrap_or(0) as u8;
+            }
+        }
+        if col(7) != 0
+            && let Some(e) = self.sheet("NpcEquip").ok().and_then(|s| s.row(col(7) as u32).map(<[_]>::to_vec))
+        {
+            let u = |i: usize| e.get(i).and_then(|v| v.as_u64()).unwrap_or(0);
+            look.main_weapon = u(0);
+            look.sub_weapon = u(2);
+            // ten (model, dye) pairs: the dye goes in the model's top byte, as gear models carry it
+            for (i, (m, d)) in NPC_EQUIP_MODELS.iter().zip(NPC_EQUIP_DYES).enumerate() {
+                look.models[i] = (u(*m) as u32 & 0x00ff_ffff) | ((u(d) as u32 & 0xff) << 24);
+            }
+        }
+        Some(look)
+    }
+
+    /// A class's starting gear (`CharaMakeClassEquip`: armour models in cols 0-4, weapons in 5
+    /// and 6, the `ClassJob` in 7): main weapon, off hand, the ten equipment models.
+    pub fn starting_gear(&self, class: u8) -> Option<(u64, u64, [u32; 10])> {
+        let sheet = self.sheet("CharaMakeClassEquip").ok()?;
+        let (_, row) = sheet.rows.iter().find(|(_, r)| r.get(7).and_then(|v| v.as_u64()) == Some(class as u64))?;
+        let u = |i: usize| row.get(i).and_then(|v| v.as_u64()).unwrap_or(0);
+        let mut models = [0u32; 10];
+        for (i, m) in models.iter_mut().take(5).enumerate() {
+            *m = u(i) as u32;
+        }
+        Some((u(5), u(6), models))
+    }
+
+    /// Where a warp event (handler type 2, a `Warp` row) leads: its `Level` row (col 0) gives the
+    /// position (cols 0-3) and the territory (col 9).
+    pub fn warp(&self, event_id: u32) -> Option<Arrival> {
+        let level_id = self.sheet("Warp").ok()?.row(event_id)?.first()?.as_u64()? as u32;
+        let level = self.sheet("Level").ok()?;
+        let row = level.row(level_id)?;
+        let f = |i: usize| row.get(i).and_then(|v| v.as_f32()).unwrap_or(0.0);
+        let territory = row.get(9)?.as_u64()? as u16;
+        Some(Arrival { territory, pos: [f(0), f(1), f(2)], rotation: f(3) })
     }
 
     pub fn has_territory(&self, territory: u16) -> bool {
