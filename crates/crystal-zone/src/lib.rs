@@ -381,8 +381,14 @@ impl Zone {
             }
             opcode::INIT => {
                 let pos = sess.position;
-                info!(zone = pos.zone_id, x = pos.x, y = pos.y, z = pos.z, "  init: sending InitZone");
-                vec![(opcode::INIT_ZONE, ipc::init_zone(pos.zone_id as u16, 1, sess.pos()))]
+                info!(zone = pos.zone_id, x = pos.x, y = pos.y, z = pos.z, "  init: sending PlayerStatus, InitZone");
+                let level = sess.look.level as u16;
+                vec![
+                    (opcode::PLAYER_STATUS, self.player_status(sess)),
+                    (opcode::CLASS_INFO, ipc::class_info(sess.look.class, level, level, 0)),
+                    (opcode::BASE_PARAM, starting_params()),
+                    (opcode::INIT_ZONE, ipc::init_zone(pos.zone_id as u16, 1, sess.pos())),
+                ]
             }
             opcode::FINISH_LOADING => {
                 info!("  finished loading: spawning the player");
@@ -410,6 +416,25 @@ impl Zone {
                 vec![]
             }
         }
+    }
+
+    /// The player's own setup: who it is and its class, level 1 in that class's slot until there
+    /// are stats (Sapphire sends this before InitZone, `PlayerMgr::onMoveZone`).
+    fn player_status(&self, sess: &Session) -> Bytes {
+        let look = &sess.look;
+        let mut levels = [0u16; 19];
+        if let Some(slot) = self.data.as_deref().and_then(|d| d.class_level_slot(look.class)) {
+            levels[slot] = look.level as u16;
+        }
+        ipc::PlayerStatus {
+            content_id: look.content_id,
+            actor_id: sess.actor_id,
+            class: look.class,
+            name: look.name.clone(),
+            levels,
+            ..Default::default()
+        }
+        .to_bytes()
     }
 
     /// The player talked to something with an event: start it and end it at once, so the client
@@ -556,6 +581,17 @@ fn look_of(chara: Option<&Character>, data: Option<&WorldData>) -> PlayerLook {
         sub_weapon,
         models,
     }
+}
+
+/// Level-1 attributes until stats exist: 20 in each of the six, the HP and MP the spawn shows,
+/// full TP.
+fn starting_params() -> Bytes {
+    let mut v = [0u32; 40];
+    for a in &mut v[ipc::param::STRENGTH..=ipc::param::PIETY] {
+        *a = 20;
+    }
+    (v[ipc::param::HP], v[ipc::param::MP], v[ipc::param::TP]) = (100, 100, 1000);
+    ipc::base_params(&v, &[0; 6])
 }
 
 /// A player's spawn in `slot` (0: the client's own); placeholder points until stats exist.

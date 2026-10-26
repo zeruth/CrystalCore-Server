@@ -43,6 +43,14 @@ pub mod opcode {
     /// client's own actor id (the segment's source), it becomes the player (@0xa64860 compares it
     /// with the id game login gave); any other id is another character.
     pub const SPAWN: u16 = 0x190;
+    /// Down: the player's own setup (Sapphire's PlayerStatus); see [`super::PlayerStatus`]
+    /// (case 0x49 → @0xa53550 → @0xa7f520, @0xa7f9c0).
+    pub const PLAYER_STATUS: u16 = 0x1a0;
+    /// Down: the current class and its level and experience (Sapphire's PlayerStatusUpdate); see
+    /// [`super::class_info`] (case 0x48 → @0xa4ed60).
+    pub const CLASS_INFO: u16 = 0x19f;
+    /// Down: the player's attributes; see [`super::base_params`] (case 0x4a → @0xa4ecf0).
+    pub const BASE_PARAM: u16 = 0x1a1;
     /// Up and down: the block list; see [`super::blacklist`]. Up (0x18 bytes, from
     /// `InfoProxyBlacklist::vf4` @0x43fb60 and vf7): the page index wanted @0x10, the request key
     /// @0x11. Down (case 0x11 → @0xb037e0 → info proxy 4, `InfoProxyBlacklist::vf7` @0x43fa50).
@@ -284,6 +292,82 @@ pub fn blacklist(index: u8, key: u8) -> Bytes {
 /// The page index and request key of an up [`opcode::BLACKLIST`].
 pub fn parse_blacklist_request(b: &[u8]) -> Option<(u8, u8)> {
     Some((*b.get(0x10)?, *b.get(0x11)?))
+}
+
+/// [`opcode::PLAYER_STATUS`]'s body, as @0xa7f520 and @0xa7f9c0 read it (the fields this build
+/// is known to read; the rest, unlock flags and the like from @0xd8 to @0x3d6, stay zero, as for a
+/// new character):
+///
+/// ```text
+/// 0x00  u64       content id
+/// 0x08  u32       actor id
+/// 0x0C  u8 x14    single bytes (race, tribe, sex, guardian, ... not yet told apart)
+/// 0x1A  u8        the current class (a change refreshes the class UI)
+/// 0x34  char[64]  name
+/// 0x66  u16 x19   level per class slot (ClassJob col 4)
+/// 0x8C  u32 x19   experience per class slot
+/// ```
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct PlayerStatus {
+    pub content_id: u64,
+    pub actor_id: u32,
+    pub class: u8,
+    pub name: String,
+    pub levels: [u16; 19],
+    pub exp: [u32; 19],
+}
+
+impl PlayerStatus {
+    /// The reader goes as far as 0x3b2 + 0x24 (@0xa7f520's last loop).
+    pub const SIZE: usize = 0x3e0;
+
+    pub fn to_bytes(&self) -> Bytes {
+        let mut b = BytesMut::zeroed(Self::SIZE);
+        b[0..8].copy_from_slice(&self.content_id.to_le_bytes());
+        b[8..0xc].copy_from_slice(&self.actor_id.to_le_bytes());
+        b[0x1a] = self.class;
+        let n = self.name.len().min(0x3f);
+        b[0x34..0x34 + n].copy_from_slice(&self.name.as_bytes()[..n]);
+        for (i, l) in self.levels.iter().enumerate() {
+            b[0x66 + 2 * i..0x68 + 2 * i].copy_from_slice(&l.to_le_bytes());
+        }
+        for (i, e) in self.exp.iter().enumerate() {
+            b[0x8c + 4 * i..0x90 + 4 * i].copy_from_slice(&e.to_le_bytes());
+        }
+        b.freeze()
+    }
+}
+
+/// [`opcode::CLASS_INFO`] (0x10 bytes, as @0xa4ed60 reads it): the class @0, its level @2, the
+/// level it plays at @4 (synced), its experience @8, and a u32 @0xc kept by the client.
+pub fn class_info(class: u8, level: u16, synced: u16, exp: u32) -> Bytes {
+    let mut b = BytesMut::zeroed(0x10);
+    b[0] = class;
+    b[2..4].copy_from_slice(&level.to_le_bytes());
+    b[4..6].copy_from_slice(&synced.to_le_bytes());
+    b[8..0xc].copy_from_slice(&exp.to_le_bytes());
+    b.freeze()
+}
+
+/// The slots of [`base_params`]: each `BaseParam` row's column 0.
+pub mod param {
+    pub const STRENGTH: usize = 0;
+    pub const PIETY: usize = 5;
+    pub const HP: usize = 6;
+    pub const MP: usize = 7;
+    pub const TP: usize = 8;
+    pub const GP: usize = 9;
+    pub const CP: usize = 10;
+}
+
+/// [`opcode::BASE_PARAM`] (0xb8 bytes): a u32 per `BaseParam` slot (40), then six u32s @0xa0
+/// the client keeps by number (1-6) (@0xa4ecf0).
+pub fn base_params(values: &[u32; 40], extra: &[u32; 6]) -> Bytes {
+    let mut b = BytesMut::zeroed(0xb8);
+    for (i, v) in values.iter().chain(extra).enumerate() {
+        b[4 * i..4 * i + 4].copy_from_slice(&v.to_le_bytes());
+    }
+    b.freeze()
 }
 
 /// Event handler types: an event id's top 16 bits.
@@ -642,6 +726,26 @@ mod tests {
         assert_eq!(session_actor(&payload), Some(0x1000_0001));
         assert_eq!(&session_init(0x1000_0001)[..], &payload[..]);
         assert_eq!(session_actor(&[0; 8]), None);
+    }
+
+    #[test]
+    fn player_status_layout() {
+        let mut levels = [0; 19];
+        levels[1] = 1;
+        let s = PlayerStatus {
+            content_id: 0x0040_0000_0000_0001,
+            actor_id: 0x1000_0001,
+            class: 1,
+            name: "Null Crystal".into(),
+            levels,
+            ..Default::default()
+        }
+        .to_bytes();
+        assert_eq!(s.len(), PlayerStatus::SIZE);
+        assert_eq!(&s[8..0xc], &0x1000_0001u32.to_le_bytes());
+        assert_eq!(s[0x1a], 1);
+        assert_eq!(&s[0x34..0x40], b"Null Crystal");
+        assert_eq!(&s[0x68..0x6a], &1u16.to_le_bytes(), "slot 1, the gladiator's");
     }
 
     #[test]

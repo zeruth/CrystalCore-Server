@@ -320,6 +320,13 @@ impl WorldData {
         Some((u(5), u(6), models))
     }
 
+    /// Which of the 19 level slots (`PlayerStatus` @0x66) a class's level is kept in
+    /// (`ClassJob` col 4: gladiator and paladin share 1, ...).
+    pub fn class_level_slot(&self, class: u8) -> Option<usize> {
+        let slot = self.sheet("ClassJob").ok()?.row(class as u32)?.get(4)?.as_i64()?;
+        (0..19).contains(&slot).then_some(slot as usize)
+    }
+
     /// Where a warp event (handler type 2, a `Warp` row) leads: its `Level` row (col 0) gives the
     /// position (cols 0-3) and the territory (col 9).
     pub fn warp(&self, event_id: u32) -> Option<Arrival> {
