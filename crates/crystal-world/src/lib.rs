@@ -288,6 +288,13 @@ impl ZoneHandle {
         }
     }
 
+    /// Places a battle NPC in the territory now; its actor id (`None`: the territory is down).
+    pub async fn add_bnpc(&self, bnpc: BnpcPlacement) -> Option<ActorId> {
+        let (reply, answer) = oneshot::channel();
+        self.tx.send(Request::AddBnpc { bnpc, reply }).await.ok()?;
+        answer.await.ok()
+    }
+
     pub async fn locate(&self, id: ActorId) -> Option<([f32; 3], f32)> {
         let (reply, answer) = oneshot::channel();
         self.tx.send(Request::Locate { id, reply }).await.ok()?;

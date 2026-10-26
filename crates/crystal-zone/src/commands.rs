@@ -10,6 +10,7 @@
 use std::sync::Arc;
 
 use crystal_data::WorldData;
+use crystal_db::Databases;
 use crystal_world::{ActorId, World};
 use futures_util::future::BoxFuture;
 
@@ -83,6 +84,8 @@ pub struct Teleport {
 pub struct Context<'a> {
     pub player: Player,
     pub world: &'a World,
+    /// The databases (a command that writes content, say).
+    pub db: &'a Databases,
     /// The client's game data, when configured.
     pub data: Option<&'a WorldData>,
     pub commands: &'a Commands,
@@ -92,8 +95,14 @@ pub struct Context<'a> {
 }
 
 impl<'a> Context<'a> {
-    pub fn new(player: Player, world: &'a World, data: Option<&'a WorldData>, commands: &'a Commands) -> Self {
-        Self { player, world, data, commands, replies: vec![], teleport: None, gm_mode: None }
+    pub fn new(
+        player: Player,
+        world: &'a World,
+        db: &'a Databases,
+        data: Option<&'a WorldData>,
+        commands: &'a Commands,
+    ) -> Self {
+        Self { player, world, db, data, commands, replies: vec![], teleport: None, gm_mode: None }
     }
 
     /// A line in the player's chat log.

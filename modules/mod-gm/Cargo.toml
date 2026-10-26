@@ -1,6 +1,6 @@
 [package]
 name = "mod-gm"
-description = "GM chat commands: .gm, .help, .gps, .who, .tele, .goto"
+description = "GM chat commands: .gm, .help, .gps, .who, .tele, .goto, .bnpc"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -8,5 +8,7 @@ publish.workspace = true
 license.workspace = true
 
 [dependencies]
+crystal-db.workspace = true
+crystal-world.workspace = true
 crystal-zone.workspace = true
 futures-util.workspace = true

@@ -1617,6 +1617,8 @@ dependencies = [
 name = "mod-gm"
 version = "0.1.0"
 dependencies = [
+ "crystal-db",
+ "crystal-world",
  "crystal-zone",
  "futures-util",
 ]

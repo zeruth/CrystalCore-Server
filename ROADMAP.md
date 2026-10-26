@@ -203,7 +203,7 @@ structs; no ECS until a module needs one. `.item` and `.level` wait for Phase 5.
 - Commands: GM commands as a module (`.tele`, `.item`, `.level`, in AzerothCore's style).
 - Load testing with headless clients built from `crystal-protocol`.
 
-### Phase 4: Data (started 2026-10-26)
+### Phase 4: Data (done 2026-10-26, except loot, gathering and shop data: no source for this patch yet)
 
 Done: the EXD reader reads any sheet, language and header (`crystal-data::exd`), and the server
 applies `world.exd_override` rows over the client's (any column, or a new row) through
@@ -212,8 +212,8 @@ applies `world.exd_override` rows over the client's (any column, or a new row) t
 `BNpcBase`, `BNpcName`): 12,536 spawns in 52 territories. They stand in the world as kind-2
 actors (BNpcBase @4, BNpcName @0x38, found in `ReadSpawn` @0xaac200), spawned by range like
 everyone else; no AI until Phase 5. Tables for loot, gathering points and shops exist (this build
-has no GilShop sheets) but nothing fills them yet: no source matches this patch. The EXD
-browser is `crystal-tools exd` (list, header, rows, row, find).
+has no GilShop sheets) but nothing fills them yet: no source matches this patch (the β's gathering
+layers are empty, like its battle NPC ones). Hand placement: `.bnpc add`/`.bnpc near` (source`hand`). A fresh server seeds from `data/672261`; `crystal-tools prune` removes what the build lacks. The EXD browser is `crystal-tools exd` (list, header, rows, row, find).
 
 - EXD reader and the override tables.
 - Import tools for server-only data: BNpc spawns, loot, gathering points, shop stock. None of this is
@@ -270,3 +270,8 @@ Same as the client: find the truth in the binary, fix the tool rather than the o
   the client is right.
 - Every protocol fix gets a replay test (a captured or recorded session that has to round-trip).
 - Every gameplay system gets tests that drive it through the hook API, not through internals.
+- Server-only data uses the best source there is and improves as we go. Each row records where it
+  came from (`source`: `sapphire`, `capture`, `hand`, ...), is checked against the build it is for
+  (`crystal-tools prune`), and is corrected by playing it: quest-line verification by players, and
+  their reports, replace guesses with what the β did. Column names come from the nearest
+  definitions (SaintCoinach 2.x, see `.reference/`), verified against the β's sheets per use.

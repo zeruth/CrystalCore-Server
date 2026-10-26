@@ -1,8 +1,11 @@
 //! GM chat commands, in AzerothCore's style. The levels are AzerothCore's: 1 moderator, 2 game
 //! master, 3 administrator (`crystal-tools account set-gm`).
 //!
+//! `.bnpc` places battle NPCs by hand (Phase 4's third source, after imports and captures).
 //! `.item` and `.level` wait for inventory and stats (Phase 5).
 
+use crystal_db::{BETA_PATCH, BnpcSpawn};
+use crystal_world::BnpcPlacement;
 use crystal_zone::commands::{Command, Commands, Context};
 use futures_util::future::BoxFuture;
 
@@ -18,6 +21,124 @@ pub fn register(commands: &mut Commands) {
     commands.register(Who);
     commands.register(Tele);
     commands.register(Goto);
+    commands.register(Bnpc);
+}
+
+/// `.bnpc add <BNpcBase> <BNpcName> [level]`, `.bnpc near [yalms]`: battle NPCs placed by hand.
+struct Bnpc;
+
+/// The singular name of a `BNpcName` row, when the game data is there.
+fn bnpc_name(cx: &Context<'_>, name_id: u32) -> String {
+    cx.data
+        .and_then(|d| d.sheet("BNpcName").ok())
+        .and_then(|s| s.row(name_id).and_then(|r| r.first()).and_then(|v| v.as_str().map(str::to_owned)))
+        .filter(|n| !n.is_empty())
+        .unwrap_or_else(|| format!("#{name_id}"))
+}
+
+impl Command for Bnpc {
+    fn name(&self) -> &'static str {
+        "bnpc"
+    }
+    fn usage(&self) -> &'static str {
+        "add <BNpcBase> <BNpcName> [level] | near [yalms]"
+    }
+    fn help(&self) -> &'static str {
+        "places a battle NPC where you stand (saved as source hand), or lists those near you"
+    }
+    fn level(&self) -> u8 {
+        GAME_MASTER
+    }
+    fn run<'a>(&'a self, cx: &'a mut Context<'_>, args: &'a str) -> BoxFuture<'a, ()> {
+        Box::pin(async move {
+            let parts: Vec<&str> = args.split_whitespace().collect();
+            match parts.as_slice() {
+                ["add", base, name, rest @ ..] => {
+                    let (Ok(base_id), Ok(name_id)) = (base.parse::<u32>(), name.parse::<u32>()) else {
+                        cx.reply("Usage: .bnpc add <BNpcBase> <BNpcName> [level]");
+                        return;
+                    };
+                    let level = rest.first().and_then(|l| l.parse::<u16>().ok()).unwrap_or(1);
+                    let p = cx.player.clone();
+                    if let Some(data) = cx.data {
+                        match data.bnpc_misfit(p.territory, base_id, name_id, "") {
+                            Ok(Some(why)) => {
+                                cx.reply(format!("Not placed: {why}."));
+                                return;
+                            }
+                            Ok(None) => {}
+                            Err(e) => {
+                                cx.reply(format!("Not placed: {e}"));
+                                return;
+                            }
+                        }
+                    }
+                    let spawn = BnpcSpawn {
+                        territory: p.territory,
+                        base_id,
+                        name_id,
+                        level,
+                        pos: p.pos,
+                        rotation: p.rotation,
+                        source: "hand".into(),
+                        ..Default::default()
+                    };
+                    if let Err(e) = cx.db.world.add_bnpc_spawn(BETA_PATCH, &spawn).await {
+                        cx.reply(format!("Not saved: {e}"));
+                        return;
+                    }
+                    let placement = BnpcPlacement { base_id, name_id, level, pos: p.pos, rotation: p.rotation };
+                    let actor = cx.world.zone(p.territory).add_bnpc(placement).await;
+                    let name = bnpc_name(cx, name_id);
+                    cx.reply(format!(
+                        "Placed {name} (base {base_id}, level {level}) at {:.1} {:.1} {:.1}{}.",
+                        p.pos[0],
+                        p.pos[1],
+                        p.pos[2],
+                        actor.map(|a| format!(", actor {a:#x}")).unwrap_or_default()
+                    ));
+                }
+                ["near", rest @ ..] | rest @ [] if rest.len() <= 1 => {
+                    let radius = rest.first().and_then(|r| r.parse::<f32>().ok()).unwrap_or(30.0);
+                    let p = cx.player.clone();
+                    let spawns = match cx.db.world.bnpc_spawns(BETA_PATCH, Some(p.territory)).await {
+                        Ok(s) => s,
+                        Err(e) => {
+                            cx.reply(format!("{e}"));
+                            return;
+                        }
+                    };
+                    let d = |s: &BnpcSpawn| {
+                        ((s.pos[0] - p.pos[0]).powi(2) + (s.pos[1] - p.pos[1]).powi(2) + (s.pos[2] - p.pos[2]).powi(2))
+                            .sqrt()
+                    };
+                    let mut near: Vec<(f32, &BnpcSpawn)> =
+                        spawns.iter().map(|s| (d(s), s)).filter(|(d, _)| *d <= radius).collect();
+                    near.sort_by(|a, b| a.0.total_cmp(&b.0));
+                    cx.reply(format!("{} battle NPCs within {radius} yalms:", near.len()));
+                    let lines: Vec<String> = near
+                        .iter()
+                        .take(15)
+                        .map(|(dist, s)| {
+                            format!(
+                                "{:.1}y  {} (base {}, level {})  {}  [{}]",
+                                dist,
+                                bnpc_name(cx, s.name_id),
+                                s.base_id,
+                                s.level,
+                                if s.layer.is_empty() { "-" } else { &s.layer },
+                                s.source
+                            )
+                        })
+                        .collect();
+                    for l in lines {
+                        cx.reply(l);
+                    }
+                }
+                _ => cx.reply("Usage: .bnpc add <BNpcBase> <BNpcName> [level] | .bnpc near [yalms]"),
+            }
+        })
+    }
 }
 
 /// `.gm [on|off]`

@@ -8,3 +8,4 @@
 /crystal.local.toml
 /captures/
 __pycache__/
+/.reference/

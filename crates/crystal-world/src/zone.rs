@@ -29,6 +29,7 @@ pub(crate) enum Request {
     Move { id: ActorId, pos: [f32; 3], rotation: f32, motion: Motion },
     Chat { id: ActorId, range: ChatRange, kind: u16, text: Arc<str> },
     Locate { id: ActorId, reply: oneshot::Sender<Option<([f32; 3], f32)>> },
+    AddBnpc { bnpc: BnpcPlacement, reply: oneshot::Sender<ActorId> },
 }
 
 /// A player's view of the territory: which actor is in which of its client's slots.
@@ -58,6 +59,8 @@ pub struct ZoneState {
     viewers: HashMap<ActorId, Viewer>,
     /// Players whose outbox was full or closed, to drop after the current request.
     failed: Vec<ActorId>,
+    /// Battle NPCs placed so far (the next one's index).
+    bnpcs: u32,
 }
 
 fn distance2(a: [f32; 3], b: [f32; 3]) -> f32 {
@@ -78,6 +81,7 @@ impl ZoneState {
         if bnpcs.len() > MAX_BNPCS {
             warn!(territory, count = bnpcs.len(), "more battle NPCs than a territory takes; the rest are left out");
         }
+        let placed = bnpcs.len().min(MAX_BNPCS) as u32;
         let enpcs = npcs.iter().take(MAX_NPCS).enumerate().map(|(i, n)| {
             let id = NPC_ACTOR_BASE + ((territory as u32) << 12) + i as u32 + 1;
             (id, ActorView { id, kind: ActorKind::EventNpc { enpc: n.enpc }, pos: n.pos, rotation: n.rotation })
@@ -88,7 +92,16 @@ impl ZoneState {
             (id, ActorView { id, kind, pos: b.pos, rotation: b.rotation })
         });
         let actors = enpcs.chain(bnpcs).collect();
-        Self { territory, actors, viewers: HashMap::new(), failed: Vec::new() }
+        Self { territory, actors, viewers: HashMap::new(), failed: Vec::new(), bnpcs: placed }
+    }
+
+    /// Places a battle NPC now (players see it on the next visibility pass); its actor id.
+    pub fn add_bnpc(&mut self, b: BnpcPlacement) -> ActorId {
+        self.bnpcs += 1;
+        let id = BNPC_ACTOR_BASE + ((self.territory as u32) << 14) + self.bnpcs;
+        let kind = ActorKind::BattleNpc { base_id: b.base_id, name_id: b.name_id, level: b.level };
+        self.actors.insert(id, ActorView { id, kind, pos: b.pos, rotation: b.rotation });
+        id
     }
 
     pub fn players(&self) -> usize {
@@ -107,6 +120,9 @@ impl ZoneState {
             Request::Leave { id, token } => self.leave(id, token),
             Request::Move { id, pos, rotation, motion } => self.moved(id, pos, rotation, motion),
             Request::Chat { id, range, kind, text } => self.chat(id, range, kind, text),
+            Request::AddBnpc { bnpc, reply } => {
+                let _ = reply.send(self.add_bnpc(bnpc));
+            }
             Request::Locate { id, reply } => {
                 let _ = reply.send(self.actors.get(&id).map(|a| (a.pos, a.rotation)));
             }

@@ -41,6 +41,37 @@ pub struct BnpcSpawn {
     pub source: String,
 }
 
+fn insert_spawn<'q>(s: &'q BnpcSpawn, patch: &'q str) -> sqlx::query::Query<'q, sqlx::Any, sqlx::any::AnyArguments> {
+    sqlx::query(
+        "INSERT INTO bnpc_spawn (territory, instance_id, layer, base_id, name_id, level, x, y, z, rotation, \
+         wander_range, respawn_secs, pop_weather, pop_time_start, pop_time_end, loot_table, link_group, \
+         link_family, link_range, normal_ai, source, patch) \
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)",
+    )
+    .bind(s.territory as i32)
+    .bind(s.instance_id.map(|i| i as i64))
+    .bind(&s.layer)
+    .bind(s.base_id as i64)
+    .bind(s.name_id as i64)
+    .bind(s.level as i32)
+    .bind(s.pos[0] as f64)
+    .bind(s.pos[1] as f64)
+    .bind(s.pos[2] as f64)
+    .bind(s.rotation as f64)
+    .bind(s.wander_range as f64)
+    .bind(s.respawn_secs as i64)
+    .bind(s.pop_weather as i64)
+    .bind(s.pop_time_start as i64)
+    .bind(s.pop_time_end as i64)
+    .bind(s.loot_table as i64)
+    .bind(s.link_group as i64)
+    .bind(s.link_family as i64)
+    .bind(s.link_range as i64)
+    .bind(s.normal_ai as i64)
+    .bind(&s.source)
+    .bind(patch)
+}
+
 impl Database {
     fn world_sql(&self, source: sqlx::Error) -> DbError {
         DbError::Sql { db: self.name, source }
@@ -117,40 +148,16 @@ impl Database {
             .await
             .map_err(|e| self.world_sql(e))?;
         for s in spawns {
-            sqlx::query(
-                "INSERT INTO bnpc_spawn (territory, instance_id, layer, base_id, name_id, level, x, y, z, rotation, \
-                 wander_range, respawn_secs, pop_weather, pop_time_start, pop_time_end, loot_table, link_group, \
-                 link_family, link_range, normal_ai, source, patch) \
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)",
-            )
-            .bind(s.territory as i32)
-            .bind(s.instance_id.map(|i| i as i64))
-            .bind(&s.layer)
-            .bind(s.base_id as i64)
-            .bind(s.name_id as i64)
-            .bind(s.level as i32)
-            .bind(s.pos[0] as f64)
-            .bind(s.pos[1] as f64)
-            .bind(s.pos[2] as f64)
-            .bind(s.rotation as f64)
-            .bind(s.wander_range as f64)
-            .bind(s.respawn_secs as i64)
-            .bind(s.pop_weather as i64)
-            .bind(s.pop_time_start as i64)
-            .bind(s.pop_time_end as i64)
-            .bind(s.loot_table as i64)
-            .bind(s.link_group as i64)
-            .bind(s.link_family as i64)
-            .bind(s.link_range as i64)
-            .bind(s.normal_ai as i64)
-            .bind(&s.source)
-            .bind(patch)
-            .execute(&mut *tx)
-            .await
-            .map_err(|e| self.world_sql(e))?;
+            insert_spawn(s, patch).execute(&mut *tx).await.map_err(|e| self.world_sql(e))?;
         }
         tx.commit().await.map_err(|e| self.world_sql(e))?;
         Ok(spawns.len() as u64)
+    }
+
+    /// Adds one spawn (placed by hand, say).
+    pub async fn add_bnpc_spawn(&self, patch: &str, spawn: &BnpcSpawn) -> Result<()> {
+        insert_spawn(spawn, patch).execute(&self.pool).await.map_err(|e| self.world_sql(e))?;
+        Ok(())
     }
 
     /// A territory's spawns for `patch`, or every territory's.

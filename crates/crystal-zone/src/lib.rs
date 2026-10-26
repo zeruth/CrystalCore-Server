@@ -429,7 +429,7 @@ impl Zone {
             gm_level: sess.gm_level,
             gm_mode: sess.gm_mode,
         };
-        let mut cx = commands::Context::new(player, &self.world, self.data.as_deref(), &self.commands);
+        let mut cx = commands::Context::new(player, &self.world, &self.db, self.data.as_deref(), &self.commands);
         match self.commands.find(name) {
             Some(command) if command.level() > sess.gm_level => cx.reply(format!(
                 ".{} needs GM level {} (yours is {}).",
