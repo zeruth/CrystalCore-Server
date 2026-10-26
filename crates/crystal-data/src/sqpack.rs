@@ -82,7 +82,9 @@ impl SqPack {
         let size = u32_at(header + 12).ok_or_else(|| format(&name, "short index header"))? as usize;
         let table = data.get(files..files + size).ok_or_else(|| format(&name, "index table out of range"))?;
         Ok(table
-            .chunks_exact(16)
+            .as_chunks::<16>()
+            .0
+            .iter()
             .map(|e| {
                 let w = |i: usize| u32::from_le_bytes(e[i..i + 4].try_into().unwrap());
                 ((w(4), w(0)), w(8))
@@ -118,7 +120,7 @@ fn read_entry(f: &mut File, offset: u64) -> Result<Vec<u8>> {
     let mut table = vec![0u8; blocks as usize * 8];
     f.read_exact(&mut table).map_err(io)?;
     let mut out = Vec::with_capacity(size);
-    for b in table.chunks_exact(8) {
+    for b in table.as_chunks::<8>().0 {
         let block_offset = w(b, 0) as u64;
         f.seek(SeekFrom::Start(offset + header_size as u64 + block_offset)).map_err(io)?;
         let mut bh = [0u8; 0x10];

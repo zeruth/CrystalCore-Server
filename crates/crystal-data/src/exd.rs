@@ -85,7 +85,7 @@ impl SqPack {
                 return Err(format(&path, "not an EXD"));
             }
             let index_size = be32(&d, 8) as usize;
-            for e in d[0x20..0x20 + index_size].chunks_exact(8) {
+            for e in d[0x20..0x20 + index_size].as_chunks::<8>().0 {
                 let (id, at) = (be32(e, 0), be32(e, 4) as usize);
                 let base = at + 6;
                 let row =
