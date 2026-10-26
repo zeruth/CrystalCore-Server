@@ -1,0 +1,230 @@
+//! GM chat commands, in AzerothCore's style. The levels are AzerothCore's: 1 moderator, 2 game
+//! master, 3 administrator (`crystal-tools account set-gm`).
+//!
+//! `.item` and `.level` wait for inventory and stats (Phase 5).
+
+use crystal_zone::commands::{Command, Commands, Context};
+use futures_util::future::BoxFuture;
+
+pub const MODERATOR: u8 = 1;
+pub const GAME_MASTER: u8 = 2;
+pub const ADMINISTRATOR: u8 = 3;
+
+/// Adds this module's commands.
+pub fn register(commands: &mut Commands) {
+    commands.register(Gm);
+    commands.register(Help);
+    commands.register(Gps);
+    commands.register(Who);
+    commands.register(Tele);
+    commands.register(Goto);
+}
+
+/// `.gm [on|off]`
+struct Gm;
+
+impl Command for Gm {
+    fn name(&self) -> &'static str {
+        "gm"
+    }
+    fn usage(&self) -> &'static str {
+        "[on|off]"
+    }
+    fn help(&self) -> &'static str {
+        "switches GM mode, or tells whether it is on"
+    }
+    fn level(&self) -> u8 {
+        MODERATOR
+    }
+    fn run<'a>(&'a self, cx: &'a mut Context<'_>, args: &'a str) -> BoxFuture<'a, ()> {
+        Box::pin(async move {
+            let on = match args.to_ascii_lowercase().as_str() {
+                "on" => true,
+                "off" => false,
+                "" => {
+                    let state = if cx.player.gm_mode { "on" } else { "off" };
+                    cx.reply(format!("GM mode is {state} (GM level {}).", cx.player.gm_level));
+                    return;
+                }
+                _ => {
+                    cx.reply("Usage: .gm [on|off]");
+                    return;
+                }
+            };
+            cx.set_gm_mode(on);
+            cx.reply(if on { "GM mode is on." } else { "GM mode is off." });
+        })
+    }
+}
+
+/// `.help`
+struct Help;
+
+impl Command for Help {
+    fn name(&self) -> &'static str {
+        "help"
+    }
+    fn help(&self) -> &'static str {
+        "lists the commands you can use"
+    }
+    fn level(&self) -> u8 {
+        MODERATOR
+    }
+    fn run<'a>(&'a self, cx: &'a mut Context<'_>, _args: &'a str) -> BoxFuture<'a, ()> {
+        Box::pin(async move {
+            let level = cx.player.gm_level;
+            let lines: Vec<String> = cx
+                .commands
+                .list()
+                .iter()
+                .filter(|c| c.level() <= level)
+                .map(|c| {
+                    let usage = if c.usage().is_empty() { String::new() } else { format!(" {}", c.usage()) };
+                    format!(".{}{usage}: {}", c.name(), c.help())
+                })
+                .collect();
+            for line in lines {
+                cx.reply(line);
+            }
+        })
+    }
+}
+
+/// `.gps`
+struct Gps;
+
+impl Command for Gps {
+    fn name(&self) -> &'static str {
+        "gps"
+    }
+    fn help(&self) -> &'static str {
+        "where you stand"
+    }
+    fn level(&self) -> u8 {
+        MODERATOR
+    }
+    fn run<'a>(&'a self, cx: &'a mut Context<'_>, _args: &'a str) -> BoxFuture<'a, ()> {
+        Box::pin(async move {
+            let p = &cx.player;
+            let line = format!(
+                "Territory {} at {:.2} {:.2} {:.2}, facing {:.2}",
+                p.territory, p.pos[0], p.pos[1], p.pos[2], p.rotation
+            );
+            cx.reply(line);
+        })
+    }
+}
+
+/// `.who`
+struct Who;
+
+impl Command for Who {
+    fn name(&self) -> &'static str {
+        "who"
+    }
+    fn help(&self) -> &'static str {
+        "who is online, and in which territory"
+    }
+    fn level(&self) -> u8 {
+        MODERATOR
+    }
+    fn run<'a>(&'a self, cx: &'a mut Context<'_>, _args: &'a str) -> BoxFuture<'a, ()> {
+        Box::pin(async move {
+            let online = cx.world.online();
+            let names: Vec<String> = online.iter().take(50).map(|p| format!("{} ({})", p.name, p.territory)).collect();
+            let more = if online.len() > names.len() {
+                format!(", and {} more", online.len() - names.len())
+            } else {
+                String::new()
+            };
+            cx.reply(format!("{} online: {}{more}", online.len(), names.join(", ")));
+        })
+    }
+}
+
+/// `.tele <territory> [x y z]`
+struct Tele;
+
+impl Command for Tele {
+    fn name(&self) -> &'static str {
+        "tele"
+    }
+    fn usage(&self) -> &'static str {
+        "<territory> [x y z]"
+    }
+    fn help(&self) -> &'static str {
+        "goes to a territory (TerritoryType row), at a point or where its exits arrive"
+    }
+    fn level(&self) -> u8 {
+        GAME_MASTER
+    }
+    fn run<'a>(&'a self, cx: &'a mut Context<'_>, args: &'a str) -> BoxFuture<'a, ()> {
+        Box::pin(async move {
+            let parts: Vec<&str> = args.split_whitespace().collect();
+            let Some(territory) = parts.first().and_then(|t| t.parse::<u16>().ok()) else {
+                cx.reply("Usage: .tele <territory> [x y z]");
+                return;
+            };
+            if let Some(data) = cx.data
+                && !data.has_territory(territory)
+            {
+                cx.reply(format!("No territory {territory} in the game data."));
+                return;
+            }
+            match parts.len() {
+                1 => {
+                    let Some(data) = cx.data else {
+                        cx.reply("No game data configured: give coordinates (.tele <territory> x y z).");
+                        return;
+                    };
+                    match data.arrival(territory) {
+                        Ok(a) => cx.teleport(territory, a.pos, a.rotation),
+                        Err(e) => cx.reply(format!("Nowhere to stand in {territory}: {e}. Give coordinates.")),
+                    }
+                }
+                4 => {
+                    let xyz: Option<Vec<f32>> = parts[1..].iter().map(|v| v.parse().ok()).collect();
+                    match xyz {
+                        Some(v) => cx.teleport(territory, [v[0], v[1], v[2]], cx.player.rotation),
+                        None => cx.reply("Usage: .tele <territory> [x y z]"),
+                    }
+                }
+                _ => cx.reply("Usage: .tele <territory> [x y z]"),
+            }
+        })
+    }
+}
+
+/// `.goto <name>`
+struct Goto;
+
+impl Command for Goto {
+    fn name(&self) -> &'static str {
+        "goto"
+    }
+    fn usage(&self) -> &'static str {
+        "<character name>"
+    }
+    fn help(&self) -> &'static str {
+        "goes to where an online character stands"
+    }
+    fn level(&self) -> u8 {
+        GAME_MASTER
+    }
+    fn run<'a>(&'a self, cx: &'a mut Context<'_>, args: &'a str) -> BoxFuture<'a, ()> {
+        Box::pin(async move {
+            let Some(target) = cx.world.find(args) else {
+                cx.reply(format!("No one called {args} is online."));
+                return;
+            };
+            if target.actor == cx.player.actor {
+                cx.reply("That is you.");
+                return;
+            }
+            match cx.world.locate(target.actor).await {
+                Some((territory, pos, rotation)) => cx.teleport(territory, pos, rotation),
+                None => cx.reply(format!("{} is between territories; try again.", target.name)),
+            }
+        })
+    }
+}

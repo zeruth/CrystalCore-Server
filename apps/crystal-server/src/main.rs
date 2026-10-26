@@ -1,7 +1,9 @@
+use std::io::IsTerminal;
 use std::path::PathBuf;
 
 use clap::Parser;
 use crystal_common::{Config, Role};
+use crystal_console::logs::Logging;
 use crystal_runtime::Server;
 use tracing::info;
 
@@ -17,6 +19,10 @@ struct Args {
     /// Services to run, overriding the configuration: lobby, zone, chat.
     #[arg(long, value_delimiter = ',')]
     role: Vec<Role>,
+    /// Plain log lines on stdout instead of the console (always so when stdout is not a terminal,
+    /// as under a service manager).
+    #[arg(long)]
+    plain: bool,
 }
 
 #[tokio::main]
@@ -26,12 +32,26 @@ async fn main() -> anyhow::Result<()> {
     if !args.role.is_empty() {
         config.roles = args.role;
     }
-    crystal_common::log::init(&config.log.filter);
-    info!(version = env!("CARGO_PKG_VERSION"), config = %args.config.display(), "crystal-server");
+    if args.plain || !std::io::stdout().is_terminal() {
+        crystal_common::log::init(&config.log.filter);
+        info!(version = env!("CARGO_PKG_VERSION"), config = %args.config.display(), "crystal-server");
+        let server = Server::start(config).await?;
+        tokio::signal::ctrl_c().await?;
+        info!("shutting down");
+        server.shutdown().await;
+        return Ok(());
+    }
 
-    let server = Server::start(config).await?;
-    tokio::signal::ctrl_c().await?;
-    info!("shutting down");
-    server.shutdown().await;
-    Ok(())
+    // The console: what starting logs is shown in it once it is up.
+    let logging = Logging::install(&config.log.filter)?;
+    info!(version = env!("CARGO_PKG_VERSION"), config = %args.config.display(), "crystal-server");
+    let server = match Server::start(config).await {
+        Ok(server) => server,
+        Err(e) => {
+            // no console to show it in: print what was logged, then the error
+            logging.sink.with_lines(|lines| lines.iter().for_each(|l| println!("{}", l.text)));
+            return Err(e);
+        }
+    };
+    crystal_console::run(server, logging).await
 }

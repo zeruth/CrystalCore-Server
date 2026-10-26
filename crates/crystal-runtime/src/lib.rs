@@ -13,7 +13,9 @@ use crystal_db::Databases;
 use crystal_lobby::{HostRole, Lobby};
 use crystal_net::Listener;
 use crystal_state::State;
+use crystal_world::{NpcPlacement, World};
 use crystal_zone::Zone;
+use crystal_zone::commands::Commands;
 use tokio_util::sync::CancellationToken;
 use tokio_util::task::TaskTracker;
 use tracing::{info, warn};
@@ -28,6 +30,8 @@ pub struct Server {
     pub db: Databases,
     pub state: State,
     addrs: HashMap<Role, SocketAddr>,
+    /// The zone service's territories.
+    worlds: Vec<Arc<World>>,
     shutdown: CancellationToken,
     tasks: TaskTracker,
 }
@@ -52,6 +56,7 @@ impl Server {
         let shutdown = CancellationToken::new();
         let tasks = TaskTracker::new();
         let mut addrs = HashMap::new();
+        let mut worlds = Vec::new();
         for role in &config.roles {
             match role {
                 Role::Lobby => {
@@ -93,7 +98,32 @@ impl Server {
                     };
                     let listener = Listener::bind("zone", config.zone.bind).await.context("zone")?;
                     addrs.insert(Role::Zone, listener.local_addr()?);
-                    let zone = Arc::new(Zone::new(db.clone(), state.clone(), world, config.zone.capture_dir.clone()));
+                    let npcs_from = world.clone();
+                    let npcs = Box::new(move |territory: u16| -> Vec<NpcPlacement> {
+                        let Some(data) = &npcs_from else { return vec![] };
+                        match data.npcs(territory) {
+                            Ok(n) => n
+                                .iter()
+                                .map(|n| NpcPlacement { enpc: n.enpc, pos: n.pos, rotation: n.rotation })
+                                .collect(),
+                            Err(e) => {
+                                warn!(territory, "event NPCs: {e}");
+                                vec![]
+                            }
+                        }
+                    });
+                    let territories = Arc::new(World::new(npcs, shutdown.child_token()));
+                    let mut commands = Commands::default();
+                    mod_gm::register(&mut commands);
+                    let zone = Arc::new(Zone::new(
+                        db.clone(),
+                        state.clone(),
+                        world,
+                        territories.clone(),
+                        commands,
+                        config.zone.capture_dir.clone(),
+                    ));
+                    worlds.push(territories);
                     tasks.spawn(crystal_net::serve(listener, shutdown.clone(), move |stream, peer, stop| {
                         zone.clone().handle(stream, peer, stop)
                     }));
@@ -102,10 +132,15 @@ impl Server {
             }
         }
         tasks.close();
-        Ok(Self { db, state, addrs, shutdown, tasks })
+        Ok(Self { db, state, addrs, worlds, shutdown, tasks })
     }
 
     /// Where a running service listens (useful when it was bound to port 0).
+    /// The zone service's territories, when it runs here.
+    pub fn world(&self) -> Option<&Arc<World>> {
+        self.worlds.first()
+    }
+
     pub fn local_addr(&self, role: Role) -> Option<SocketAddr> {
         self.addrs.get(&role).copied()
     }
@@ -113,6 +148,9 @@ impl Server {
     pub async fn shutdown(self) {
         self.shutdown.cancel();
         self.tasks.wait().await;
+        for world in &self.worlds {
+            world.shutdown().await;
+        }
         self.db.close().await;
     }
 }

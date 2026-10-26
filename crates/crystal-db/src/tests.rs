@@ -31,6 +31,14 @@ async fn exercise(db: &Databases) {
         .await;
     assert!(dup.is_err(), "usernames are unique regardless of case");
 
+    assert_eq!(db.login.gm_level(id).await.unwrap(), 0);
+    assert!(db.login.set_gm_level("TESTER", 2).await.unwrap());
+    assert_eq!(db.login.gm_level(id).await.unwrap(), 2);
+    assert!(db.login.set_gm_level_of(id, 0).await.unwrap());
+    assert_eq!(db.login.gm_level(id).await.unwrap(), 0);
+    assert!(!db.login.set_gm_level("nobody", 1).await.unwrap());
+    assert_eq!(db.login.gm_level(12345).await.unwrap(), 0);
+
     sqlx::query("INSERT INTO characters (account_id, world_id, name, created_at) VALUES ($1, $2, $3, $4)")
         .bind(id)
         .bind(1i32)

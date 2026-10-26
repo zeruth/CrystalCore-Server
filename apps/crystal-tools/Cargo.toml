@@ -1,0 +1,17 @@
+[package]
+name = "crystal-tools"
+description = "Server tools: headless load-test clients"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+crystal-bot.workspace = true
+crystal-common.workspace = true
+crystal-db.workspace = true
+crystal-protocol.workspace = true
+tokio.workspace = true
+tracing.workspace = true

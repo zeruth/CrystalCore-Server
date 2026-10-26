@@ -1,0 +1,13 @@
+[package]
+name = "crystal-protocol"
+description = "Packet layouts and opcodes, per client build"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+bytes.workspace = true
+
+[dev-dependencies]
+hex.workspace = true

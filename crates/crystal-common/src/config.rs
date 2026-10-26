@@ -21,7 +21,7 @@ pub struct Config {
     pub database: DatabaseConfig,
     pub state: StateConfig,
     pub lobby: LobbyConfig,
-    pub zone: ServiceConfig,
+    pub zone: ZoneConfig,
     pub chat: ServiceConfig,
     pub data: DataConfig,
 }
@@ -98,6 +98,22 @@ pub struct ServiceConfig {
     pub capture_dir: Option<PathBuf>,
 }
 
+/// The zone service.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ZoneConfig {
+    /// Also the address game login sends the client to.
+    pub bind: SocketAddr,
+    /// When set, every connection's received frames are written here, raw, for replay tests.
+    pub capture_dir: Option<PathBuf>,
+}
+
+impl Default for ZoneConfig {
+    fn default() -> Self {
+        Self { bind: SocketAddr::from(([127, 0, 0, 1], 54992)), capture_dir: None }
+    }
+}
+
 /// The lobby. The client opens one connection to each of its two lobby hosts (`DEV.LobbyHost01`/
 /// `02`, `DEV.LobbyPort01`/`02`), and each feeds its own region of the world list (JP, NA/EU).
 /// Both connections look alike on the wire, so to tell them apart give the second host its own
@@ -132,7 +148,7 @@ impl Default for Config {
             database: DatabaseConfig::default(),
             state: StateConfig { redis_url: None, prefix: "crystal".into() },
             lobby: LobbyConfig::default(),
-            zone: ServiceConfig::at(54992),
+            zone: ZoneConfig::default(),
             chat: ServiceConfig::at(54993),
             data: DataConfig::default(),
         }

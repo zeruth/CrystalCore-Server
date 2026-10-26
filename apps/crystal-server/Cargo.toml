@@ -10,6 +10,7 @@ publish.workspace = true
 anyhow.workspace = true
 clap.workspace = true
 crystal-common.workspace = true
+crystal-console.workspace = true
 crystal-runtime.workspace = true
 mimalloc.workspace = true
 tokio.workspace = true

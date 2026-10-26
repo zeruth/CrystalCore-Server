@@ -1,0 +1,11 @@
+[package]
+name = "mod-gm"
+description = "GM chat commands: .gm, .help, .gps, .who, .tele, .goto"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+crystal-zone.workspace = true
+futures-util.workspace = true

@@ -185,6 +185,50 @@ impl Database {
             .map(|row| row.get(0))
             .map_err(|source| DbError::Sql { db: self.name, source })
     }
+
+    /// The account's GM level (AzerothCore's security level: 0 a player, 1 and up a GM); 0 for no
+    /// such account.
+    pub async fn gm_level(&self, account_id: i64) -> Result<u8> {
+        use sqlx::Row;
+        let row = sqlx::query("SELECT gm_level FROM account WHERE id = $1")
+            .bind(account_id)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|source| DbError::Sql { db: self.name, source })?;
+        Ok(row.map_or(0, |r| r.get::<i16, _>(0).clamp(0, u8::MAX as i16) as u8))
+    }
+
+    pub async fn account_name(&self, account_id: i64) -> Result<Option<String>> {
+        use sqlx::Row;
+        let row = sqlx::query("SELECT username FROM account WHERE id = $1")
+            .bind(account_id)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|source| DbError::Sql { db: self.name, source })?;
+        Ok(row.map(|r| r.get(0)))
+    }
+
+    /// Sets the GM level of the account named `username`; false when there is no such account.
+    pub async fn set_gm_level(&self, username: &str, level: u8) -> Result<bool> {
+        let done = sqlx::query("UPDATE account SET gm_level = $1 WHERE lower(username) = lower($2)")
+            .bind(level as i16)
+            .bind(username)
+            .execute(&self.pool)
+            .await
+            .map_err(|source| DbError::Sql { db: self.name, source })?;
+        Ok(done.rows_affected() > 0)
+    }
+
+    /// Sets the GM level of an account by id; false when there is no such account.
+    pub async fn set_gm_level_of(&self, account_id: i64, level: u8) -> Result<bool> {
+        let done = sqlx::query("UPDATE account SET gm_level = $1 WHERE id = $2")
+            .bind(level as i16)
+            .bind(account_id)
+            .execute(&self.pool)
+            .await
+            .map_err(|source| DbError::Sql { db: self.name, source })?;
+        Ok(done.rows_affected() > 0)
+    }
 }
 
 pub mod characters;

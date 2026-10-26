@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/*", "apps/*"]
+members = ["crates/*", "apps/*", "modules/*"]
 
 [workspace.package]
 version = "0.1.0"
@@ -9,14 +9,19 @@ rust-version = "1.94"
 publish = false
 
 [workspace.dependencies]
+crystal-bot = { path = "crates/crystal-bot" }
 crystal-common = { path = "crates/crystal-common" }
+crystal-console = { path = "crates/crystal-console" }
 crystal-data = { path = "crates/crystal-data" }
 crystal-db = { path = "crates/crystal-db" }
 crystal-lobby = { path = "crates/crystal-lobby" }
 crystal-net = { path = "crates/crystal-net" }
+crystal-protocol = { path = "crates/crystal-protocol" }
 crystal-runtime = { path = "crates/crystal-runtime" }
 crystal-state = { path = "crates/crystal-state" }
+crystal-world = { path = "crates/crystal-world" }
 crystal-zone = { path = "crates/crystal-zone" }
+mod-gm = { path = "modules/mod-gm" }
 
 anyhow = "1"
 bytes = "1"

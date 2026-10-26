@@ -113,6 +113,26 @@ impl WorldData {
         Ok(layout)
     }
 
+    /// Whether `territory` is a `TerritoryType` row with a layout folder.
+    pub fn has_territory(&self, territory: u16) -> bool {
+        self.territories.contains_key(&(territory as u32))
+    }
+
+    /// A place to stand in `territory`: the pop range its first exit names for players arriving
+    /// through it (so on walkable ground), else its first pop range.
+    pub fn arrival(&self, territory: u16) -> Result<Arrival> {
+        let layout = self.layout(territory)?;
+        let is_pop = |o: &&crate::lgb::Object| o.kind == crate::lgb::kind::POP_RANGE;
+        let pop = layout
+            .objects()
+            .filter_map(|o| o.exit_range())
+            .filter_map(|e| layout.find(e.return_point))
+            .find(is_pop)
+            .or_else(|| layout.objects().find(is_pop))
+            .ok_or_else(|| DataError::NotFound(format!("a pop range in territory {territory}")))?;
+        Ok(Arrival { territory, pos: pop.pos, rotation: pop.rot[1] })
+    }
+
     /// Where exit `exit` (an exit range's instance id) in `territory` leads: the destination
     /// territory and the pop range there it names.
     pub fn zone_line(&self, territory: u16, exit: u32) -> Result<Arrival> {

@@ -186,7 +186,16 @@ pop range), graceful logout. Chat is read but needs other players to go anywhere
 **Done when:** a character logs in, runs around Gridania/Limsa/Ul'dah, changes zones, logs out, and
 logs back in where it left.
 
-### Phase 3: Many players and the world model
+### Phase 3: Many players and the world model (built 2026-10-26; awaiting a test with the client)
+
+Done: `crystal-world` (each territory one task owning its actors as plain structs; spawn within
+60 yalms, despawn beyond 70, nearest first in the client's 99 free slots; moves relayed as 0x192,
+despawn 0x191, say within 20 yalms / shout and yell zone-wide as down 0x67), zones own event NPC
+ids, `crystal-protocol` (zone packets both ways), GM commands in `modules/mod-gm` (`.gm on|off`,
+`.help`, `.gps`, `.who`, `.tele`, `.goto`) gated by `login.account.gm_level` (set only from the
+server console), the server console (`crystal-console`: live logs, status, commands), headless
+clients (`crystal-bot`) and `crystal-tools bots` for load tests. Actor model decision: plain
+structs; no ECS until a module needs one. `.item` and `.level` wait for Phase 5.
 
 - Actor visibility (spawn/despawn by range), other players' movement and appearance.
 - Decide the actor model: plain structs per zone first; adopt `bevy_ecs` or `hecs` only if modules

@@ -1,0 +1,18 @@
+[package]
+name = "crystal-console"
+description = "The server's terminal console: live logs, status, and administration commands"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+crystal-common.workspace = true
+crystal-runtime.workspace = true
+parking_lot.workspace = true
+ratatui = "0.30"
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true

@@ -127,6 +127,19 @@ impl Database {
         row.as_ref().map(from_row).transpose().map_err(|e| self.sql(e))
     }
 
+    /// A character by name on any world, ignoring case (the oldest when several worlds have one).
+    pub async fn character_by_name(&self, name: &str) -> Result<Option<Character>> {
+        let sql = format!(
+            "SELECT {COLUMNS} FROM characters WHERE lower(name) = lower($1) AND deleted_at IS NULL ORDER BY id LIMIT 1"
+        );
+        let row = sqlx::query(sqlx::AssertSqlSafe(sql))
+            .bind(name)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| self.sql(e))?;
+        row.as_ref().map(from_row).transpose().map_err(|e| self.sql(e))
+    }
+
     pub async fn save_position(&self, content_id: u64, p: Position) -> Result<()> {
         sqlx::query(
             "UPDATE characters SET zone_id = $1, pos_x = $2, pos_y = $3, pos_z = $4, rotation = $5 \

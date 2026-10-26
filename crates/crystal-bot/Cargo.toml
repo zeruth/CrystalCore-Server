@@ -1,0 +1,16 @@
+[package]
+name = "crystal-bot"
+description = "A headless zone client, for load tests and end-to-end tests"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+bytes.workspace = true
+crystal-net.workspace = true
+crystal-protocol.workspace = true
+futures-util.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
