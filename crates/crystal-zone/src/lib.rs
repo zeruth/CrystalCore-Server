@@ -545,8 +545,23 @@ fn player_spawn(look: &PlayerLook, slot: u8, pos: [f32; 3], rotation: f32) -> ip
 fn actor_spawn(slot: u8, actor: &ActorView) -> ipc::Spawn {
     match &actor.kind {
         ActorKind::Player(look) => player_spawn(look, slot, actor.pos, actor.rotation),
+        ActorKind::BattleNpc { base_id, name_id, level } => ipc::Spawn {
+            base_id: *base_id,
+            name_id: *name_id,
+            index: slot,
+            status: 1,
+            kind: ipc::kind::BATTLE_NPC,
+            rotation: actor.rotation,
+            pos: actor.pos,
+            level: (*level).min(255) as u8,
+            hp: 100,
+            hp_max: 100,
+            ..Default::default()
+        },
         ActorKind::EventNpc { enpc } => ipc::Spawn {
             base_id: *enpc,
+            // ENpcBase and ENpcResident share row ids: the resident row names it
+            name_id: *enpc,
             index: slot,
             status: 1,
             kind: ipc::kind::EVENT_NPC,

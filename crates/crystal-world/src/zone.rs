@@ -10,12 +10,14 @@ use tokio_util::sync::CancellationToken;
 use tracing::{debug, info, warn};
 
 use crate::{
-    ActorId, ActorKind, ActorView, ChatRange, DESPAWN_RANGE, Event, Motion, NPC_ACTOR_BASE, NpcPlacement, PlayerLook,
-    SAY_RANGE, SLOTS, SPAWN_RANGE, VISIBILITY_INTERVAL,
+    ActorId, ActorKind, ActorView, BNPC_ACTOR_BASE, BnpcPlacement, ChatRange, DESPAWN_RANGE, Event, Motion,
+    NPC_ACTOR_BASE, NpcPlacement, PlayerLook, SAY_RANGE, SLOTS, SPAWN_RANGE, VISIBILITY_INTERVAL,
 };
 
 /// The most event NPCs one territory takes (the id space under its territory number).
 pub const MAX_NPCS: usize = 0xfff;
+/// The most battle NPCs one territory takes.
+pub const MAX_BNPCS: usize = 0x3fff;
 
 /// A visibility pass slower than this is logged.
 const SLOW_PASS: Duration = Duration::from_millis(50);
@@ -69,19 +71,23 @@ fn send(id: ActorId, viewer: &Viewer, event: Event, failed: &mut Vec<ActorId>) {
 }
 
 impl ZoneState {
-    pub fn new(territory: u16, npcs: &[NpcPlacement]) -> Self {
+    pub fn new(territory: u16, npcs: &[NpcPlacement], bnpcs: &[BnpcPlacement]) -> Self {
         if npcs.len() > MAX_NPCS {
             warn!(territory, count = npcs.len(), "more event NPCs than a territory takes; the rest are left out");
         }
-        let actors = npcs
-            .iter()
-            .take(MAX_NPCS)
-            .enumerate()
-            .map(|(i, n)| {
-                let id = NPC_ACTOR_BASE + ((territory as u32) << 12) + i as u32 + 1;
-                (id, ActorView { id, kind: ActorKind::EventNpc { enpc: n.enpc }, pos: n.pos, rotation: n.rotation })
-            })
-            .collect();
+        if bnpcs.len() > MAX_BNPCS {
+            warn!(territory, count = bnpcs.len(), "more battle NPCs than a territory takes; the rest are left out");
+        }
+        let enpcs = npcs.iter().take(MAX_NPCS).enumerate().map(|(i, n)| {
+            let id = NPC_ACTOR_BASE + ((territory as u32) << 12) + i as u32 + 1;
+            (id, ActorView { id, kind: ActorKind::EventNpc { enpc: n.enpc }, pos: n.pos, rotation: n.rotation })
+        });
+        let bnpcs = bnpcs.iter().take(MAX_BNPCS).enumerate().map(|(i, b)| {
+            let id = BNPC_ACTOR_BASE + ((territory as u32) << 14) + i as u32 + 1;
+            let kind = ActorKind::BattleNpc { base_id: b.base_id, name_id: b.name_id, level: b.level };
+            (id, ActorView { id, kind, pos: b.pos, rotation: b.rotation })
+        });
+        let actors = enpcs.chain(bnpcs).collect();
         Self { territory, actors, viewers: HashMap::new(), failed: Vec::new() }
     }
 
@@ -281,7 +287,7 @@ mod tests {
     fn players_spawn_for_each_other_in_range() {
         let npc = NpcPlacement { enpc: 1000, pos: [5.0, 0.0, 0.0], rotation: 0.0 };
         let far_npc = NpcPlacement { enpc: 1001, pos: [500.0, 0.0, 0.0], rotation: 0.0 };
-        let mut zone = ZoneState::new(129, &[npc, far_npc]);
+        let mut zone = ZoneState::new(129, &[npc, far_npc], &[]);
         let (tx_a, mut a) = mpsc::channel(64);
         let (tx_b, mut b) = mpsc::channel(64);
         zone.enter(A, 1, look("Alpha"), [0.0; 3], 0.0, tx_a);
@@ -318,7 +324,7 @@ mod tests {
 
     #[test]
     fn leaving_despawns_and_stale_leaves_are_ignored() {
-        let mut zone = ZoneState::new(129, &[]);
+        let mut zone = ZoneState::new(129, &[], &[]);
         let (tx_a, mut a) = mpsc::channel(64);
         let (tx_b, _b) = mpsc::channel(64);
         zone.enter(A, 1, look("Alpha"), [0.0; 3], 0.0, tx_a);
@@ -344,7 +350,7 @@ mod tests {
 
     #[test]
     fn say_carries_only_so_far_and_shout_everywhere() {
-        let mut zone = ZoneState::new(129, &[]);
+        let mut zone = ZoneState::new(129, &[], &[]);
         let (tx_a, mut a) = mpsc::channel(64);
         let (tx_b, mut b) = mpsc::channel(64);
         let (tx_c, mut c) = mpsc::channel(64);
@@ -371,7 +377,7 @@ mod tests {
     fn at_most_99_others_nearest_first() {
         let npcs: Vec<_> =
             (0..150).map(|i| NpcPlacement { enpc: i, pos: [i as f32 * 0.3, 0.0, 0.0], rotation: 0.0 }).collect();
-        let mut zone = ZoneState::new(1, &npcs);
+        let mut zone = ZoneState::new(1, &npcs, &[]);
         let (tx, mut rx) = mpsc::channel(512);
         zone.enter(A, 1, look("Alpha"), [0.0; 3], 0.0, tx);
         let ids = spawned(&drain(&mut rx));
@@ -381,8 +387,23 @@ mod tests {
     }
 
     #[test]
+    fn battle_npcs_spawn_by_range_with_their_own_ids() {
+        let bnpc = |x: f32| BnpcPlacement { base_id: 37, name_id: 37, level: 2, pos: [x, 0.0, 0.0], rotation: 0.5 };
+        let enpc = NpcPlacement { enpc: 1000914, pos: [3.0, 0.0, 0.0], rotation: 0.0 };
+        let mut zone = ZoneState::new(134, &[enpc], &[bnpc(1.0), bnpc(400.0)]);
+        assert_eq!(zone.actors(), 3);
+        let (tx, mut rx) = mpsc::channel(64);
+        zone.enter(A, 1, look("Alpha"), [0.0; 3], 0.0, tx);
+        let events = drain(&mut rx);
+        let first = BNPC_ACTOR_BASE + (134 << 14) + 1;
+        assert_eq!(spawned(&events), vec![first, NPC_ACTOR_BASE + (134 << 12) + 1], "the near one, nearest first");
+        let Event::Spawn { actor, .. } = &events[0] else { panic!() };
+        assert_eq!(actor.kind, ActorKind::BattleNpc { base_id: 37, name_id: 37, level: 2 });
+    }
+
+    #[test]
     fn a_player_that_cannot_keep_up_is_dropped() {
-        let mut zone = ZoneState::new(129, &[]);
+        let mut zone = ZoneState::new(129, &[], &[]);
         let (tx_a, mut a) = mpsc::channel(64);
         let (tx_b, b) = mpsc::channel(1);
         zone.enter(A, 1, look("Alpha"), [0.0; 3], 0.0, tx_a);

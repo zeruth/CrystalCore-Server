@@ -6,8 +6,9 @@ use std::path::Path;
 use std::sync::Arc;
 
 use parking_lot::Mutex;
-use tracing::debug;
+use tracing::{debug, warn};
 
+use crate::exd::Sheet;
 use crate::lgb::Layout;
 use crate::sqpack::SqPack;
 use crate::{DataError, Result};
@@ -37,8 +38,45 @@ pub struct NpcPlacement {
 /// `Level` columns: x, y, z, yaw @0-3, type @5, object @6, territory @9. Type 8 is an event NPC.
 const LEVEL_EVENT_NPC: u64 = 8;
 
+/// Changes to EXD rows the server makes over the client's data (`world.exd_override`): column
+/// values as text, read as each column's type. A row the sheet does not have is added, its other
+/// columns zero.
+#[derive(Debug, Clone, Default)]
+pub struct Overrides {
+    by_sheet: HashMap<String, Vec<(u32, usize, String)>>,
+}
+
+impl Overrides {
+    pub fn add(&mut self, sheet: &str, row: u32, column: usize, value: impl Into<String>) {
+        self.by_sheet.entry(sheet.to_owned()).or_default().push((row, column, value.into()));
+    }
+
+    pub fn len(&self) -> usize {
+        self.by_sheet.values().map(Vec::len).sum()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    /// Applies the overrides of `sheet.name`; the ones that do not fit (no such column, a value
+    /// not of its type) are returned.
+    pub fn apply(&self, sheet: &mut Sheet) -> Vec<(u32, usize, String)> {
+        let mut rejected = Vec::new();
+        for (row, col, value) in self.by_sheet.get(&sheet.name).into_iter().flatten() {
+            if !sheet.set(*row, *col, value) {
+                rejected.push((*row, *col, value.clone()));
+            }
+        }
+        rejected
+    }
+}
+
 pub struct WorldData {
     pack: SqPack,
+    overrides: Overrides,
+    /// Sheets read so far, overrides applied.
+    sheets: Mutex<HashMap<String, Arc<Sheet>>>,
     /// `TerritoryType` row → its layout folder (`bg/<column 1 without its last part>`).
     territories: HashMap<u32, String>,
     layouts: Mutex<HashMap<u16, Arc<Layout>>>,
@@ -49,8 +87,21 @@ pub struct WorldData {
 impl WorldData {
     /// `game` is the client's `game` folder.
     pub fn open(game: &Path) -> Result<Self> {
+        Self::open_with(game, Overrides::default())
+    }
+
+    /// As [`Self::open`], with the server's overrides of the client's rows.
+    pub fn open_with(game: &Path, overrides: Overrides) -> Result<Self> {
         let pack = SqPack::open(game)?;
-        let sheet = pack.sheet("TerritoryType")?;
+        let mut data = Self {
+            pack,
+            overrides,
+            sheets: Mutex::new(HashMap::new()),
+            territories: HashMap::new(),
+            layouts: Mutex::new(HashMap::new()),
+            npcs: Mutex::new(None),
+        };
+        let sheet = data.sheet("TerritoryType")?;
         let territories = sheet
             .rows
             .iter()
@@ -61,14 +112,35 @@ impl WorldData {
                 (!folder.is_empty()).then(|| (*id, format!("bg/{folder}")))
             })
             .collect();
-        Ok(Self { pack, territories, layouts: Mutex::new(HashMap::new()), npcs: Mutex::new(None) })
+        data.territories = territories;
+        Ok(data)
+    }
+
+    /// A sheet (English where it has languages), with the overrides applied. Read once.
+    pub fn sheet(&self, name: &str) -> Result<Arc<Sheet>> {
+        if let Some(s) = self.sheets.lock().get(name) {
+            return Ok(s.clone());
+        }
+        let mut sheet = self.pack.sheet(name)?;
+        for (row, col, value) in self.overrides.apply(&mut sheet) {
+            warn!(sheet = name, row, col, value, "override does not fit the sheet: ignored");
+        }
+        let sheet = Arc::new(sheet);
+        self.sheets.lock().insert(name.to_owned(), sheet.clone());
+        Ok(sheet)
+    }
+
+    /// The `TerritoryType` row whose name (column 0, `s1f1`) is `name`.
+    pub fn territory_by_name(&self, name: &str) -> Option<u16> {
+        let sheet = self.sheet("TerritoryType").ok()?;
+        sheet.rows.iter().find(|(_, v)| v.first().and_then(|n| n.as_str()) == Some(name)).map(|(id, _)| *id as u16)
     }
 
     /// The event NPCs the `Level` sheet places in `territory`.
     pub fn npcs(&self, territory: u16) -> Result<Vec<NpcPlacement>> {
         let mut npcs = self.npcs.lock();
         if npcs.is_none() {
-            let level = self.pack.sheet("Level")?;
+            let level = self.sheet("Level")?;
             let mut by_territory: HashMap<u16, Vec<NpcPlacement>> = HashMap::new();
             for (_, v) in &level.rows {
                 let f = |i: usize| v.get(i).and_then(|x| x.as_f32()).unwrap_or(0.0);

@@ -232,7 +232,9 @@ impl Database {
 }
 
 pub mod characters;
+pub mod world;
 pub use characters::{Character, Position};
+pub use world::{BETA_PATCH, BnpcSpawn, ExdOverride};
 
 #[cfg(test)]
 mod tests;

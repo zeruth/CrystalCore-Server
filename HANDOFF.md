@@ -30,6 +30,7 @@ then `cargo run -p crystal-tools -- bots -n 5` to see bots walk around the start
 | `mod-gm` | `.gm`, `.help`, `.gps`, `.who`, `.tele`, `.goto` |
 | `crystal-console` | the binary's terminal UI: logs, status, `help`/`who`/`gm`/`gm-account`/`log`/`quit`. GM levels are set only here; `--plain` (or no terminal) for plain logs |
 | `crystal-bot` / `crystal-tools bots` | headless zone clients; the load test (bot characters on the `bots` account) |
+| `crystal-tools exd` / `override` / `import` | the EXD browser, `world.exd_override` editing, Sapphire's battle NPC import |
 | `crystal-runtime` | `Server::start`: lobby (two ports) and zone, one process |
 
 29+ tests; the game-data tests run when `CRYSTAL_TEST_GAME` names the install's `game` folder.
@@ -54,6 +55,7 @@ comments of `crates/crystal-lobby/src/{crypt,ipc}` and `crates/crystal-zone/src/
 
 ## Next
 
+0. **Battle NPCs with the client**: import (`crystal-tools import sapphire-bnpcs <Sapphire>/sql/migrations/20211217125038_UpdateBattleNpc.sql`), then check they appear in Middle La Noscea (134) with their names, and that event NPCs now show names (name id @0x38). They all show, whatever their pop weather, time or event group.
 1. **Phase 3 with the client**: check other players render (kind 1 spawn in a slot), moves animate
    (speed 60/24 from Sapphire; the flags are passed through unverified), chat shows in the log, and
    command replies (type 1, ServerDebug) show. Load-test numbers with `crystal-tools bots`.

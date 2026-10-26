@@ -82,6 +82,41 @@ async fn exercise(db: &Databases) {
         .unwrap()
         .get(0);
     assert_eq!(build, 672261);
+
+    // the world repository: overrides and battle NPC spawns
+    let w = &db.world;
+    let o = ExdOverride { sheet: "BNpcName".into(), row_id: 2, col: 0, value: "ruins sprinter".into(), comment: None };
+    w.set_exd_override(BETA_PATCH, &o).await.unwrap();
+    w.set_exd_override(BETA_PATCH, &ExdOverride { value: "ruins dasher".into(), ..o.clone() }).await.unwrap();
+    let all = w.exd_overrides(BETA_PATCH).await.unwrap();
+    assert_eq!(all.len(), 1, "replaced, not added");
+    assert_eq!(all[0].value, "ruins dasher");
+    assert!(w.exd_overrides("2014.05.27.0000.0000").await.unwrap().is_empty());
+    assert!(w.remove_exd_override(BETA_PATCH, "BNpcName", 2, 0).await.unwrap());
+
+    let spawn = BnpcSpawn {
+        territory: 134,
+        instance_id: Some(1132780),
+        layer: "LVD_BNPC_01".into(),
+        base_id: 37,
+        name_id: 37,
+        level: 2,
+        pos: [42.75, 6.5, -222.125],
+        rotation: 0.75,
+        wander_range: 6.0,
+        source: "sapphire".into(),
+        ..Default::default()
+    };
+    let hand = BnpcSpawn { instance_id: None, source: "hand".into(), ..spawn.clone() };
+    assert_eq!(w.replace_bnpc_spawns(BETA_PATCH, "sapphire", std::slice::from_ref(&spawn)).await.unwrap(), 1);
+    w.replace_bnpc_spawns(BETA_PATCH, "hand", &[hand.clone(), hand.clone()]).await.unwrap();
+    // importing again replaces that source's rows only
+    w.replace_bnpc_spawns(BETA_PATCH, "sapphire", std::slice::from_ref(&spawn)).await.unwrap();
+    let back = w.bnpc_spawns(BETA_PATCH, Some(134)).await.unwrap();
+    assert_eq!(w.bnpc_spawns(BETA_PATCH, None).await.unwrap().len(), 3);
+    assert!(w.bnpc_spawns(BETA_PATCH, Some(135)).await.unwrap().is_empty());
+    assert_eq!(back, vec![hand.clone(), hand, spawn]);
+    assert_eq!(w.bnpc_spawn_counts(BETA_PATCH).await.unwrap(), vec![(134, 3)]);
 }
 
 #[tokio::test]

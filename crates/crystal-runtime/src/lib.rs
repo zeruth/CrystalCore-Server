@@ -8,12 +8,12 @@ use std::sync::Arc;
 
 use anyhow::{Context, bail};
 use crystal_common::{Config, Role};
-use crystal_data::WorldData;
-use crystal_db::Databases;
+use crystal_data::{Overrides, WorldData};
+use crystal_db::{BETA_PATCH, Databases};
 use crystal_lobby::{HostRole, Lobby};
 use crystal_net::Listener;
 use crystal_state::State;
-use crystal_world::{NpcPlacement, World};
+use crystal_world::{BnpcPlacement, NpcPlacement, TerritoryContent, World};
 use crystal_zone::Zone;
 use crystal_zone::commands::Commands;
 use tokio_util::sync::CancellationToken;
@@ -86,9 +86,14 @@ impl Server {
                 Role::Zone => {
                     let world = match &config.data.game {
                         Some(game) => {
-                            let world =
-                                WorldData::open(game).with_context(|| format!("game data in {}", game.display()))?;
-                            info!(game = %game.display(), "game data");
+                            let mut overrides = Overrides::default();
+                            for o in db.world.exd_overrides(BETA_PATCH).await.context("exd overrides")? {
+                                overrides.add(&o.sheet, o.row_id, o.col as usize, o.value);
+                            }
+                            let count = overrides.len();
+                            let world = WorldData::open_with(game, overrides)
+                                .with_context(|| format!("game data in {}", game.display()))?;
+                            info!(game = %game.display(), overrides = count, "game data");
                             Some(Arc::new(world))
                         }
                         None => {
@@ -98,10 +103,27 @@ impl Server {
                     };
                     let listener = Listener::bind("zone", config.zone.bind).await.context("zone")?;
                     addrs.insert(Role::Zone, listener.local_addr()?);
+                    // battle NPCs from the world database, by territory (read once; a few MB at most)
+                    let mut bnpcs: HashMap<u16, Vec<BnpcPlacement>> = HashMap::new();
+                    for s in db.world.bnpc_spawns(BETA_PATCH, None).await.context("battle NPC spawns")? {
+                        bnpcs.entry(s.territory).or_default().push(BnpcPlacement {
+                            base_id: s.base_id,
+                            name_id: s.name_id,
+                            level: s.level,
+                            pos: s.pos,
+                            rotation: s.rotation,
+                        });
+                    }
+                    info!(
+                        spawns = bnpcs.values().map(Vec::len).sum::<usize>(),
+                        territories = bnpcs.len(),
+                        "battle NPCs"
+                    );
                     let npcs_from = world.clone();
-                    let npcs = Box::new(move |territory: u16| -> Vec<NpcPlacement> {
-                        let Some(data) = &npcs_from else { return vec![] };
-                        match data.npcs(territory) {
+                    let npcs = Box::new(move |territory: u16| -> TerritoryContent {
+                        let bnpcs = bnpcs.get(&territory).cloned().unwrap_or_default();
+                        let Some(data) = &npcs_from else { return TerritoryContent { enpcs: vec![], bnpcs } };
+                        let enpcs = match data.npcs(territory) {
                             Ok(n) => n
                                 .iter()
                                 .map(|n| NpcPlacement { enpc: n.enpc, pos: n.pos, rotation: n.rotation })
@@ -110,7 +132,8 @@ impl Server {
                                 warn!(territory, "event NPCs: {e}");
                                 vec![]
                             }
-                        }
+                        };
+                        TerritoryContent { enpcs, bnpcs }
                     });
                     let territories = Arc::new(World::new(npcs, shutdown.child_token()));
                     let mut commands = Commands::default();

@@ -1,5 +1,10 @@
-//! `crystal-tools bots`: headless clients that log into the zone service, walk circles around a
-//! point, ping and talk, for load tests and for seeing other players from the real client.
+//! Server tools:
+//!
+//! - `exd`: browse the client's EXD sheets as the server sees them (overrides applied).
+//! - `override`: change an EXD row for the server (`world.exd_override`).
+//! - `import`: server-only content into the world database (Sapphire's battle NPCs).
+//! - `bots`: headless clients that log into the zone service, walk circles around a point, ping and
+//!   talk, for load tests and for seeing other players from the real client.
 //!
 //! Each bot is a stored character (`Bot 001`, ...) on the `bots` account, made on first use with
 //! the look of an existing character (`--look`), and placed at `--territory`/`--at` before it
@@ -14,12 +19,16 @@ use anyhow::Context;
 use clap::{Parser, Subcommand};
 use crystal_bot::{Bot, Down};
 use crystal_common::Config;
-use crystal_db::{Databases, Position};
+use crystal_data::{Overrides, WorldData};
+use crystal_db::{BETA_PATCH, Databases, ExdOverride, Position};
 use crystal_protocol::zone::chat;
 use tracing::{info, warn};
 
 /// Player actor ids are this plus the character's row id (the zone's `PLAYER_ACTOR_BASE`).
 const PLAYER_ACTOR_BASE: u32 = 0x1000_0000;
+
+mod exd;
+mod import;
 const BOT_ACCOUNT: &str = "bots";
 
 #[derive(Parser)]
@@ -34,6 +43,21 @@ struct Args {
 
 #[derive(Subcommand)]
 enum Command {
+    /// The client's EXD sheets (the game data is `[data] game`, or `CRYSTAL_DATA__GAME`).
+    Exd {
+        #[command(subcommand)]
+        command: exd::ExdCommand,
+    },
+    /// The server's overrides of EXD rows (applied when the zone service starts).
+    Override {
+        #[command(subcommand)]
+        command: OverrideCommand,
+    },
+    /// Server-only content into the world database.
+    Import {
+        #[command(subcommand)]
+        command: ImportCommand,
+    },
     /// Runs headless clients against the zone service until Ctrl+C.
     Bots {
         #[arg(long, short = 'n', default_value_t = 10)]
@@ -57,6 +81,48 @@ enum Command {
         #[arg(long, default_value_t = 4.0)]
         rate: f32,
     },
+}
+
+#[derive(Subcommand)]
+enum OverrideCommand {
+    /// Lists the overrides.
+    List,
+    /// Sets column `col` of `row` in `sheet` to `value` (adding the row if the sheet lacks it).
+    Set {
+        sheet: String,
+        row: u32,
+        col: u32,
+        value: String,
+        #[arg(long)]
+        comment: Option<String>,
+    },
+    /// Removes one.
+    Remove { sheet: String, row: u32, col: u32 },
+}
+
+#[derive(Subcommand)]
+enum ImportCommand {
+    /// Sapphire's `battlenpc` dump (`sql/migrations/20211217125038_UpdateBattleNpc.sql`), checked
+    /// against this build; replaces earlier imports from Sapphire.
+    SapphireBnpcs { file: PathBuf },
+}
+
+/// The game data, with the world database's overrides unless `raw`.
+async fn game_data(config: &Config, db: Option<&Databases>, raw: bool) -> anyhow::Result<WorldData> {
+    let game = config.data.game.as_ref().context("no game data: set [data] game or CRYSTAL_DATA__GAME")?;
+    let mut overrides = Overrides::default();
+    if let (Some(db), false) = (db, raw) {
+        for o in db.world.exd_overrides(BETA_PATCH).await? {
+            overrides.add(&o.sheet, o.row_id, o.col as usize, o.value);
+        }
+    }
+    Ok(WorldData::open_with(game, overrides)?)
+}
+
+async fn databases(config: &Config) -> anyhow::Result<Databases> {
+    let db = Databases::connect(&config.database).await.context("databases")?;
+    db.migrate().await?;
+    Ok(db)
 }
 
 fn parse_point(s: &str) -> Result<[f32; 3], String> {
@@ -85,6 +151,48 @@ async fn main() -> anyhow::Result<()> {
     let config = Config::load(&args.config)?;
     crystal_common::log::init(&config.log.filter);
     match args.command {
+        Command::Exd { command } => {
+            let db = databases(&config).await?;
+            let data = game_data(&config, Some(&db), false).await?;
+            db.close().await;
+            exd::run(&data, command)?;
+        }
+        Command::Override { command } => {
+            let db = databases(&config).await?;
+            match command {
+                OverrideCommand::List => {
+                    for o in db.world.exd_overrides(BETA_PATCH).await? {
+                        let note = o.comment.map(|c| format!("  # {c}")).unwrap_or_default();
+                        println!("{} {} {} = {:?}{note}", o.sheet, o.row_id, o.col, o.value);
+                    }
+                }
+                OverrideCommand::Set { sheet, row, col, value, comment } => {
+                    // checked against the client's sheet: the column must exist and take the value
+                    let data = game_data(&config, None, true).await?;
+                    let mut s = (*data.sheet(&sheet)?).clone();
+                    if !s.set(row, col as usize, &value) {
+                        anyhow::bail!("{sheet} column {col} does not take {value:?}");
+                    }
+                    let o = ExdOverride { sheet: s.name.clone(), row_id: row, col, value, comment };
+                    db.world.set_exd_override(BETA_PATCH, &o).await?;
+                    println!("{} {row} {col} = {:?} (the zone service applies it when it starts)", o.sheet, o.value);
+                }
+                OverrideCommand::Remove { sheet, row, col } => {
+                    if !db.world.remove_exd_override(BETA_PATCH, &sheet, row, col).await? {
+                        anyhow::bail!("no override {sheet} {row} {col}");
+                    }
+                }
+            }
+            db.close().await;
+        }
+        Command::Import { command } => {
+            let db = databases(&config).await?;
+            let data = game_data(&config, Some(&db), false).await?;
+            match command {
+                ImportCommand::SapphireBnpcs { file } => import::run_sapphire_bnpcs(&db, &data, &file).await?,
+            }
+            db.close().await;
+        }
         Command::Bots { count, territory, at, radius, look, chat_every, rate } => {
             let db = Databases::connect(&config.database).await.context("databases")?;
             db.migrate().await?;
@@ -103,7 +211,6 @@ async fn main() -> anyhow::Result<()> {
                     if let Err(e) = run_bot(addr, actor, i, at, r, rate, chat_every, &stats).await {
                         warn!(bot = i + 1, "{e:#}");
                         stats.errors.fetch_add(1, Ordering::Relaxed);
-                        stats.online.fetch_sub(1, Ordering::Relaxed);
                     }
                 });
             }
@@ -192,7 +299,15 @@ async fn run_bot(
 ) -> anyhow::Result<()> {
     let mut bot = Bot::connect(addr, actor).await?;
     bot.enter().await?;
+    // counted online from here until this returns, however it returns
+    struct Online<'a>(&'a AtomicU64);
+    impl Drop for Online<'_> {
+        fn drop(&mut self) {
+            self.0.fetch_sub(1, Ordering::Relaxed);
+        }
+    }
     stats.online.fetch_add(1, Ordering::Relaxed);
+    let _online = Online(&stats.online);
     let started = Instant::now();
     let mut step = tokio::time::interval(Duration::from_secs_f32(1.0 / rate.max(0.1)));
     let mut ping = tokio::time::interval(Duration::from_secs(5));

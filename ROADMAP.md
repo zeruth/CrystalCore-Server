@@ -203,7 +203,17 @@ structs; no ECS until a module needs one. `.item` and `.level` wait for Phase 5.
 - Commands: GM commands as a module (`.tele`, `.item`, `.level`, in AzerothCore's style).
 - Load testing with headless clients built from `crystal-protocol`.
 
-### Phase 4: Data
+### Phase 4: Data (started 2026-10-26)
+
+Done: the EXD reader reads any sheet, language and header (`crystal-data::exd`), and the server
+applies `world.exd_override` rows over the client's (any column, or a new row) through
+`WorldData::sheet`. Battle NPC spawns: Sapphire's `battlenpc` dump imported with
+`crystal-tools import sapphire-bnpcs`, every row checked against this build (territory by name,
+`BNpcBase`, `BNpcName`): 12,536 spawns in 52 territories. They stand in the world as kind-2
+actors (BNpcBase @4, BNpcName @0x38, found in `ReadSpawn` @0xaac200), spawned by range like
+everyone else; no AI until Phase 5. Tables for loot, gathering points and shops exist (this build
+has no GilShop sheets) but nothing fills them yet: no source matches this patch. The EXD
+browser is `crystal-tools exd` (list, header, rows, row, find).
 
 - EXD reader and the override tables.
 - Import tools for server-only data: BNpc spawns, loot, gathering points, shop stock. None of this is

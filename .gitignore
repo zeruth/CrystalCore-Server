@@ -7,3 +7,4 @@
 *.log
 /crystal.local.toml
 /captures/
+__pycache__/

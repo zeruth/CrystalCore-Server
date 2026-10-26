@@ -660,6 +660,7 @@ dependencies = [
  "clap",
  "crystal-bot",
  "crystal-common",
+ "crystal-data",
  "crystal-db",
  "crystal-protocol",
  "tokio",

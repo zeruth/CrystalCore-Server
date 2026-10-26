@@ -152,6 +152,10 @@ pub struct Spawn {
     pub status: u8,
     /// 1 a player, 2 a battle NPC, 3 an event NPC (@0x30; the client's switch).
     pub kind: u8,
+    /// For kinds 2 and 3, where the name comes from (@0x38): a `BNpcName` / `ENpcResident` row,
+    /// looked up by @0x463610 (`ReadSpawn` @0xaac200; the text @0x208 is used instead when the
+    /// byte @0x31 is 3).
+    pub name_id: u32,
     pub main_weapon: u64,
     pub sub_weapon: u64,
     /// Radians, -pi..pi; sent as a u16 over the full turn (@0x60).
@@ -180,6 +184,7 @@ impl Spawn {
         b[0x2b] = self.index;
         b[0x2c] = self.status;
         b[0x30] = self.kind;
+        b[0x38..0x3c].copy_from_slice(&self.name_id.to_le_bytes());
         b[0x48..0x50].copy_from_slice(&self.main_weapon.to_le_bytes());
         b[0x50..0x58].copy_from_slice(&self.sub_weapon.to_le_bytes());
         let turn = ((self.rotation + std::f32::consts::PI) / std::f32::consts::TAU * 65535.0).round();
@@ -220,6 +225,7 @@ impl Spawn {
             index: b[0x2b],
             status: b[0x2c],
             kind: b[0x30],
+            name_id: u32_at(b, 0x38)?,
             main_weapon: u64_at(0x48),
             sub_weapon: u64_at(0x50),
             rotation: turn,

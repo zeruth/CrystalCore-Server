@@ -9,10 +9,11 @@ pub mod lgb;
 pub mod sqpack;
 pub mod world;
 
+pub use exd::{Column, ColumnKind, Header, Language};
 pub use exd::{Sheet, Value};
 pub use lgb::{ExitRange, Layer, Layout, Object};
 pub use sqpack::SqPack;
-pub use world::{Arrival, NpcPlacement, WorldData};
+pub use world::{Arrival, NpcPlacement, Overrides, WorldData};
 
 #[derive(Debug, thiserror::Error)]
 pub enum DataError {

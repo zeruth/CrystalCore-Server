@@ -26,11 +26,8 @@ pub const COMMANDS: &[Spec] = &[
         help: "sets the GM level of the character's account: 0 player, 1 moderator, 2 game master, 3 administrator",
     },
     Spec { name: "gm-account", usage: "<username> <level>", help: "sets an account's GM level by its username" },
-    Spec {
-        name: "log",
-        usage: "[filter]",
-        help: "shows or sets the log filter (info, debug, info,crystal_zone=debug, ...)",
-    },
+    Spec { name: "level", usage: "<error|warn|info|debug|trace>", help: "sets the log level (F2 steps through them)" },
+    Spec { name: "log", usage: "[filter]", help: "shows or sets the full log filter (info,crystal_zone=debug, ...)" },
     Spec { name: "clear", usage: "", help: "clears the log view" },
     Spec { name: "quit", usage: "", help: "stops the server (also exit, shutdown, or Ctrl+C twice)" },
 ];
@@ -114,6 +111,14 @@ pub async fn run(
             }
             tracing::info!(account = %username, level, "gm level set from the console");
             out.push(format!("Account {username} is now GM level {level} ({}).", level_name(level)));
+        }
+        "level" => {
+            let level = args.to_ascii_lowercase();
+            if !["error", "warn", "info", "debug", "trace"].contains(&level.as_str()) {
+                bail!("usage: level <error|warn|info|debug|trace>");
+            }
+            logging.set_filter(&level)?;
+            out.push(format!("log level: {level}"));
         }
         "log" => {
             if args.is_empty() {

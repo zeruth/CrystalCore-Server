@@ -25,6 +25,8 @@ pub type ActorId = u32;
 
 /// Event NPC actor ids: this, the territory << 12, and the NPC's index in the territory (from 1).
 pub const NPC_ACTOR_BASE: u32 = 0x4000_0000;
+/// Battle NPC actor ids: this, the territory << 14, and the spawn's index in the territory (from 1).
+pub const BNPC_ACTOR_BASE: u32 = 0x5000_0000;
 /// Characters are spawned for a player within this distance (yalms)...
 pub const SPAWN_RANGE: f32 = 60.0;
 /// ...and despawned beyond this one, so walking along the edge does not flicker.
@@ -64,10 +66,31 @@ pub struct NpcPlacement {
     pub rotation: f32,
 }
 
+/// A battle NPC's spawn point (the world database's `bnpc_spawn`).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct BnpcPlacement {
+    /// `BNpcBase` row: what it looks like.
+    pub base_id: u32,
+    /// `BNpcName` row.
+    pub name_id: u32,
+    pub level: u16,
+    pub pos: [f32; 3],
+    /// Radians.
+    pub rotation: f32,
+}
+
+/// What the game data and the world database put in a territory.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct TerritoryContent {
+    pub enpcs: Vec<NpcPlacement>,
+    pub bnpcs: Vec<BnpcPlacement>,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum ActorKind {
     Player(Arc<PlayerLook>),
     EventNpc { enpc: u32 },
+    BattleNpc { base_id: u32, name_id: u32, level: u16 },
 }
 
 /// An actor as a spawn shows it.
@@ -133,8 +156,9 @@ pub struct Presence {
     pub territory: u16,
 }
 
-/// Where a territory's event NPCs stand (the game data, or nothing).
-pub type NpcSource = Box<dyn Fn(u16) -> Vec<NpcPlacement> + Send + Sync>;
+/// What stands in a territory before any player comes: its event NPCs (the game data) and battle
+/// NPCs (the world database).
+pub type NpcSource = Box<dyn Fn(u16) -> TerritoryContent + Send + Sync>;
 
 /// The territories of one zone service. Each is started on first use and runs until shutdown.
 pub struct World {
@@ -179,7 +203,8 @@ impl World {
             return z.clone();
         }
         let (tx, rx) = mpsc::channel(INBOX);
-        let state = ZoneState::new(territory, &(self.npcs)(territory));
+        let content = (self.npcs)(territory);
+        let state = ZoneState::new(territory, &content.enpcs, &content.bnpcs);
         self.tasks.spawn(zone::run(state, rx, self.shutdown.clone()));
         let handle = ZoneHandle { territory, tx };
         zones.insert(territory, handle.clone());
