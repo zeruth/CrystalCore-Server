@@ -53,6 +53,18 @@ fn looks_gear_and_warps() {
     let to = world.warp(0x20014).unwrap();
     assert_eq!(to.territory, 128);
     assert!((to.pos[1] - 91.5).abs() < 0.01);
+    // the gladiator's starting items: the weathered shortsword, and armour found by model
+    let shortsword = world.item(1601).unwrap();
+    assert_eq!(
+        (shortsword.name.as_str(), shortsword.stack_size, shortsword.slot_category),
+        ("Weathered Shortsword", 1, 1)
+    );
+    let items = world.starting_items(1);
+    assert_eq!(items[0], (0, 1601));
+    assert!(items.len() > 1, "armour too: {items:?}");
+    let (main, _, looks) = world.equipment_look(&items);
+    assert_eq!(main, shortsword.model_main);
+    assert_ne!(looks[1], 0, "a body piece");
     // layout files in the older format (f1d1's planner.lgb) are left out, not fatal
     assert!(world.layer_names(164).is_ok());
 }

@@ -22,11 +22,12 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use bytes::Bytes;
 use crystal_common::chara::CharaMake;
 use crystal_data::WorldData;
-use crystal_db::{Character, Databases, Position};
+use crystal_db::{Character, Databases, InventoryRow, Position};
 use crystal_net::codec::{FrameCodec, RawFrameCodec, decode_frame};
 use crystal_net::ipc::{IpcHeader, packet, timestamp};
 use crystal_net::{ConnectionType, Frame, Segment, SegmentType};
 use crystal_state::State;
+use crystal_world::inventory::{Inventory, Item, container};
 use crystal_world::{ActorKind, ActorView, ChatRange, Entry, Event, Motion, PlayerLook, World};
 use futures_util::{SinkExt, StreamExt};
 use tokio::io::AsyncWriteExt;
@@ -82,6 +83,10 @@ struct Session {
     /// The account's GM level (0: a player), and whether GM mode is on.
     gm_level: u8,
     gm_mode: bool,
+    /// The character's items (the zone connection's; loaded at its session init).
+    inventory: Inventory,
+    /// The next item batch's sequence.
+    item_sequence: u32,
 }
 
 impl Session {
@@ -90,10 +95,11 @@ impl Session {
         kind: ConnectionType,
         chara: Option<Character>,
         gm_level: u8,
+        inventory: Inventory,
         data: Option<&WorldData>,
     ) -> Self {
         let position = chara.as_ref().and_then(|c| c.position).unwrap_or(DEFAULT_POSITION);
-        let look = Arc::new(look_of(chara.as_ref(), data));
+        let look = Arc::new(look_of(chara.as_ref(), &inventory, data));
         Self {
             actor_id,
             kind,
@@ -105,6 +111,8 @@ impl Session {
             entry: None,
             gm_level,
             gm_mode: gm_level > 0,
+            inventory,
+            item_sequence: 1,
         }
     }
 
@@ -210,6 +218,7 @@ impl Zone {
                 self.world.leave(entry).await;
             }
             self.save_position(&mut sess).await;
+            self.save_inventory(&sess).await;
         }
         info!("closed");
     }
@@ -254,7 +263,11 @@ impl Zone {
                     payload[..4].copy_from_slice(&actor_id.to_le_bytes());
                     let reply = Segment::new(SegmentType::Unknown(2), actor_id, actor_id, payload.into());
                     replies.push(Frame::new(kind, vec![reply]));
-                    *session = Some(Session::new(actor_id, kind, chara, gm_level, self.data.as_deref()));
+                    let inventory = match (&chara, kind) {
+                        (Some(c), ConnectionType::Zone) => self.load_inventory(c).await,
+                        _ => Inventory::default(),
+                    };
+                    *session = Some(Session::new(actor_id, kind, chara, gm_level, inventory, self.data.as_deref()));
                 }
                 SegmentType::KeepAlive => {
                     let pong =
@@ -387,8 +400,11 @@ impl Zone {
                     (opcode::PLAYER_STATUS, self.player_status(sess)),
                     (opcode::CLASS_INFO, ipc::class_info(sess.look.class, level, level, 0)),
                     (opcode::BASE_PARAM, starting_params()),
-                    (opcode::INIT_ZONE, ipc::init_zone(pos.zone_id as u16, 1, sess.pos())),
                 ]
+                .into_iter()
+                .chain(inventory_packets(&sess.inventory, &mut sess.item_sequence))
+                .chain([(opcode::INIT_ZONE, ipc::init_zone(pos.zone_id as u16, 1, sess.pos()))])
+                .collect()
             }
             opcode::FINISH_LOADING => {
                 info!("  finished loading: spawning the player");
@@ -415,6 +431,68 @@ impl Zone {
                 info!(opcode = format_args!("{other:#06x}"), len = body.len(), body = %hex::encode(body), "  unhandled ipc");
                 vec![]
             }
+        }
+    }
+
+    /// The character's items; a character with none (a new one) gets its class's starting
+    /// items, worn.
+    async fn load_inventory(&self, chara: &Character) -> Inventory {
+        let rows = match self.db.characters.inventory(chara.id).await {
+            Ok(r) => r,
+            Err(e) => {
+                warn!("inventory: {e}");
+                return Inventory::default();
+            }
+        };
+        let mut inv = Inventory::default();
+        for r in &rows {
+            let item = Item {
+                item_id: r.item_id,
+                quantity: r.quantity,
+                hq: r.hq,
+                condition: r.condition,
+                spiritbond: r.spiritbond,
+                stain: r.stain,
+            };
+            if inv.set(r.container, r.slot, item).is_err() {
+                warn!(container = r.container, slot = r.slot, "inventory row in no slot the character has: left out");
+            }
+        }
+        if rows.is_empty()
+            && let Some(data) = self.data.as_deref()
+        {
+            let class = CharaMake::parse(&chara.appearance).map_or(1, |m| m.class);
+            for (slot, item_id) in data.starting_items(class) {
+                let _ = inv.set(container::EQUIPPED, slot, Item::new(item_id, 1));
+            }
+            info!(character = %chara.name, items = inv.all().count(), "starting items");
+            self.write_inventory(chara.id, &inv).await;
+        }
+        inv
+    }
+
+    async fn save_inventory(&self, sess: &Session) {
+        if let Some(chara) = &sess.chara {
+            self.write_inventory(chara.id, &sess.inventory).await;
+        }
+    }
+
+    async fn write_inventory(&self, character_id: i64, inv: &Inventory) {
+        let rows: Vec<InventoryRow> = inv
+            .all()
+            .map(|(container, slot, i)| InventoryRow {
+                container,
+                slot,
+                item_id: i.item_id,
+                quantity: i.quantity,
+                hq: i.hq,
+                condition: i.condition,
+                spiritbond: i.spiritbond,
+                stain: i.stain,
+            })
+            .collect();
+        if let Err(e) = self.db.characters.save_inventory(character_id, &rows).await {
+            warn!("saving the inventory: {e}");
         }
     }
 
@@ -567,10 +645,16 @@ impl Zone {
 /// What others see of a stored character: its CharaMake text gives the appearance and class,
 /// the class its starting gear (`CharaMakeClassEquip`) until there is an inventory; level 1
 /// until stats exist.
-fn look_of(chara: Option<&Character>, data: Option<&WorldData>) -> PlayerLook {
+fn look_of(chara: Option<&Character>, inventory: &Inventory, data: Option<&WorldData>) -> PlayerLook {
     let make = chara.and_then(|c| CharaMake::parse(&c.appearance));
     let class = make.as_ref().map_or(1, |m| m.class);
-    let (main_weapon, sub_weapon, models) = data.and_then(|d| d.starting_gear(class)).unwrap_or_default();
+    // what it wears, from its equipped items; the class's starting look when it has none
+    let equipped: Vec<(u16, u32)> = inventory.container(container::EQUIPPED).map(|(s, i)| (s, i.item_id)).collect();
+    let (main_weapon, sub_weapon, models) = match data {
+        Some(d) if !equipped.is_empty() => d.equipment_look(&equipped),
+        Some(d) => d.starting_gear(class).unwrap_or_default(),
+        None => Default::default(),
+    };
     PlayerLook {
         name: chara.map_or_else(|| "Crystal".into(), |c| c.name.clone()),
         content_id: chara.map_or(0, |c| c.content_id),
@@ -581,6 +665,39 @@ fn look_of(chara: Option<&Character>, data: Option<&WorldData>) -> PlayerLook {
         sub_weapon,
         models,
     }
+}
+
+/// Every container that holds something, as the client takes them: each item (currency and
+/// crystals as GIL_ITEM, the rest NORMAL_ITEM) under one sequence, then ITEM_SIZE with the count.
+fn inventory_packets(inv: &Inventory, sequence: &mut u32) -> Vec<(u16, Bytes)> {
+    let mut out = Vec::new();
+    for (c, _) in container::ALL {
+        let items: Vec<(u16, Item)> = inv.container(c).map(|(s, i)| (s, *i)).collect();
+        if items.is_empty() {
+            continue;
+        }
+        let seq = *sequence;
+        *sequence += 1;
+        let op =
+            if c == container::CURRENCY || c == container::CRYSTAL { opcode::GIL_ITEM } else { opcode::NORMAL_ITEM };
+        for (slot, i) in &items {
+            let info = ipc::ItemInfo {
+                sequence: seq,
+                container: c,
+                slot: *slot,
+                quantity: i.quantity,
+                item_id: i.item_id,
+                hq: i.hq,
+                condition: i.condition,
+                spiritbond: i.spiritbond,
+                stain: i.stain,
+                ..Default::default()
+            };
+            out.push((op, info.to_bytes()));
+        }
+        out.push((opcode::ITEM_SIZE, ipc::container_info(seq, items.len() as u32, c)));
+    }
+    out
 }
 
 /// Level-1 attributes until stats exist: 20 in each of the six, the HP and MP the spawn shows,

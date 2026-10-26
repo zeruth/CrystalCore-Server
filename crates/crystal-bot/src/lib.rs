@@ -40,6 +40,14 @@ pub enum Down {
     /// The client time the server echoed.
     Pong(u32),
     LogoutReply,
+    /// An item of a container batch (NormalItem, GilItem), or a slot update.
+    Item(ipc::ItemInfo),
+    /// A container batch is complete: sequence, item count, container.
+    Container {
+        sequence: u32,
+        count: u32,
+        container: u16,
+    },
     Other {
         opcode: u16,
         source: u32,
@@ -55,6 +63,9 @@ pub struct Bot {
     /// Where the bot stands, after [`Self::enter`] and its own moves.
     pub territory: u16,
     pub pos: [f32; 3],
+    /// Every item the server sent, in order, and the containers it closed.
+    pub items: Vec<ipc::ItemInfo>,
+    pub containers: Vec<(u32, u32, u16)>,
 }
 
 impl Bot {
@@ -70,6 +81,8 @@ impl Bot {
             pending: Default::default(),
             territory: 0,
             pos: [0.0; 3],
+            items: Vec::new(),
+            containers: Vec::new(),
         };
         let init = Segment::new(SegmentType::SessionInit, 0, 0, ipc::session_init(actor));
         bot.writer.send(Frame::new(ConnectionType::Zone, vec![init])).await?;
@@ -144,6 +157,13 @@ impl Bot {
                     continue;
                 }
                 if let Some(d) = decode(s.header.source, &s.payload) {
+                    match &d {
+                        Down::Item(i) => self.items.push(*i),
+                        Down::Container { sequence, count, container } => {
+                            self.containers.push((*sequence, *count, *container))
+                        }
+                        _ => {}
+                    }
                     self.pending.push_back(d);
                 }
             }
@@ -193,6 +213,12 @@ fn decode(source: u32, payload: &Bytes) -> Option<Down> {
         opcode::CHAT_DOWN => Down::Chat(ipc::ChatDown::parse(body)?),
         opcode::PING => Down::Pong(u32::from_le_bytes(body.get(..4)?.try_into().ok()?)),
         opcode::LOGOUT_REPLY => Down::LogoutReply,
+        opcode::NORMAL_ITEM | opcode::GIL_ITEM | opcode::UPDATE_ITEM => Down::Item(ipc::ItemInfo::parse(body)?),
+        opcode::ITEM_SIZE => Down::Container {
+            sequence: u32::from_le_bytes(body.get(..4)?.try_into().ok()?),
+            count: u32::from_le_bytes(body.get(4..8)?.try_into().ok()?),
+            container: u16::from_le_bytes(body.get(8..10)?.try_into().ok()?),
+        },
         op => Down::Other { opcode: op, source },
     })
 }

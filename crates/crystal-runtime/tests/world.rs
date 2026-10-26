@@ -7,7 +7,7 @@ use std::time::Duration;
 use crystal_bot::{Bot, Down};
 use crystal_common::config::DatabaseEndpoint;
 use crystal_common::{Config, Role};
-use crystal_db::Position;
+use crystal_db::{InventoryRow, Position};
 use crystal_protocol::zone::chat;
 use crystal_runtime::Server;
 
@@ -47,9 +47,29 @@ async fn players_see_each_other() {
     let a = character(&server, gm_account, "Alpha Tester", 101, [0.0, 0.0, 0.0]).await;
     let b = character(&server, player_account, "Beta Tester", 102, [5.0, 0.0, 0.0]).await;
 
+    // Alpha has a weapon on and some gil
+    let weapon = InventoryRow {
+        container: 1000,
+        slot: 0,
+        item_id: 1601,
+        quantity: 1,
+        hq: false,
+        condition: 30000,
+        spiritbond: 0,
+        stain: 0,
+    };
+    let gil = InventoryRow { container: 2000, slot: 0, item_id: 1, quantity: 1234, ..weapon };
+    server.db.characters.save_inventory((a - 0x1000_0000) as i64, &[weapon, gil]).await.unwrap();
+
     let mut alpha = Bot::connect(addr, a).await.unwrap();
     alpha.enter().await.unwrap();
     assert_eq!(alpha.territory, 129);
+    // its items came before InitZone, a batch per container
+    let got: Vec<(u16, u16, u32, u32)> =
+        alpha.items.iter().map(|i| (i.container, i.slot, i.item_id, i.quantity)).collect();
+    assert_eq!(got, [(1000, 0, 1601, 1), (2000, 0, 1, 1234)]);
+    assert_eq!(alpha.containers.len(), 2);
+    assert!(alpha.containers.iter().all(|(seq, n, _)| *n == 1 && alpha.items.iter().any(|i| i.sequence == *seq)));
     let mut beta = Bot::connect(addr, b).await.unwrap();
     beta.enter().await.unwrap();
 

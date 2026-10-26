@@ -24,6 +24,17 @@ const ALL_LAYOUT_FILES: [&str; 7] =
 const NPC_EQUIP_MODELS: [usize; 10] = [4, 7, 9, 11, 13, 15, 17, 19, 21, 23];
 const NPC_EQUIP_DYES: [usize; 10] = [5, 8, 10, 12, 14, 16, 18, 20, 22, 24];
 
+/// What the server reads of an `Item` row.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct ItemRow {
+    pub name: String,
+    pub stack_size: u32,
+    /// `EquipSlotCategory` row (0: not equippable).
+    pub slot_category: u8,
+    pub model_main: u64,
+    pub model_sub: u64,
+}
+
 /// How an NPC looks, as a spawn carries it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct NpcLook {
@@ -318,6 +329,90 @@ impl WorldData {
             *m = u(i) as u32;
         }
         Some((u(5), u(6), models))
+    }
+
+    /// An `Item` row as the server needs it (the β's columns: `StackSize` 14, `EquipSlotCategory`
+    /// 28, the main and sub models 29 and 30; SaintCoinach 2.5 has them one lower from 27 on).
+    pub fn item(&self, item_id: u32) -> Option<ItemRow> {
+        let sheet = self.sheet("Item").ok()?;
+        let row = sheet.row(item_id)?;
+        let u = |i: usize| row.get(i).and_then(|v| v.as_u64()).unwrap_or(0);
+        Some(ItemRow {
+            name: row.get(9).and_then(|v| v.as_str()).unwrap_or_default().to_owned(),
+            stack_size: u(14).max(1) as u32,
+            slot_category: u(28) as u8,
+            model_main: u(29),
+            model_sub: u(30),
+        })
+    }
+
+    /// The first item with `model` for `slot_category` (an `EquipSlotCategory` row).
+    pub fn item_by_model(&self, model: u64, slot_category: u8) -> Option<u32> {
+        let sheet = self.sheet("Item").ok()?;
+        sheet
+            .rows
+            .iter()
+            .find(|(_, r)| {
+                r.get(29).and_then(|v| v.as_u64()) == Some(model)
+                    && r.get(28).and_then(|v| v.as_u64()) == Some(slot_category as u64)
+            })
+            .map(|(id, _)| *id)
+    }
+
+    /// What a new character of `class` wears, as (equipped slot, item): the class's starting
+    /// weapon (`ClassJob` col 22) and the armour `CharaMakeClassEquip` shows (head, body, hands,
+    /// legs, feet), found by model.
+    pub fn starting_items(&self, class: u8) -> Vec<(u16, u32)> {
+        let mut items = Vec::new();
+        if let Some(weapon) = self.sheet("ClassJob").ok().and_then(|s| s.row(class as u32)?.get(22)?.as_u64())
+            && weapon != 0
+        {
+            items.push((0, weapon as u32));
+        }
+        if let Some((_, _, models)) = self.starting_gear(class) {
+            // CharaMakeClassEquip's armour order, as EquipSlotCategory rows and equipped slots
+            for (model, (category, slot)) in models.iter().zip([(3, 2), (4, 3), (5, 4), (7, 6), (8, 7)]) {
+                if *model != 0
+                    && let Some(id) = self.item_by_model(*model as u64, category)
+                {
+                    items.push((slot, id));
+                }
+            }
+        }
+        items
+    }
+
+    /// How equipped items look on a character: (main weapon, off hand, the ten gear models in
+    /// the spawn's order: head, body, hands, legs, feet, ears, neck, wrists, rings).
+    pub fn equipment_look(&self, equipped: &[(u16, u32)]) -> (u64, u64, [u32; 10]) {
+        let (mut main, mut sub, mut models) = (0, 0, [0u32; 10]);
+        for &(slot, item_id) in equipped {
+            let Some(item) = self.item(item_id) else { continue };
+            // equipped slot (Sapphire's GearSetSlot) → the spawn's model slot
+            let model_slot = match slot {
+                0 => {
+                    (main, sub) = (item.model_main, if sub == 0 { item.model_sub } else { sub });
+                    continue;
+                }
+                1 => {
+                    sub = item.model_main;
+                    continue;
+                }
+                2 => 0,
+                3 => 1,
+                4 => 2,
+                6 => 3,
+                7 => 4,
+                8 => 5,
+                9 => 6,
+                10 => 7,
+                11 => 8,
+                12 => 9,
+                _ => continue,
+            };
+            models[model_slot] = item.model_main as u32;
+        }
+        (main, sub, models)
     }
 
     /// Which of the 19 level slots (`PlayerStatus` @0x66) a class's level is kept in
