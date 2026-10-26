@@ -1,0 +1,41 @@
+//! Against the 672261 install when `CRYSTAL_TEST_GAME` names its `game` folder (not in CI: the game
+//! data is not ours to ship).
+
+use std::path::PathBuf;
+
+use crystal_data::WorldData;
+
+fn game() -> Option<PathBuf> {
+    match std::env::var("CRYSTAL_TEST_GAME") {
+        Ok(p) => Some(PathBuf::from(p)),
+        Err(_) => {
+            eprintln!("CRYSTAL_TEST_GAME not set: skipped");
+            None
+        }
+    }
+}
+
+#[test]
+fn territory_type_and_level_sheets() {
+    let Some(game) = game() else { return };
+    let world = WorldData::open(&game).unwrap();
+    let tt = world.pack().sheet("TerritoryType").unwrap();
+    assert_eq!(tt.row(129).unwrap()[0].as_str(), Some("s1t2"));
+    assert_eq!(tt.row(181).unwrap()[0].as_str(), Some("s1t1_opening"));
+    // the event NPC the Limsa start point stands beside
+    let level = world.pack().sheet("Level").unwrap();
+    let npc = level.row(4069046).unwrap();
+    assert!((npc[0].as_f32().unwrap() + 60.44).abs() < 0.01);
+    assert_eq!(npc[9].as_u64(), Some(129));
+}
+
+#[test]
+fn lower_decks_exit_to_middle_la_noscea() {
+    let Some(game) = game() else { return };
+    let world = WorldData::open(&game).unwrap();
+    // the exit the client reported walking into (up 0x190, exit 3876614)
+    let exit = world.layout(129).unwrap().find(3876614).unwrap().exit_range().unwrap();
+    assert_eq!((exit.territory, exit.destination, exit.return_point), (134, 2464047, 3876616));
+    let arrival = world.zone_line(129, 3876614).unwrap();
+    assert_eq!(arrival.territory, 134);
+}

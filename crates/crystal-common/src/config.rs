@@ -23,6 +23,16 @@ pub struct Config {
     pub lobby: LobbyConfig,
     pub zone: ServiceConfig,
     pub chat: ServiceConfig,
+    pub data: DataConfig,
+}
+
+/// The client's game data the server reads (EXD sheets, layouts).
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct DataConfig {
+    /// The client install's `game` folder (the one holding `sqpack/`). Unset: zone exits and
+    /// anything else read from the game data are off.
+    pub game: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -124,6 +134,7 @@ impl Default for Config {
             lobby: LobbyConfig::default(),
             zone: ServiceConfig::at(54992),
             chat: ServiceConfig::at(54993),
+            data: DataConfig::default(),
         }
     }
 }

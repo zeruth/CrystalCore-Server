@@ -370,6 +370,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "crystal-data"
+version = "0.1.0"
+dependencies = [
+ "crc32fast",
+ "flate2",
+ "parking_lot",
+ "thiserror",
+ "tracing",
+]
+
+[[package]]
 name = "crystal-db"
 version = "0.1.0"
 dependencies = [
@@ -420,6 +431,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "crystal-common",
+ "crystal-data",
  "crystal-db",
  "crystal-lobby",
  "crystal-net",
@@ -466,6 +478,7 @@ dependencies = [
  "anyhow",
  "bytes",
  "crystal-common",
+ "crystal-data",
  "crystal-db",
  "crystal-net",
  "crystal-state",

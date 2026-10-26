@@ -8,6 +8,7 @@ use std::sync::Arc;
 
 use anyhow::{Context, bail};
 use crystal_common::{Config, Role};
+use crystal_data::WorldData;
 use crystal_db::Databases;
 use crystal_lobby::{HostRole, Lobby};
 use crystal_net::Listener;
@@ -15,7 +16,7 @@ use crystal_state::State;
 use crystal_zone::Zone;
 use tokio_util::sync::CancellationToken;
 use tokio_util::task::TaskTracker;
-use tracing::info;
+use tracing::{info, warn};
 
 /// Which of the client's lobby hosts a lobby port serves.
 enum Host {
@@ -78,9 +79,21 @@ impl Server {
                     }
                 }
                 Role::Zone => {
+                    let world = match &config.data.game {
+                        Some(game) => {
+                            let world =
+                                WorldData::open(game).with_context(|| format!("game data in {}", game.display()))?;
+                            info!(game = %game.display(), "game data");
+                            Some(Arc::new(world))
+                        }
+                        None => {
+                            warn!("no game data configured ([data] game): zone exits are off");
+                            None
+                        }
+                    };
                     let listener = Listener::bind("zone", config.zone.bind).await.context("zone")?;
                     addrs.insert(Role::Zone, listener.local_addr()?);
-                    let zone = Arc::new(Zone::new(db.clone(), state.clone(), config.zone.capture_dir.clone()));
+                    let zone = Arc::new(Zone::new(db.clone(), state.clone(), world, config.zone.capture_dir.clone()));
                     tasks.spawn(crystal_net::serve(listener, shutdown.clone(), move |stream, peer, stop| {
                         zone.clone().handle(stream, peer, stop)
                     }));

@@ -16,6 +16,10 @@ pub mod opcode {
     /// Up (the same number as [`INIT_ZONE`]; the directions have their own tables): where the
     /// player is, sent as it moves; see [`super::PositionUpdate`].
     pub const UPDATE_POSITION: u16 = 0x19a;
+    /// Up (0x10 bytes): the player walked into a zone exit: the exit range's instance id @0 (in the
+    /// territory's layout), the player's position @4. Answered with [`INIT_ZONE`] for where the exit
+    /// leads.
+    pub const ZONE_LINE: u16 = 0x190;
     /// Down: a character appears; see [`super::Spawn`]. Sent as the client's own actor id (the
     /// segment's source), it becomes the player (@0xa64860 compares it with the id game login gave).
     pub const SPAWN: u16 = 0x190;

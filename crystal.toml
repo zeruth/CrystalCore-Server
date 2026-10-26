@@ -36,6 +36,10 @@ bind = "127.0.0.1:54994"
 bind_2 = "127.0.0.1:54995"
 create_host = 1
 
+[data]
+# The client install's `game` folder: zone exits and other game data are read from it.
+# game = "C:/Users/tyler/Documents/code/CrystalCore/archive/installs/beta-672261/game"
+
 [zone]
 # Also the address game login sends the client to.
 bind = "127.0.0.1:54992"

@@ -20,6 +20,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use bytes::Bytes;
 use crystal_common::chara::CharaMake;
+use crystal_data::WorldData;
 use crystal_db::{Character, Databases, Position};
 use crystal_net::codec::{FrameCodec, RawFrameCodec, decode_frame};
 use crystal_net::ipc::{IpcHeader, packet, timestamp};
@@ -52,6 +53,8 @@ pub struct Zone {
     db: Databases,
     #[allow(dead_code)] // the lobby's session handoff
     state: State,
+    /// The client's game data (zone exits); none when not configured.
+    world: Option<Arc<WorldData>>,
     capture_dir: Option<PathBuf>,
 }
 
@@ -79,8 +82,8 @@ impl Session {
 }
 
 impl Zone {
-    pub fn new(db: Databases, state: State, capture_dir: Option<PathBuf>) -> Self {
-        Self { db, state, capture_dir }
+    pub fn new(db: Databases, state: State, world: Option<Arc<WorldData>>, capture_dir: Option<PathBuf>) -> Self {
+        Self { db, state, world, capture_dir }
     }
 
     pub async fn handle(self: Arc<Self>, stream: TcpStream, peer: SocketAddr, shutdown: CancellationToken) {
@@ -201,6 +204,43 @@ impl Zone {
                     }
                 }
                 vec![]
+            }
+            opcode::ZONE_LINE => {
+                let Some(exit) = body.get(..4).map(|b| u32::from_le_bytes(b.try_into().unwrap())) else {
+                    return vec![];
+                };
+                let here = sess.position.zone_id as u16;
+                let Some(world) = &self.world else {
+                    warn!(exit, "zone exit, but no game data is configured");
+                    return vec![];
+                };
+                match world.zone_line(here, exit) {
+                    Ok(to) => {
+                        info!(
+                            exit,
+                            from = here,
+                            to = to.territory,
+                            x = to.pos[0],
+                            y = to.pos[1],
+                            z = to.pos[2],
+                            "  zone line"
+                        );
+                        sess.position = Position {
+                            zone_id: to.territory as u32,
+                            x: to.pos[0] as f64,
+                            y: to.pos[1] as f64,
+                            z: to.pos[2] as f64,
+                            rotation: to.rotation as f64,
+                        };
+                        sess.moved = true;
+                        self.save_position(sess).await;
+                        vec![(opcode::INIT_ZONE, ipc::init_zone(to.territory, 1, to.pos))]
+                    }
+                    Err(e) => {
+                        warn!(exit, territory = here, "zone line: {e}");
+                        vec![]
+                    }
+                }
             }
             opcode::INIT => {
                 let pos = sess.position;

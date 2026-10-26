@@ -10,6 +10,7 @@ publish = false
 
 [workspace.dependencies]
 crystal-common = { path = "crates/crystal-common" }
+crystal-data = { path = "crates/crystal-data" }
 crystal-db = { path = "crates/crystal-db" }
 crystal-lobby = { path = "crates/crystal-lobby" }
 crystal-net = { path = "crates/crystal-net" }
@@ -20,6 +21,7 @@ crystal-zone = { path = "crates/crystal-zone" }
 anyhow = "1"
 bytes = "1"
 clap = { version = "4.6", features = ["derive"] }
+crc32fast = "1"
 figment = { version = "0.10", features = ["toml", "env"] }
 flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
 futures-util = { version = "0.3", default-features = false, features = ["std", "sink"] }
