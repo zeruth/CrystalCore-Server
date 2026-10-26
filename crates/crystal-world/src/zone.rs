@@ -33,6 +33,7 @@ pub(crate) enum Request {
     Look { id: ActorId, look: Arc<PlayerLook> },
     Target { id: ActorId, target: Option<ActorId> },
     AutoAttack { id: ActorId, on: bool },
+    Revive { id: ActorId },
 }
 
 /// A battle NPC in a fight: where it came from, who it is after, when it next swings.
@@ -90,6 +91,8 @@ pub struct ZoneState {
     /// Battle NPCs fighting someone.
     mobs: HashMap<ActorId, Mob>,
     last_tick: Option<Instant>,
+    /// When the next server tick (regeneration) is.
+    next_server_tick: Option<Instant>,
 }
 
 fn distance2(a: [f32; 3], b: [f32; 3]) -> f32 {
@@ -140,6 +143,7 @@ impl ZoneState {
             respawns: Vec::new(),
             mobs: HashMap::new(),
             last_tick: None,
+            next_server_tick: None,
         }
     }
 
@@ -205,7 +209,47 @@ impl ZoneState {
             .min(Duration::from_secs(1));
         self.last_tick = Some(now);
         self.mob_tick(now, dt.as_secs_f32());
+        if self.next_server_tick.is_none_or(|t| t <= now) {
+            self.next_server_tick = Some(now + combat::SERVER_TICK);
+            self.regenerate();
+        }
         self.drop_failed();
+    }
+
+    /// The server tick's HP: live players no battle NPC is after get some of theirs back.
+    fn regenerate(&mut self) {
+        let fighting: Vec<ActorId> = self.mobs.values().map(|m| m.target).collect();
+        let healing: Vec<(ActorId, u32, u32)> = self
+            .viewers
+            .keys()
+            .filter(|id| !fighting.contains(id))
+            .filter_map(|id| self.health.get(id).map(|(hp, max)| (*id, *hp, *max)))
+            .filter(|(_, hp, max)| *hp > 0 && hp < max)
+            .collect();
+        for (id, hp, max) in healing {
+            let hp = (hp + (max * combat::REGEN_PERCENT / 100).max(1)).min(max);
+            self.set_hp(id, hp, max);
+        }
+    }
+
+    /// A dead player gets up whole, where it fell.
+    pub fn revive(&mut self, id: ActorId) {
+        if let Some((0, max)) = self.health.get(&id).copied() {
+            self.set_hp(id, max, max);
+        }
+    }
+
+    /// Sets a player's HP and tells it and whoever sees it.
+    fn set_hp(&mut self, id: ActorId, hp: u32, hp_max: u32) {
+        self.health.insert(id, (hp, hp_max));
+        let Some(ActorKind::Player(look)) = self.actors.get(&id).map(|a| a.kind.clone()) else { return };
+        let event = Event::Hp { actor: id, hp, hp_max, level: look.level as u16, class: look.class };
+        let failed = &mut self.failed;
+        for (&vid, viewer) in &self.viewers {
+            if vid == id || viewer.visible.contains_key(&id) {
+                send(vid, viewer, event.clone(), failed);
+            }
+        }
     }
 
     /// Battle NPCs in a fight: past the leash they go home; out of reach they run after their
@@ -374,6 +418,7 @@ impl ZoneState {
             Request::Look { id, look } => self.set_look(id, look),
             Request::Target { id, target } => self.set_target(id, target),
             Request::AutoAttack { id, on } => self.set_auto_attack(id, on),
+            Request::Revive { id } => self.revive(id),
             Request::AddBnpc { bnpc, reply } => {
                 let _ = reply.send(self.add_bnpc(bnpc));
             }
@@ -879,6 +924,34 @@ mod tests {
         zone.set_auto_attack(A, true);
         zone.combat_tick(t0 + combat::SWING * 3);
         assert!(!drain(&mut a).iter().any(|e| matches!(e, Event::Damage { source: A, .. })));
+    }
+
+    #[test]
+    fn hp_comes_back_on_the_server_tick_out_of_a_fight_and_the_dead_get_up() {
+        let (mut zone, mut a, rat_id, t0) = in_a_fight(tough("Alpha"));
+        zone.combat_tick(t0 + combat::SWING);
+        let hurt = zone.health(A).unwrap().0;
+        assert!(hurt < 1000);
+        // in a fight: nothing back
+        zone.combat_tick(t0 + combat::SWING + combat::SERVER_TICK);
+        assert!(zone.health(A).unwrap().0 <= hurt);
+        // out of it (the rat sent home by leaving its reach for good)
+        zone.go_home(rat_id);
+        drain(&mut a);
+        let t = t0 + combat::SWING + combat::SERVER_TICK * 2;
+        zone.combat_tick(t);
+        let back = zone.health(A).unwrap().0;
+        assert!(back > hurt, "{back} > {hurt}");
+        assert!(drain(&mut a).iter().any(|e| matches!(e, Event::Hp { actor: A, hp, .. } if *hp == back)));
+
+        // the dead do not regenerate; revived, they are whole
+        zone.health.insert(A, (0, 1000));
+        zone.combat_tick(t + combat::SERVER_TICK);
+        assert_eq!(zone.health(A), Some((0, 1000)));
+        zone.revive(A);
+        assert_eq!(zone.health(A), Some((1000, 1000)));
+        zone.revive(A);
+        assert_eq!(zone.health(A), Some((1000, 1000)), "only the dead");
     }
 
     #[test]

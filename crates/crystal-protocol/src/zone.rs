@@ -708,6 +708,9 @@ pub mod trigger {
     pub const AUTO_ATTACK: u32 = 0x01;
     /// The target changed: its actor id in arg 1 (0xe0000000: none) (@0x5326b0).
     pub const TARGET: u32 = 0x02;
+    /// Get up after dying (`Client::Game::UI::Revive` @0xa6d8d0 sends it with arg 1 = 8 or 5:
+    /// the dialog's choices, not yet told apart).
+    pub const REVIVE: u32 = 0x0d;
     /// The id the client uses for no target.
     pub const NO_TARGET: u32 = 0xe000_0000;
 

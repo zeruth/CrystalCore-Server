@@ -157,6 +157,15 @@ pub enum Event {
         level: u16,
         class: u8,
     },
+    /// The actor's HP changed (healing, regeneration, a revive): its level and class too, for the
+    /// client's HP update.
+    Hp {
+        actor: ActorId,
+        hp: u32,
+        hp_max: u32,
+        level: u16,
+        class: u8,
+    },
     /// The actor died.
     Death {
         actor: ActorId,
@@ -311,6 +320,11 @@ impl ZoneHandle {
     /// The player targets `target` (`None`: nothing).
     pub fn set_target(&self, id: ActorId, target: Option<ActorId>) {
         let _ = self.tx.try_send(Request::Target { id, target });
+    }
+
+    /// A dead player gets up (whole, where it fell).
+    pub fn revive(&self, id: ActorId) {
+        let _ = self.tx.try_send(Request::Revive { id });
     }
 
     /// The player starts or stops auto-attacking its target.

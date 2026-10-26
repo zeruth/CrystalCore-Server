@@ -13,6 +13,11 @@ pub const CORPSE: Duration = Duration::from_secs(5);
 /// How long until a dead battle NPC is back where it stood.
 pub const RESPAWN: Duration = Duration::from_secs(30);
 
+/// The server tick: HP comes back on it (DoTs, HoTs and statuses later).
+pub const SERVER_TICK: Duration = Duration::from_secs(3);
+/// How much of its maximum HP a player out of a fight gets back each server tick, percent.
+pub const REGEN_PERCENT: u32 = 10;
+
 /// How fast a battle NPC runs after its target, yalms a second.
 pub const CHASE_SPEED: f32 = 6.0;
 /// How far a battle NPC follows from where it stands before it gives up and goes home.

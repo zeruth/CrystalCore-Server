@@ -621,6 +621,10 @@ impl Zone {
                 }
                 entry.zone.set_auto_attack(sess.actor_id, args[0] != 0);
             }
+            ipc::trigger::REVIVE => {
+                info!(choice = args[0], "  revive");
+                entry.zone.revive(sess.actor_id);
+            }
             other => debug!(command = other, args = ?args, "  command not acted on yet"),
         }
     }
@@ -1046,6 +1050,12 @@ fn event_segment(sess: &Session, event: Event, data: Option<&WorldData>) -> Vec<
                 sess.segment(source, opcode::ACTION_RESULT1, &hit.to_bytes()),
                 sess.segment(target, opcode::HUD_PARAM, &hud),
             ];
+        }
+        // regeneration, revives: the HP update alone
+        Event::Hp { actor, hp, hp_max, level, class } => {
+            let (mp, tp) =
+                if actor == sess.actor_id { (sess.look.mp_max.min(u16::MAX as u32) as u16, 1000) } else { (0, 0) };
+            sess.segment(actor, opcode::HUD_PARAM, &ipc::hud_param(class, level.min(255) as u8, hp, hp_max, mp, mp, tp))
         }
         // sent as the dead, naming the killer
         Event::Death { actor, killer, .. } => {
