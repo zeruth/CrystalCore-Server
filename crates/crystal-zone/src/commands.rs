@@ -94,6 +94,7 @@ pub struct Context<'a> {
     pub(crate) gm_mode: Option<bool>,
     pub(crate) level: Option<u8>,
     pub(crate) exp: Option<u32>,
+    pub(crate) items: Vec<(u32, u32)>,
 }
 
 impl<'a> Context<'a> {
@@ -115,6 +116,7 @@ impl<'a> Context<'a> {
             gm_mode: None,
             level: None,
             exp: None,
+            items: Vec::new(),
         }
     }
 
@@ -131,6 +133,11 @@ impl<'a> Context<'a> {
     /// Sets the player's level in its current class.
     pub fn set_level(&mut self, level: u8) {
         self.level = Some(level);
+    }
+
+    /// Gives the player `quantity` of an item, into its bags.
+    pub fn give_item(&mut self, item_id: u32, quantity: u32) {
+        self.items.push((item_id, quantity));
     }
 
     /// Gives the player experience in its current class.

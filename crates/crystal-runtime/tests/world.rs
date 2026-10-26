@@ -168,6 +168,14 @@ async fn players_see_each_other() {
     let progress = server.db.characters.class_progress((a - 0x1000_0000) as i64).await.unwrap();
     assert!(progress.contains(&(0, 10, 77)), "{progress:?}");
 
+    // an item given: into the bags, saved
+    alpha.chat(chat::SAY, ".item 4551 3").await.unwrap();
+    let given = alpha.wait_for(T, |d| if let Down::Item(i) = d { Some(*i) } else { None }).await.unwrap();
+    assert_eq!((given.container, given.item_id), (0, 4551));
+    assert_eq!(line(&mut alpha).await, "You obtain 3 item 4551.");
+    let saved = server.db.characters.inventory((a - 0x1000_0000) as i64).await.unwrap();
+    assert_eq!(saved.iter().filter(|r| r.item_id == 4551).count(), 3, "no game data: stacks of 1");
+
     // a battle NPC placed by hand: saved, and Beta (53 yalms off, in range) sees it appear
     alpha.chat(chat::SAY, ".bnpc 37 37 2").await.unwrap();
     let placed = line(&mut alpha).await;

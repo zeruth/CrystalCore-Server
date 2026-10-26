@@ -3,7 +3,7 @@
 //! master, 3 administrator (`crystal-tools account set-gm`).
 //!
 //! `.bnpc` places battle NPCs by hand (Phase 4's third source, after imports and captures).
-//! `.level` and `.exp` change the current class's progress; `.item` waits for item grants.
+//! `.level` and `.exp` change the current class's progress; `.item` puts items in the bags.
 
 use crystal_db::{BETA_PATCH, BnpcSpawn};
 use crystal_world::BnpcPlacement;
@@ -25,6 +25,36 @@ pub fn register(commands: &mut Commands) {
     commands.register(Bnpc);
     commands.register(Level);
     commands.register(Exp);
+    commands.register(GiveItem);
+}
+
+/// `.item <id> (quantity)`: an item into the GM's bags.
+struct GiveItem;
+
+impl Command for GiveItem {
+    fn name(&self) -> &'static str {
+        "item"
+    }
+    fn usage(&self) -> &'static str {
+        "<Item row> (quantity)"
+    }
+    fn help(&self) -> &'static str {
+        "puts an item in your bags"
+    }
+    fn level(&self) -> u8 {
+        GAME_MASTER
+    }
+    fn run<'a>(&'a self, cx: &'a mut Context<'_>, args: &'a str) -> BoxFuture<'a, ()> {
+        Box::pin(async move {
+            let parts: Vec<&str> = args.split_whitespace().collect();
+            let id = parts.first().and_then(|p| p.parse::<u32>().ok());
+            let quantity = parts.get(1).map_or(Some(1), |q| q.parse::<u32>().ok()).filter(|q| *q > 0);
+            match (id, quantity) {
+                (Some(id), Some(q)) if id > 0 => cx.give_item(id, q),
+                _ => cx.reply("Usage: .item <Item row> (quantity)"),
+            }
+        })
+    }
 }
 
 /// `.level <1-50>`: the current class's level.

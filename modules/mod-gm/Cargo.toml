@@ -1,6 +1,6 @@
 [package]
 name = "mod-gm"
-description = "GM chat commands: .gm, .help, .gps, .who, .tele, .goto, .bnpc"
+description = "GM chat commands: .gm, .help, .gps, .who, .tele, .goto, .bnpc, .level, .exp, .item"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

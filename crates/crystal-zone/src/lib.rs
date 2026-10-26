@@ -485,19 +485,7 @@ impl Zone {
             vec![from]
         };
         for (c, s) in &touched {
-            let item = sess.inventory.get(*c, *s).copied().unwrap_or_default();
-            let info = ipc::ItemInfo {
-                container: *c,
-                slot: *s,
-                quantity: item.quantity,
-                item_id: item.item_id,
-                hq: item.hq,
-                condition: item.condition,
-                spiritbond: item.spiritbond,
-                stain: item.stain,
-                ..Default::default()
-            };
-            out.push((opcode::UPDATE_ITEM, info.to_bytes()));
+            out.push((opcode::UPDATE_ITEM, slot_update(&sess.inventory, *c, *s)));
         }
         // gear changed: the look others get from now on
         if touched.iter().any(|(c, _)| *c == container::EQUIPPED) {
@@ -564,6 +552,29 @@ impl Zone {
             (opcode::CLASS_INFO, ipc::class_info(sess.look.class, p.level as u16, p.level as u16, p.exp)),
             (opcode::BASE_PARAM, starting_params(&sess.look)),
         ]
+    }
+
+    /// Puts items in the player's bags (stacking by the Item row's stack size): saved, every
+    /// changed slot sent, a line in the chat log either way.
+    async fn give_item(&self, sess: &mut Session, item_id: u32, quantity: u32) -> Vec<(u16, Bytes)> {
+        let row = self.data.as_deref().map(|d| d.item(item_id));
+        let (name, stack) = match row {
+            Some(None) => return vec![(opcode::CHAT_DOWN, system_message(&format!("No item {item_id}.")))],
+            Some(Some(i)) => (i.name, i.stack_size),
+            None => (format!("item {item_id}"), 1),
+        };
+        let changed = match sess.inventory.add_to_bags(item_id, quantity, false, stack) {
+            Ok(c) => c,
+            Err(e) => {
+                return vec![(opcode::CHAT_DOWN, system_message(&format!("No room for {quantity} {name} ({e:?}).")))];
+            }
+        };
+        info!(item_id, quantity, "  item given");
+        self.save_inventory(sess).await;
+        let mut out: Vec<(u16, Bytes)> =
+            changed.iter().map(|(c, s)| (opcode::UPDATE_ITEM, slot_update(&sess.inventory, *c, *s))).collect();
+        out.push((opcode::CHAT_DOWN, system_message(&format!("You obtain {quantity} {name}."))));
+        out
     }
 
     /// The character's items; a character with none (a new one) gets its class's starting
@@ -725,6 +736,9 @@ impl Zone {
         if cx.level.is_some() || cx.exp.is_some() {
             out.extend(self.change_progress(sess, cx.level, cx.exp).await);
         }
+        for (item_id, quantity) in cx.items {
+            out.extend(self.give_item(sess, item_id, quantity).await);
+        }
         if let Some(t) = cx.teleport {
             out.extend(self.move_to(sess, t.territory, t.pos, t.rotation).await);
         }
@@ -816,6 +830,23 @@ fn look_of(chara: Option<&Character>, inventory: &Inventory, level: u8, data: Op
         mp_max: stats.mp,
         attributes: [stats.strength, stats.dexterity, stats.vitality, stats.intelligence, stats.mind, stats.piety],
     }
+}
+
+/// An UPDATE_ITEM body for a slot as it now is (an empty slot: item 0).
+fn slot_update(inv: &Inventory, container: u16, slot: u16) -> Bytes {
+    let item = inv.get(container, slot).copied().unwrap_or_default();
+    ipc::ItemInfo {
+        container,
+        slot,
+        quantity: item.quantity,
+        item_id: item.item_id,
+        hq: item.hq,
+        condition: item.condition,
+        spiritbond: item.spiritbond,
+        stain: item.stain,
+        ..Default::default()
+    }
+    .to_bytes()
 }
 
 /// Every container that holds something, as the client takes them: each item (currency and
