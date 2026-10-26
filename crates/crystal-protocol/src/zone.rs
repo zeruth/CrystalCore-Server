@@ -51,6 +51,10 @@ pub mod opcode {
     pub const CLASS_INFO: u16 = 0x19f;
     /// Down: the player's attributes; see [`super::base_params`] (case 0x4a → @0xa4ecf0).
     pub const BASE_PARAM: u16 = 0x1a1;
+    /// Down: an order about a character (sent as it; Sapphire's ActorControl); see
+    /// [`super::order`] (cases 0x33-0x35 → @0xa55f80, which switches on the category through the
+    /// byte table @0xa5bfb0, `tools/re/ordertable.py`).
+    pub const ORDER: u16 = 0x142;
     /// Down: a character's HP, MP, TP and statuses (sent as that character); see
     /// [`super::hud_param`] (case 0x31 → @0xa555b0).
     pub const HUD_PARAM: u16 = 0x140;
@@ -575,6 +579,30 @@ pub fn hud_param(class: u8, level: u8, hp: u32, hp_max: u32, mp: u16, mp_max: u1
 /// The HP and max HP of a [`hud_param`] body.
 pub fn parse_hud_param(b: &[u8]) -> Option<(u32, u32)> {
     Some((u32_at(b, 4)?, u32_at(b, 8)?))
+}
+
+/// [`opcode::ORDER`]'s categories.
+pub mod order_kind {
+    /// The character died: arg 1 the killer (0xe0000000: none), arg 2 kept with it (@0xa55f80
+    /// case 6, which writes the defeat lines to the log).
+    pub const DEATH: u16 = 6;
+}
+
+/// [`opcode::ORDER`]'s body (0x18 bytes): the category u16 @0 and four u32 arguments @4 (the
+/// dispatcher passes @0, @4, @8, @0xc, @0x10).
+pub fn order(category: u16, args: [u32; 4]) -> Bytes {
+    let mut b = BytesMut::zeroed(0x18);
+    b[0..2].copy_from_slice(&category.to_le_bytes());
+    for (i, a) in args.iter().enumerate() {
+        b[4 + 4 * i..8 + 4 * i].copy_from_slice(&a.to_le_bytes());
+    }
+    b.freeze()
+}
+
+/// The category and arguments of an [`order`] body.
+pub fn parse_order(b: &[u8]) -> Option<(u16, [u32; 4])> {
+    let c = u16::from_le_bytes(b.get(..2)?.try_into().ok()?);
+    Some((c, [u32_at(b, 4)?, u32_at(b, 8)?, u32_at(b, 0xc)?, u32_at(b, 0x10)?]))
 }
 
 /// One effect of an action on its target (8 bytes; Sapphire's older EffectEntry).

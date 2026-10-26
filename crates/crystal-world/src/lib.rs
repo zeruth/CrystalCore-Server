@@ -159,6 +159,10 @@ pub enum Event {
     /// The actor died.
     Death {
         actor: ActorId,
+        /// Who dealt the last blow.
+        killer: Option<ActorId>,
+        /// The dead actor's level (for the killer's experience).
+        level: u16,
     },
     /// The actor's gear changed (players; the actor's own client is told too).
     Look {

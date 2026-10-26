@@ -194,7 +194,8 @@ async fn players_see_each_other() {
 
     // Alpha fights it: target, auto-attack; each swing an auto-attack result and its HP, to 0
     let rat: u32 = u32::from_str_radix(placed.rsplit("actor 0x").next().unwrap().trim_end_matches('.'), 16).unwrap();
-    alpha.chat(chat::SAY, ".level 50").await.unwrap();
+    // strong enough for two swings
+    alpha.chat(chat::SAY, ".level 49").await.unwrap();
     alpha.trigger(ipc::trigger::TARGET, [rat, 1, 0, 0]).await.unwrap();
     alpha.trigger(ipc::trigger::AUTO_ATTACK, [1, rat, 0, 0]).await.unwrap();
     let (action, target, effect) = alpha
@@ -216,6 +217,20 @@ async fn players_see_each_other() {
             .await
             .unwrap();
     }
+    // its death, naming Alpha
+    let killer = alpha
+        .wait_for(T, |d| match d {
+            Down::Order { actor, category, args } if *actor == rat && *category == ipc::order_kind::DEATH => {
+                Some(args[0])
+            }
+            _ => None,
+        })
+        .await
+        .unwrap();
+    assert_eq!(killer, a);
+    // a level-2 rat at 49 pays nothing (combat::kill_exp); its experience stays as it was
+    let progress = server.db.characters.class_progress((a - 0x1000_0000) as i64).await.unwrap();
+    assert!(progress.contains(&(0, 49, 0)), "{progress:?}");
 
     // demoted: refused at once (shouted: Alpha is out of say range now)
     server.db.login.set_gm_level_of(gm_account, 0).await.unwrap();

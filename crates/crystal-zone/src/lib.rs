@@ -196,12 +196,32 @@ impl Zone {
                 }
                 Input::Event(Some(first)) => {
                     let sess = session.as_mut().expect("events come to a session");
+                    // the player's own kills, to credit after the frame
+                    let mut kills: Vec<u16> = Vec::new();
+                    let me = sess.actor_id;
+                    let mut note = |e: &Event| {
+                        if let Event::Death { killer: Some(k), level, .. } = e
+                            && *k == me
+                        {
+                            kills.push(*level);
+                        }
+                    };
+                    note(&first);
                     let mut segments: Vec<Segment> =
                         event_segment(sess, first, self.data.as_deref()).into_iter().collect();
                     while segments.len() < EVENTS_PER_FRAME
                         && let Some(Ok(e)) = sess.entry.as_mut().map(|e| e.events.try_recv())
                     {
+                        note(&e);
                         segments.extend(event_segment(sess, e, self.data.as_deref()));
+                    }
+                    for level in kills {
+                        let exp = crystal_world::combat::kill_exp(sess.look.level, level);
+                        if exp > 0 {
+                            for (op, body) in self.change_progress(sess, None, Some(exp)).await {
+                                segments.push(sess.segment(sess.actor_id, op, &body));
+                            }
+                        }
                     }
                     if !segments.is_empty() {
                         replies.push(Frame::new(sess.kind, segments));
@@ -1024,10 +1044,10 @@ fn event_segment(sess: &Session, event: Event, data: Option<&WorldData>) -> Vec<
                 sess.segment(target, opcode::HUD_PARAM, &hud),
             ];
         }
-        // the HP update at 0 shows it; the death animation's own packet comes later
-        Event::Death { actor } => {
-            debug!(actor = format_args!("{actor:#x}"), "death");
-            return vec![];
+        // sent as the dead, naming the killer
+        Event::Death { actor, killer, .. } => {
+            let args = [killer.unwrap_or(ipc::trigger::NO_TARGET), 0, 0, 0];
+            sess.segment(actor, opcode::ORDER, &ipc::order(ipc::order_kind::DEATH, args))
         }
         Event::Look { actor, look } => {
             sess.segment(actor, opcode::EQUIP, &ipc::equip(look.main_weapon, look.sub_weapon, &look.models))

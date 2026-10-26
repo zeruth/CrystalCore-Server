@@ -49,6 +49,12 @@ pub enum Down {
         sub_weapon: u64,
         models: [u32; 10],
     },
+    /// An order about a character (`ipc::order_kind`): category and arguments.
+    Order {
+        actor: u32,
+        category: u16,
+        args: [u32; 4],
+    },
     /// A character's HP (an HUD update sent as it).
     Hp {
         actor: u32,
@@ -269,6 +275,10 @@ fn decode(source: u32, payload: &Bytes) -> Option<Down> {
         opcode::PING => Down::Pong(u32::from_le_bytes(body.get(..4)?.try_into().ok()?)),
         opcode::LOGOUT_REPLY => Down::LogoutReply,
         opcode::NORMAL_ITEM | opcode::GIL_ITEM | opcode::UPDATE_ITEM => Down::Item(ipc::ItemInfo::parse(body)?),
+        opcode::ORDER => {
+            let (category, args) = ipc::parse_order(body)?;
+            Down::Order { actor: source, category, args }
+        }
         opcode::HUD_PARAM => {
             let (hp, hp_max) = ipc::parse_hud_param(body)?;
             Down::Hp { actor: source, hp, hp_max }

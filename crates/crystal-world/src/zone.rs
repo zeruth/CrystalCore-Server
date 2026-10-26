@@ -219,7 +219,12 @@ impl ZoneState {
                     failed,
                 );
                 if hp == 0 {
-                    send(vid, viewer, Event::Death { actor: target }, failed);
+                    send(
+                        vid,
+                        viewer,
+                        Event::Death { actor: target, killer: Some(attacker), level: target_level },
+                        failed,
+                    );
                 }
             }
         }
@@ -632,7 +637,7 @@ mod tests {
         for _ in 0..100 {
             t += combat::SWING;
             zone.combat_tick(t);
-            if drain(&mut a).iter().any(|e| matches!(e, Event::Death { actor } if *actor == rat_id)) {
+            if drain(&mut a).iter().any(|e| matches!(e, Event::Death { actor, .. } if *actor == rat_id)) {
                 died = Some(t);
                 break;
             }

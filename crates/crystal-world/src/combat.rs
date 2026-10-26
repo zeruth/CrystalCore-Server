@@ -23,6 +23,18 @@ pub fn auto_attack_damage(level: u8, strength: u32) -> u32 {
     (strength * 2 / 5 + level as u32).max(1)
 }
 
+/// The experience for defeating a battle NPC of `target_level` at `level`: more for stronger
+/// ones, little for those far below (until the β's own rules are known).
+pub fn kill_exp(level: u8, target_level: u16) -> u32 {
+    let base = 30 + target_level as u32 * 20;
+    let diff = target_level as i32 - level as i32;
+    match diff {
+        d if d <= -10 => 0,
+        d if d < 0 => base * (10 + d) as u32 / 10,
+        d => base + base * d.min(5) as u32 / 5,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -33,5 +45,13 @@ mod tests {
         assert!((4..=10).contains(&hits), "{hits} swings");
         assert!(auto_attack_damage(50, 300) > auto_attack_damage(1, 20));
         assert_eq!(auto_attack_damage(1, 0), 1);
+    }
+
+    #[test]
+    fn kills_pay_by_how_strong_the_foe_was() {
+        assert!(kill_exp(1, 1) > 0);
+        assert!(kill_exp(1, 3) > kill_exp(1, 1));
+        assert!(kill_exp(10, 5) < kill_exp(5, 5));
+        assert_eq!(kill_exp(30, 5), 0, "far below: nothing");
     }
 }
