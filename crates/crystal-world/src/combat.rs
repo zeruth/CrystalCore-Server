@@ -20,6 +20,8 @@ pub const REGEN_PERCENT: u32 = 10;
 
 /// How fast a battle NPC runs after its target, yalms a second.
 pub const CHASE_SPEED: f32 = 6.0;
+/// How near a player comes before an aggressive battle NPC attacks, yalms.
+pub const AGGRO_RANGE: f32 = 8.0;
 /// How far a battle NPC follows from where it stands before it gives up and goes home.
 pub const LEASH: f32 = 40.0;
 

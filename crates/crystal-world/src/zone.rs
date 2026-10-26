@@ -93,6 +93,8 @@ pub struct ZoneState {
     last_tick: Option<Instant>,
     /// When the next server tick (regeneration) is.
     next_server_tick: Option<Instant>,
+    /// Battle NPCs that attack players who come near.
+    aggressive: std::collections::HashSet<ActorId>,
 }
 
 fn distance2(a: [f32; 3], b: [f32; 3]) -> f32 {
@@ -114,6 +116,13 @@ impl ZoneState {
             warn!(territory, count = bnpcs.len(), "more battle NPCs than a territory takes; the rest are left out");
         }
         let placed = bnpcs.len().min(MAX_BNPCS) as u32;
+        let aggressive = bnpcs
+            .iter()
+            .take(MAX_BNPCS)
+            .enumerate()
+            .filter(|(_, b)| b.aggressive)
+            .map(|(i, _)| BNPC_ACTOR_BASE + ((territory as u32) << 14) + i as u32 + 1)
+            .collect();
         let enpcs = npcs.iter().take(MAX_NPCS).enumerate().map(|(i, n)| {
             let id = NPC_ACTOR_BASE + ((territory as u32) << 12) + i as u32 + 1;
             (id, ActorView { id, kind: ActorKind::EventNpc { enpc: n.enpc }, pos: n.pos, rotation: n.rotation })
@@ -144,6 +153,7 @@ impl ZoneState {
             mobs: HashMap::new(),
             last_tick: None,
             next_server_tick: None,
+            aggressive,
         }
     }
 
@@ -154,6 +164,9 @@ impl ZoneState {
         let kind = ActorKind::BattleNpc { base_id: b.base_id, name_id: b.name_id, level: b.level };
         self.actors.insert(id, ActorView { id, kind, pos: b.pos, rotation: b.rotation });
         self.health.insert(id, (combat::bnpc_hp(b.level), combat::bnpc_hp(b.level)));
+        if b.aggressive {
+            self.aggressive.insert(id);
+        }
         id
     }
 
@@ -255,6 +268,7 @@ impl ZoneState {
     /// Battle NPCs in a fight: past the leash they go home; out of reach they run after their
     /// target; in reach they swing on their timer.
     fn mob_tick(&mut self, now: Instant, dt: f32) {
+        self.aggro();
         let ids: Vec<ActorId> = self.mobs.keys().copied().collect();
         for id in ids {
             let Some(mob) = self.mobs.get(&id).copied() else { continue };
@@ -279,6 +293,37 @@ impl ZoneState {
             } else if mob.next_swing.is_none_or(|t| t <= now) {
                 self.mob_swing(id, mob.target, now);
             }
+        }
+    }
+
+    /// Aggressive battle NPCs, alive and not fighting, go for the nearest live player in sight.
+    fn aggro(&mut self) {
+        let players: Vec<(ActorId, [f32; 3])> = self
+            .viewers
+            .keys()
+            .filter(|id| self.health.get(id).is_some_and(|(hp, _)| *hp > 0))
+            .filter_map(|id| self.actors.get(id).map(|a| (*id, a.pos)))
+            .collect();
+        if players.is_empty() {
+            return;
+        }
+        let mut found = Vec::new();
+        for id in &self.aggressive {
+            if self.mobs.contains_key(id) || !self.health.get(id).is_some_and(|(hp, _)| *hp > 0) {
+                continue;
+            }
+            let Some(me) = self.actors.get(id) else { continue };
+            let nearest = players
+                .iter()
+                .map(|(p, pos)| (distance2(me.pos, *pos), *p))
+                .filter(|(d, _)| *d <= combat::AGGRO_RANGE.powi(2))
+                .min_by(|a, b| a.0.total_cmp(&b.0));
+            if let Some((_, target)) = nearest {
+                found.push((*id, me.pos, target));
+            }
+        }
+        for (id, home, target) in found {
+            self.mobs.insert(id, Mob { home, target, next_swing: None });
         }
     }
 
@@ -724,7 +769,14 @@ mod tests {
 
     #[test]
     fn battle_npcs_spawn_by_range_with_their_own_ids() {
-        let bnpc = |x: f32| BnpcPlacement { base_id: 37, name_id: 37, level: 2, pos: [x, 0.0, 0.0], rotation: 0.5 };
+        let bnpc = |x: f32| BnpcPlacement {
+            base_id: 37,
+            name_id: 37,
+            level: 2,
+            pos: [x, 0.0, 0.0],
+            rotation: 0.5,
+            aggressive: false,
+        };
         let enpc = NpcPlacement { enpc: 1000914, pos: [3.0, 0.0, 0.0], rotation: 0.0 };
         let mut zone = ZoneState::new(134, &[enpc], &[bnpc(1.0), bnpc(400.0)]);
         assert_eq!(zone.actors(), 3);
@@ -773,7 +825,14 @@ mod tests {
 
     #[test]
     fn auto_attacks_land_on_the_swing_and_kill() {
-        let rat = BnpcPlacement { base_id: 347, name_id: 417, level: 1, pos: [2.0, 0.0, 0.0], rotation: 0.0 };
+        let rat = BnpcPlacement {
+            base_id: 347,
+            name_id: 417,
+            level: 1,
+            pos: [2.0, 0.0, 0.0],
+            rotation: 0.0,
+            aggressive: false,
+        };
         let mut zone = ZoneState::new(129, &[], &[rat]);
         let rat_id = BNPC_ACTOR_BASE + (129 << 14) + 1;
         let (tx_a, mut a) = mpsc::channel(256);
@@ -829,7 +888,14 @@ mod tests {
 
     #[test]
     fn no_swing_out_of_reach_or_at_a_changed_target() {
-        let rat = BnpcPlacement { base_id: 347, name_id: 417, level: 1, pos: [20.0, 0.0, 0.0], rotation: 0.0 };
+        let rat = BnpcPlacement {
+            base_id: 347,
+            name_id: 417,
+            level: 1,
+            pos: [20.0, 0.0, 0.0],
+            rotation: 0.0,
+            aggressive: false,
+        };
         let mut zone = ZoneState::new(129, &[], &[rat]);
         let rat_id = BNPC_ACTOR_BASE + (129 << 14) + 1;
         let (tx, mut a) = mpsc::channel(256);
@@ -856,7 +922,14 @@ mod tests {
 
     /// A zone with one level-5 rat (enough HP to last) next to Alpha, who has hit it once at `t0`.
     fn in_a_fight(look: Arc<PlayerLook>) -> (ZoneState, mpsc::Receiver<Event>, ActorId, Instant) {
-        let rat = BnpcPlacement { base_id: 347, name_id: 417, level: 5, pos: [3.0, 0.0, 0.0], rotation: 0.0 };
+        let rat = BnpcPlacement {
+            base_id: 347,
+            name_id: 417,
+            level: 5,
+            pos: [3.0, 0.0, 0.0],
+            rotation: 0.0,
+            aggressive: false,
+        };
         let mut zone = ZoneState::new(129, &[], &[rat]);
         let rat_id = BNPC_ACTOR_BASE + (129 << 14) + 1;
         let (tx, mut a) = mpsc::channel(1024);
@@ -952,6 +1025,59 @@ mod tests {
         assert_eq!(zone.health(A), Some((1000, 1000)));
         zone.revive(A);
         assert_eq!(zone.health(A), Some((1000, 1000)), "only the dead");
+    }
+
+    #[test]
+    fn aggressive_ones_attack_who_comes_near_passive_ones_do_not() {
+        let rat = BnpcPlacement {
+            base_id: 347,
+            name_id: 417,
+            level: 1,
+            pos: [3.0, 0.0, 0.0],
+            rotation: 0.0,
+            aggressive: false,
+        };
+        let bomb = BnpcPlacement {
+            base_id: 99,
+            name_id: 99,
+            level: 5,
+            pos: [20.0, 0.0, 0.0],
+            rotation: 0.0,
+            aggressive: true,
+        };
+        let mut zone = ZoneState::new(129, &[], &[rat, bomb]);
+        let (rat_id, bomb_id) = (BNPC_ACTOR_BASE + (129 << 14) + 1, BNPC_ACTOR_BASE + (129 << 14) + 2);
+        let (tx, mut a) = mpsc::channel(1024);
+        zone.enter(A, 1, tough("Alpha"), [0.0; 3], 0.0, tx);
+        drain(&mut a);
+        let t0 = Instant::now();
+        // the rat stands beside Alpha and does nothing; the bomb is out of sight
+        for i in 1..=8 {
+            zone.combat_tick(t0 + Duration::from_millis(250 * i));
+        }
+        assert!(!drain(&mut a).iter().any(|e| matches!(e, Event::Damage { target: A, .. })));
+        // Alpha walks up to the bomb: it attacks
+        zone.moved(A, [14.0, 0.0, 0.0], 0.0, Motion::default());
+        let mut t = t0 + Duration::from_secs(2);
+        let mut hit_by = None;
+        for _ in 0..20 {
+            t += Duration::from_millis(250);
+            zone.combat_tick(t);
+            if let Some(source) = drain(&mut a).iter().find_map(|e| match e {
+                Event::Damage { source, target: A, .. } => Some(*source),
+                _ => None,
+            }) {
+                hit_by = Some(source);
+                break;
+            }
+        }
+        assert_eq!(hit_by, Some(bomb_id));
+        assert_ne!(hit_by, Some(rat_id));
+        // the dead draw nothing
+        zone.health.insert(A, (0, 1000));
+        zone.go_home(bomb_id);
+        zone.combat_tick(t + Duration::from_millis(250));
+        assert!(!zone.mobs.contains_key(&bomb_id));
     }
 
     #[test]

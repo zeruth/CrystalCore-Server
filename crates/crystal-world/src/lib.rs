@@ -84,6 +84,8 @@ pub struct BnpcPlacement {
     pub pos: [f32; 3],
     /// Radians.
     pub rotation: f32,
+    /// Attacks players who come near.
+    pub aggressive: bool,
 }
 
 /// What the game data and the world database put in a territory.

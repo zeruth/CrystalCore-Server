@@ -10,5 +10,5 @@ no imports: point `[data] game` at a client install and run.
 
 Everything here fits its build: `crystal-tools prune` finds (and with `--apply` removes) world
 content whose territory, sheet rows or layout layers the build does not have, and the importers
-apply the same checks. After changing the world database, `crystal-tools export` writes the file
-back. `[data] seed` (default `data`) points elsewhere, or unset turns seeding off.
+apply the same checks. After changing the world database, `crystal-tools export --source sapphire` writes the file back
+(without what was placed by hand while testing). `[data] seed` (default `data`) points elsewhere, or unset turns seeding off.

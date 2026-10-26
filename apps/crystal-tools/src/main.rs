@@ -66,6 +66,10 @@ enum Command {
     Export {
         #[arg(default_value = "data/672261/bnpc_spawn.csv")]
         file: PathBuf,
+        /// Only the spawns from this source (`sapphire`, `hand`, ...): the repository's seed is
+        /// made with `--source sapphire`, leaving out what was placed by hand while testing.
+        #[arg(long)]
+        source: Option<String>,
     },
     /// Finds world database content that does not belong in this client build (territories,
     /// sheets, rows or layout layers it lacks), and with --apply removes it.
@@ -208,9 +212,12 @@ async fn main() -> anyhow::Result<()> {
             }
             db.close().await;
         }
-        Command::Export { file } => {
+        Command::Export { file, source } => {
             let db = databases(&config).await?;
-            let spawns = db.world.bnpc_spawns(BETA_PATCH, None).await?;
+            let mut spawns = db.world.bnpc_spawns(BETA_PATCH, None).await?;
+            if let Some(source) = &source {
+                spawns.retain(|s| &s.source == source);
+            }
             crystal_db::seed::write_bnpcs(&file, &spawns)?;
             println!("{} spawns written to {}", spawns.len(), file.display());
             db.close().await;

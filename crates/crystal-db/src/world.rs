@@ -38,6 +38,8 @@ pub struct BnpcSpawn {
     pub link_family: u32,
     pub link_range: u32,
     pub normal_ai: u32,
+    /// Attacks players who come near (rather than only fighting back).
+    pub aggressive: bool,
     pub source: String,
 }
 
@@ -45,8 +47,8 @@ fn insert_spawn<'q>(s: &'q BnpcSpawn, patch: &'q str) -> sqlx::query::Query<'q, 
     sqlx::query(
         "INSERT INTO bnpc_spawn (territory, instance_id, layer, base_id, name_id, level, x, y, z, rotation, \
          wander_range, respawn_secs, pop_weather, pop_time_start, pop_time_end, loot_table, link_group, \
-         link_family, link_range, normal_ai, source, patch) \
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)",
+         link_family, link_range, normal_ai, aggressive, source, patch) \
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)",
     )
     .bind(s.territory as i32)
     .bind(s.instance_id.map(|i| i as i64))
@@ -68,6 +70,7 @@ fn insert_spawn<'q>(s: &'q BnpcSpawn, patch: &'q str) -> sqlx::query::Query<'q, 
     .bind(s.link_family as i64)
     .bind(s.link_range as i64)
     .bind(s.normal_ai as i64)
+    .bind(s.aggressive as i32)
     .bind(&s.source)
     .bind(patch)
 }
@@ -165,7 +168,7 @@ impl Database {
         let rows = sqlx::query(
             "SELECT territory, instance_id, layer, base_id, name_id, level, x, y, z, rotation, wander_range, \
              respawn_secs, pop_weather, pop_time_start, pop_time_end, loot_table, link_group, link_family, \
-             link_range, normal_ai, source FROM bnpc_spawn WHERE patch = $1 AND ($2 < 0 OR territory = $2) ORDER BY id",
+             link_range, normal_ai, aggressive, source FROM bnpc_spawn WHERE patch = $1 AND ($2 < 0 OR territory = $2) ORDER BY id",
         )
         .bind(patch)
         .bind(territory.map_or(-1, |t| t as i32))
@@ -195,7 +198,8 @@ impl Database {
                     link_family: u(17)?,
                     link_range: u(18)?,
                     normal_ai: u(19)?,
-                    source: r.try_get(20)?,
+                    aggressive: u(20)? != 0,
+                    source: r.try_get(21)?,
                 })
             })
             .collect::<std::result::Result<_, sqlx::Error>>()

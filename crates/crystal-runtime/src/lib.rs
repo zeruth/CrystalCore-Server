@@ -127,6 +127,7 @@ impl Server {
                             level: s.level,
                             pos: s.pos,
                             rotation: s.rotation,
+                            aggressive: s.aggressive,
                         });
                     }
                     info!(

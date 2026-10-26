@@ -185,6 +185,9 @@ pub fn sapphire_bnpcs(data: &WorldData, dump: &str) -> anyhow::Result<(Vec<BnpcS
             link_family: uint("LinkFamily"),
             link_range: uint("LinkRange"),
             normal_ai: uint("NormalAI"),
+            // 0 for the aggressive ones (bombs, spriggans, sylphs), 1 for the passive ones (rats,
+            // ladybugs, mandragoras): read from which is which, not documented
+            aggressive: get("ActiveType") == "0",
             source: SAPPHIRE.into(),
         });
         *report.per_territory.entry(territory).or_default() += 1;

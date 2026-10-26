@@ -36,6 +36,9 @@ struct BnpcRow {
     link_family: u32,
     link_range: u32,
     normal_ai: u32,
+    /// Seeds from before it was kept are passive.
+    #[serde(default)]
+    aggressive: bool,
     source: String,
 }
 
@@ -62,6 +65,7 @@ impl From<&BnpcSpawn> for BnpcRow {
             link_family: s.link_family,
             link_range: s.link_range,
             normal_ai: s.normal_ai,
+            aggressive: s.aggressive,
             source: s.source.clone(),
         }
     }
@@ -88,6 +92,7 @@ impl From<BnpcRow> for BnpcSpawn {
             link_family: r.link_family,
             link_range: r.link_range,
             normal_ai: r.normal_ai,
+            aggressive: r.aggressive,
             source: r.source,
         }
     }
