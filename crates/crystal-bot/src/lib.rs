@@ -49,6 +49,19 @@ pub enum Down {
         sub_weapon: u64,
         models: [u32; 10],
     },
+    /// A character's HP (an HUD update sent as it).
+    Hp {
+        actor: u32,
+        hp: u32,
+        hp_max: u32,
+    },
+    /// `source` acted on `target`: the action and its first effect.
+    Action {
+        source: u32,
+        action: u16,
+        target: u32,
+        effect: ipc::Effect,
+    },
     /// The player's class, level and experience.
     ClassInfo {
         class: u8,
@@ -167,6 +180,16 @@ impl Bot {
         self.send(opcode::ITEM_OPERATION_REQUEST, &op.to_bytes()).await
     }
 
+    /// A client command (`ipc::trigger`): target changes, auto-attack, ...
+    pub async fn trigger(&mut self, command: u32, args: [u32; 4]) -> anyhow::Result<()> {
+        let mut body = [0u8; 0x30];
+        body[..4].copy_from_slice(&command.to_le_bytes());
+        for (i, a) in args.iter().enumerate() {
+            body[4 + 4 * i..8 + 4 * i].copy_from_slice(&a.to_le_bytes());
+        }
+        self.send(opcode::COMMAND, &body).await
+    }
+
     pub async fn logout(&mut self) -> anyhow::Result<()> {
         self.send(opcode::LOGOUT, &[0; 0x18]).await
     }
@@ -246,6 +269,14 @@ fn decode(source: u32, payload: &Bytes) -> Option<Down> {
         opcode::PING => Down::Pong(u32::from_le_bytes(body.get(..4)?.try_into().ok()?)),
         opcode::LOGOUT_REPLY => Down::LogoutReply,
         opcode::NORMAL_ITEM | opcode::GIL_ITEM | opcode::UPDATE_ITEM => Down::Item(ipc::ItemInfo::parse(body)?),
+        opcode::HUD_PARAM => {
+            let (hp, hp_max) = ipc::parse_hud_param(body)?;
+            Down::Hp { actor: source, hp, hp_max }
+        }
+        opcode::ACTION_RESULT1 => {
+            let (action, target, effect) = ipc::ActionResult::parse(body)?;
+            Down::Action { source, action, target, effect }
+        }
         opcode::CLASS_INFO => Down::ClassInfo {
             class: *body.first()?,
             level: u16::from_le_bytes(body.get(2..4)?.try_into().ok()?),

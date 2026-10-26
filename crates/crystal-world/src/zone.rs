@@ -198,7 +198,8 @@ impl ZoneState {
             return;
         };
         let ActorKind::Player(look) = &a.kind else { return };
-        if !matches!(t.kind, ActorKind::BattleNpc { .. }) || distance2(a.pos, t.pos) > combat::MELEE_RANGE.powi(2) {
+        let ActorKind::BattleNpc { level: target_level, .. } = t.kind else { return };
+        if distance2(a.pos, t.pos) > combat::MELEE_RANGE.powi(2) {
             return;
         }
         let Some((hp, hp_max)) = self.health.get(&target).copied().filter(|(hp, _)| *hp > 0) else { return };
@@ -211,7 +212,12 @@ impl ZoneState {
         let failed = &mut self.failed;
         for (&vid, viewer) in &self.viewers {
             if vid == attacker || viewer.visible.contains_key(&target) {
-                send(vid, viewer, Event::Damage { source: attacker, target, amount, hp, hp_max }, failed);
+                send(
+                    vid,
+                    viewer,
+                    Event::Damage { source: attacker, target, amount, hp, hp_max, level: target_level },
+                    failed,
+                );
                 if hp == 0 {
                     send(vid, viewer, Event::Death { actor: target }, failed);
                 }

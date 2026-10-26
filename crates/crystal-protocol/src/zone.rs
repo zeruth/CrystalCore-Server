@@ -51,6 +51,13 @@ pub mod opcode {
     pub const CLASS_INFO: u16 = 0x19f;
     /// Down: the player's attributes; see [`super::base_params`] (case 0x4a → @0xa4ecf0).
     pub const BASE_PARAM: u16 = 0x1a1;
+    /// Down: a character's HP, MP, TP and statuses (sent as that character); see
+    /// [`super::hud_param`] (case 0x31 → @0xa555b0).
+    pub const HUD_PARAM: u16 = 0x140;
+    /// Down: an action's result on one target (sent as whoever acted); see
+    /// [`super::ActionResult`] (case 0x37 → @0xa4e520, which widens it to 0x147's layout for
+    /// @0xac9b30).
+    pub const ACTION_RESULT1: u16 = 0x146;
     /// Down: a character's gear changed (sent as that character); see [`super::equip`]
     /// (case 0x4e → @0xa4f1b0 → @0xaa9680).
     pub const EQUIP: u16 = 0x1a5;
@@ -550,6 +557,111 @@ pub fn parse_equip(b: &[u8]) -> Option<(u64, u64, [u32; 10])> {
     Some((u64::from_le_bytes(b[0..8].try_into().ok()?), u64::from_le_bytes(b[8..0x10].try_into().ok()?), models))
 }
 
+/// [`opcode::HUD_PARAM`] (0x17c bytes, as @0xa555b0 reads it; the spawn's fields): class @0,
+/// level @1, HP u32 @4, max HP @8, MP u16 @0xc and max @0xe (GP or CP for gatherers and crafters,
+/// by ClassJobCategory), TP @0x10, then 30 statuses of 12 bytes @0x14 (id u16, param u16, time
+/// f32, source u32), none here.
+pub fn hud_param(class: u8, level: u8, hp: u32, hp_max: u32, mp: u16, mp_max: u16, tp: u16) -> Bytes {
+    let mut b = BytesMut::zeroed(0x17c);
+    (b[0], b[1]) = (class, level);
+    b[4..8].copy_from_slice(&hp.to_le_bytes());
+    b[8..0xc].copy_from_slice(&hp_max.to_le_bytes());
+    b[0xc..0xe].copy_from_slice(&mp.to_le_bytes());
+    b[0xe..0x10].copy_from_slice(&mp_max.to_le_bytes());
+    b[0x10..0x12].copy_from_slice(&tp.to_le_bytes());
+    b.freeze()
+}
+
+/// The HP and max HP of a [`hud_param`] body.
+pub fn parse_hud_param(b: &[u8]) -> Option<(u32, u32)> {
+    Some((u32_at(b, 4)?, u32_at(b, 8)?))
+}
+
+/// One effect of an action on its target (8 bytes; Sapphire's older EffectEntry).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct Effect {
+    pub kind: u8,
+    pub severity: u8,
+    pub param: u8,
+    pub bonus: u8,
+    pub multiplier: u8,
+    pub flags: u8,
+    pub value: u16,
+}
+
+impl Effect {
+    pub const DAMAGE: u8 = 3;
+    pub const HEAL: u8 = 4;
+
+    pub fn damage(amount: u16) -> Self {
+        Self { kind: Self::DAMAGE, value: amount, ..Default::default() }
+    }
+}
+
+/// [`opcode::ACTION_RESULT1`]'s body (0x64 bytes), as @0xa4e520 widens it for @0xac9b30:
+///
+/// ```text
+/// 0x00  u16  action (Action row; 7 is the auto-attack)
+/// 0x02  u8   variation          0x03  u8   kind (1: an action)
+/// 0x04  u32  the action again (its key)
+/// 0x08  u32  the player's sequence for its own actions (0: the server's doing)
+/// 0x0C  f32  animation lock (s)
+/// 0x10  u32  target
+/// 0x14  u16  rotation over the full turn
+/// 0x18  u64  the target the animation plays on
+/// 0x24  8 x 8 effects on it
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct ActionResult {
+    pub action: u16,
+    pub kind: u8,
+    pub sequence: u32,
+    pub lock: f32,
+    pub target: u32,
+    pub rotation: f32,
+    pub effects: [Effect; 8],
+}
+
+impl ActionResult {
+    pub const SIZE: usize = 0x64;
+    pub const AUTO_ATTACK: u16 = 7;
+
+    pub fn to_bytes(&self) -> Bytes {
+        let mut b = BytesMut::zeroed(Self::SIZE);
+        b[0..2].copy_from_slice(&self.action.to_le_bytes());
+        b[3] = self.kind;
+        b[4..8].copy_from_slice(&(self.action as u32).to_le_bytes());
+        b[8..0xc].copy_from_slice(&self.sequence.to_le_bytes());
+        b[0xc..0x10].copy_from_slice(&self.lock.to_le_bytes());
+        b[0x10..0x14].copy_from_slice(&self.target.to_le_bytes());
+        let turn = ((self.rotation + std::f32::consts::PI) / std::f32::consts::TAU * 65535.0).round();
+        b[0x14..0x16].copy_from_slice(&(turn.clamp(0.0, 65535.0) as u16).to_le_bytes());
+        b[0x18..0x20].copy_from_slice(&(self.target as u64).to_le_bytes());
+        for (i, e) in self.effects.iter().enumerate() {
+            let at = 0x24 + 8 * i;
+            b[at..at + 6].copy_from_slice(&[e.kind, e.severity, e.param, e.bonus, e.multiplier, e.flags]);
+            b[at + 6..at + 8].copy_from_slice(&e.value.to_le_bytes());
+        }
+        b.freeze()
+    }
+
+    /// The action, target and first effect of a body.
+    pub fn parse(b: &[u8]) -> Option<(u16, u32, Effect)> {
+        let b = b.get(..Self::SIZE)?;
+        let e = &b[0x24..0x2c];
+        let effect = Effect {
+            kind: e[0],
+            severity: e[1],
+            param: e[2],
+            bonus: e[3],
+            multiplier: e[4],
+            flags: e[5],
+            value: u16::from_le_bytes([e[6], e[7]]),
+        };
+        Some((u16::from_le_bytes([b[0], b[1]]), u32_at(b, 0x10)?, effect))
+    }
+}
+
 /// [`opcode::ITEM_SIZE`] (0x10 bytes): closes the batch `sequence` of `count` items of `container`.
 pub fn container_info(sequence: u32, count: u32, container: u16) -> Bytes {
     let mut b = BytesMut::zeroed(0x10);
@@ -1008,6 +1120,37 @@ mod tests {
         assert_eq!(ItemOperation::parse(&b), Some(op));
         let batch = item_operation_batch(0x1000_0001, 8, 0, 0);
         assert_eq!(&batch[..], &[1, 0, 0, 0x10, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn combat_layouts() {
+        let hud = hud_param(1, 10, 80, 114, 25, 25, 1000);
+        assert_eq!(hud.len(), 0x17c);
+        assert_eq!((hud[0], hud[1]), (1, 10));
+        assert_eq!(parse_hud_param(&hud), Some((80, 114)));
+        let hit = ActionResult {
+            action: ActionResult::AUTO_ATTACK,
+            kind: 1,
+            lock: 0.6,
+            target: 0x5020_4001,
+            effects: [
+                Effect::damage(18),
+                Effect::default(),
+                Effect::default(),
+                Effect::default(),
+                Effect::default(),
+                Effect::default(),
+                Effect::default(),
+                Effect::default(),
+            ],
+            ..Default::default()
+        };
+        let b = hit.to_bytes();
+        // where @0xa4e520 takes them from
+        assert_eq!(&b[0..2], &7u16.to_le_bytes());
+        assert_eq!(&b[0x18..0x1c], &0x5020_4001u32.to_le_bytes());
+        assert_eq!((b[0x24], &b[0x2a..0x2c]), (3, &18u16.to_le_bytes()[..]));
+        assert_eq!(ActionResult::parse(&b), Some((7, 0x5020_4001, Effect::damage(18))));
     }
 
     #[test]

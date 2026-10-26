@@ -153,6 +153,8 @@ pub enum Event {
         amount: u32,
         hp: u32,
         hp_max: u32,
+        /// The target's level (for the client's HP update).
+        level: u16,
     },
     /// The actor died.
     Death {

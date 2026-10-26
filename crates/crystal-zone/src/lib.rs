@@ -984,8 +984,8 @@ fn actor_spawn(slot: u8, actor: &ActorView, data: Option<&WorldData>) -> ipc::Sp
 }
 
 /// A world event as the packet the client gets, sent as the actor it is about.
-fn event_segment(sess: &Session, event: Event, data: Option<&WorldData>) -> Option<Segment> {
-    Some(match event {
+fn event_segment(sess: &Session, event: Event, data: Option<&WorldData>) -> Vec<Segment> {
+    vec![match event {
         Event::Spawn { slot, actor } => {
             sess.segment(actor.id, opcode::SPAWN, &actor_spawn(slot, &actor, data).to_bytes())
         }
@@ -1006,21 +1006,28 @@ fn event_segment(sess: &Session, event: Event, data: Option<&WorldData>) -> Opti
             };
             sess.segment(actor, opcode::ACTOR_MOVE, &body.to_bytes())
         }
-        // the packets that show them come next (ActionResult, the HP update)
-        Event::Damage { source, target, amount, hp, hp_max } => {
-            debug!(
-                source = format_args!("{source:#x}"),
-                target = format_args!("{target:#x}"),
-                amount,
-                hp,
-                hp_max,
-                "damage"
-            );
-            return None;
+        // the hit, as the attacker's action (the auto-attack, a damage effect), then the target's HP
+        Event::Damage { source, target, amount, hp, hp_max, level } => {
+            let mut effects = [ipc::Effect::default(); 8];
+            effects[0] = ipc::Effect::damage(amount.min(u16::MAX as u32) as u16);
+            let hit = ipc::ActionResult {
+                action: ipc::ActionResult::AUTO_ATTACK,
+                kind: 1,
+                lock: 0.6,
+                target,
+                effects,
+                ..Default::default()
+            };
+            let hud = ipc::hud_param(0, level.min(255) as u8, hp, hp_max, 0, 0, 0);
+            return vec![
+                sess.segment(source, opcode::ACTION_RESULT1, &hit.to_bytes()),
+                sess.segment(target, opcode::HUD_PARAM, &hud),
+            ];
         }
+        // the HP update at 0 shows it; the death animation's own packet comes later
         Event::Death { actor } => {
             debug!(actor = format_args!("{actor:#x}"), "death");
-            return None;
+            return vec![];
         }
         Event::Look { actor, look } => {
             sess.segment(actor, opcode::EQUIP, &ipc::equip(look.main_weapon, look.sub_weapon, &look.models))
@@ -1029,7 +1036,7 @@ fn event_segment(sess: &Session, event: Event, data: Option<&WorldData>) -> Opti
             let body = ipc::ChatDown { kind, actor, content_id, name: name.to_string(), text: text.to_string() };
             sess.segment(actor, opcode::CHAT_DOWN, &body.to_bytes())
         }
-    })
+    }]
 }
 
 /// A line from the server in the chat log.

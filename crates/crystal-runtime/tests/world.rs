@@ -8,7 +8,7 @@ use crystal_bot::{Bot, Down};
 use crystal_common::config::DatabaseEndpoint;
 use crystal_common::{Config, Role};
 use crystal_db::{InventoryRow, Position};
-use crystal_protocol::zone::chat;
+use crystal_protocol::zone::{self as ipc, chat};
 use crystal_runtime::Server;
 
 const T: Duration = Duration::from_secs(10);
@@ -191,6 +191,31 @@ async fn players_see_each_other() {
     alpha.chat(chat::SAY, ".bnpc near 5").await.unwrap();
     assert_eq!(line(&mut alpha).await, "1 battle NPCs within 5 yalms:");
     assert!(line(&mut alpha).await.contains("(hand)"));
+
+    // Alpha fights it: target, auto-attack; each swing an auto-attack result and its HP, to 0
+    let rat: u32 = u32::from_str_radix(placed.rsplit("actor 0x").next().unwrap().trim_end_matches('.'), 16).unwrap();
+    alpha.chat(chat::SAY, ".level 50").await.unwrap();
+    alpha.trigger(ipc::trigger::TARGET, [rat, 1, 0, 0]).await.unwrap();
+    alpha.trigger(ipc::trigger::AUTO_ATTACK, [1, rat, 0, 0]).await.unwrap();
+    let (action, target, effect) = alpha
+        .wait_for(T, |d| match d {
+            Down::Action { source, action, target, effect } if *source == a => Some((*action, *target, *effect)),
+            _ => None,
+        })
+        .await
+        .unwrap();
+    assert_eq!((action, target, effect.kind), (ipc::ActionResult::AUTO_ATTACK, rat, ipc::Effect::DAMAGE));
+    assert!(effect.value > 0);
+    let mut hp = u32::MAX;
+    while hp > 0 {
+        hp = alpha
+            .wait_for(Duration::from_secs(15), |d| match d {
+                Down::Hp { actor, hp, .. } if *actor == rat => Some(*hp),
+                _ => None,
+            })
+            .await
+            .unwrap();
+    }
 
     // demoted: refused at once (shouted: Alpha is out of say range now)
     server.db.login.set_gm_level_of(gm_account, 0).await.unwrap();
