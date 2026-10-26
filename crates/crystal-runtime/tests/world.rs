@@ -70,6 +70,23 @@ async fn players_see_each_other() {
     assert_eq!(got, [(1000, 0, 1601, 1), (2000, 0, 1, 1234)]);
     assert_eq!(alpha.containers.len(), 2);
     assert!(alpha.containers.iter().all(|(seq, n, _)| *n == 1 && alpha.items.iter().any(|i| i.sequence == *seq)));
+
+    // Alpha takes its weapon off into its first bag: answered, both slots sent as they are now, saved
+    alpha.move_item(0x1000_0001, (1000, 0), (0, 0)).await.unwrap();
+    let done = alpha
+        .wait_for(T, |d| if let Down::OperationDone { context, error } = d { Some((*context, *error)) } else { None })
+        .await
+        .unwrap();
+    assert_eq!(done, (0x1000_0001, 0));
+    let mut updates = Vec::new();
+    while updates.len() < 2 {
+        let i = alpha.wait_for(T, |d| if let Down::Item(i) = d { Some(*i) } else { None }).await.unwrap();
+        updates.push((i.container, i.slot, i.item_id));
+    }
+    assert_eq!(updates, [(1000, 0, 0), (0, 0, 1601)]);
+    let saved = server.db.characters.inventory((a - 0x1000_0000) as i64).await.unwrap();
+    assert!(saved.iter().any(|r| (r.container, r.slot, r.item_id) == (0, 0, 1601)));
+    assert!(!saved.iter().any(|r| r.container == 1000));
     let mut beta = Bot::connect(addr, b).await.unwrap();
     beta.enter().await.unwrap();
 

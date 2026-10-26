@@ -42,6 +42,11 @@ pub enum Down {
     LogoutReply,
     /// An item of a container batch (NormalItem, GilItem), or a slot update.
     Item(ipc::ItemInfo),
+    /// An item operation was answered.
+    OperationDone {
+        context: u32,
+        error: u8,
+    },
     /// A container batch is complete: sequence, item count, container.
     Container {
         sequence: u32,
@@ -135,6 +140,20 @@ impl Bot {
         self.send(opcode::PING, &body).await
     }
 
+    /// Drags the item in `from` (container, slot) onto `to`, as the client's move does.
+    pub async fn move_item(&mut self, context: u32, from: (u32, i16), to: (u32, i16)) -> anyhow::Result<()> {
+        let op = ipc::ItemOperation {
+            context,
+            operation: ipc::ItemOperation::MOVE,
+            src_container: from.0,
+            src_slot: from.1,
+            dst_container: to.0,
+            dst_slot: to.1,
+            ..Default::default()
+        };
+        self.send(opcode::ITEM_OPERATION_REQUEST, &op.to_bytes()).await
+    }
+
     pub async fn logout(&mut self) -> anyhow::Result<()> {
         self.send(opcode::LOGOUT, &[0; 0x18]).await
     }
@@ -214,6 +233,9 @@ fn decode(source: u32, payload: &Bytes) -> Option<Down> {
         opcode::PING => Down::Pong(u32::from_le_bytes(body.get(..4)?.try_into().ok()?)),
         opcode::LOGOUT_REPLY => Down::LogoutReply,
         opcode::NORMAL_ITEM | opcode::GIL_ITEM | opcode::UPDATE_ITEM => Down::Item(ipc::ItemInfo::parse(body)?),
+        opcode::ITEM_OPERATION_BATCH => {
+            Down::OperationDone { context: u32::from_le_bytes(body.get(..4)?.try_into().ok()?), error: *body.get(9)? }
+        }
         opcode::ITEM_SIZE => Down::Container {
             sequence: u32::from_le_bytes(body.get(..4)?.try_into().ok()?),
             count: u32::from_le_bytes(body.get(4..8)?.try_into().ok()?),

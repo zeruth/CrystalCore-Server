@@ -61,6 +61,14 @@ pub mod opcode {
     /// Down: a currency or crystal "item" (gil is item 1 in container 2000), queued as
     /// [`NORMAL_ITEM`] is; sent with [`super::ItemInfo`]'s layout (not yet seen in a reader).
     pub const GIL_ITEM: u16 = 0x1b3;
+    /// Up: an item operation; see [`super::ItemOperation`] (sent by @0xa51580 and its eight
+    /// siblings, one per operation; the client keeps up to 128 pending by context id).
+    pub const ITEM_OPERATION_REQUEST: u16 = 0x1ae;
+    /// Down: answers an operation; see [`super::item_operation_batch`] (@0xa54be0: once the
+    /// batch's packet count of [`ITEM_OPERATION`]s arrived, @0xa47b20 applies it).
+    pub const ITEM_OPERATION_BATCH: u16 = 0x1b1;
+    /// Down: one step of an answered operation, the request's layout.
+    pub const ITEM_OPERATION: u16 = 0x1b2;
     /// Down: one slot changes (0x40 bytes, @0xa4e610): [`super::ItemInfo`]'s layout.
     pub const UPDATE_ITEM: u16 = 0x1b6;
     /// Up and down: the block list; see [`super::blacklist`]. Up (0x18 bytes, from
@@ -447,6 +455,72 @@ impl ItemInfo {
             glamour: u32_at(b, 0x28)?,
         })
     }
+}
+
+/// [`opcode::ITEM_OPERATION_REQUEST`]'s body (0x30 bytes, as @0xa51580 fills it; Sapphire's
+/// ClientInventoryItemOperation): the context id @0, the operation @4, then the source and the
+/// destination: actor id @8/@0x1c, container @0xc/@0x20, slot (i16) @0x10/@0x24, stack
+/// @0x14/@0x28, item @0x18/@0x2c.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct ItemOperation {
+    pub context: u32,
+    pub operation: u8,
+    pub src_container: u32,
+    pub src_slot: i16,
+    pub src_stack: u32,
+    pub src_item: u32,
+    pub dst_container: u32,
+    pub dst_slot: i16,
+    pub dst_stack: u32,
+    pub dst_item: u32,
+}
+
+impl ItemOperation {
+    /// Moves (or swaps, or merges) the source onto the destination; the only operation with both
+    /// (@0xa51580). 0x0e-0x12, 0x16, 0x17 and 0x2b name the source only.
+    pub const MOVE: u8 = 8;
+
+    pub fn parse(b: &[u8]) -> Option<Self> {
+        let b = b.get(..0x30)?;
+        let i16_at = |at: usize| i16::from_le_bytes([b[at], b[at + 1]]);
+        Some(Self {
+            context: u32_at(b, 0)?,
+            operation: b[4],
+            src_container: u32_at(b, 0xc)?,
+            src_slot: i16_at(0x10),
+            src_stack: u32_at(b, 0x14)?,
+            src_item: u32_at(b, 0x18)?,
+            dst_container: u32_at(b, 0x20)?,
+            dst_slot: i16_at(0x24),
+            dst_stack: u32_at(b, 0x28)?,
+            dst_item: u32_at(b, 0x2c)?,
+        })
+    }
+
+    pub fn to_bytes(&self) -> Bytes {
+        let mut b = BytesMut::zeroed(0x30);
+        b[0..4].copy_from_slice(&self.context.to_le_bytes());
+        b[4] = self.operation;
+        b[0xc..0x10].copy_from_slice(&self.src_container.to_le_bytes());
+        b[0x10..0x12].copy_from_slice(&self.src_slot.to_le_bytes());
+        b[0x14..0x18].copy_from_slice(&self.src_stack.to_le_bytes());
+        b[0x18..0x1c].copy_from_slice(&self.src_item.to_le_bytes());
+        b[0x20..0x24].copy_from_slice(&self.dst_container.to_le_bytes());
+        b[0x24..0x26].copy_from_slice(&self.dst_slot.to_le_bytes());
+        b[0x28..0x2c].copy_from_slice(&self.dst_stack.to_le_bytes());
+        b[0x2c..0x30].copy_from_slice(&self.dst_item.to_le_bytes());
+        b.freeze()
+    }
+}
+
+/// [`opcode::ITEM_OPERATION_BATCH`] (0x10 bytes; Sapphire's ItemOperationBatch): the context id
+/// @0, an operation id @4, the operation @8, an error @9 (0 none), and how many
+/// [`opcode::ITEM_OPERATION`] packets belong to it @0xa.
+pub fn item_operation_batch(context: u32, operation: u8, error: u8, packets: u8) -> Bytes {
+    let mut b = BytesMut::zeroed(0x10);
+    b[0..4].copy_from_slice(&context.to_le_bytes());
+    (b[8], b[9], b[0xa]) = (operation, error, packets);
+    b.freeze()
 }
 
 /// [`opcode::ITEM_SIZE`] (0x10 bytes): closes the batch `sequence` of `count` items of `container`.
@@ -859,6 +933,28 @@ mod tests {
         assert_eq!(ItemInfo::parse(&b), Some(item));
         let c = container_info(7, 1, 1000);
         assert_eq!(&c[..], &[7, 0, 0, 0, 1, 0, 0, 0, 0xe8, 3, 0, 0, 0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn item_operations() {
+        // as @0xa51580 fills its buffer: bag 0 slot 3 (a stack of 5) onto equipped slot 0
+        let op = ItemOperation {
+            context: 0x1000_0001,
+            operation: ItemOperation::MOVE,
+            src_container: 0,
+            src_slot: 3,
+            src_stack: 5,
+            dst_container: 1000,
+            dst_slot: 0,
+            ..Default::default()
+        };
+        let b = op.to_bytes();
+        assert_eq!((b.len(), b[4]), (0x30, 8));
+        assert_eq!(&b[0x10..0x12], &3i16.to_le_bytes());
+        assert_eq!(&b[0x20..0x24], &1000u32.to_le_bytes());
+        assert_eq!(ItemOperation::parse(&b), Some(op));
+        let batch = item_operation_batch(0x1000_0001, 8, 0, 0);
+        assert_eq!(&batch[..], &[1, 0, 0, 0x10, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0]);
     }
 
     #[test]

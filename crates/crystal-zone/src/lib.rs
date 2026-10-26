@@ -383,6 +383,7 @@ impl Zone {
                 vec![]
             }
             opcode::TALK_EVENT => self.talk_event(sess, body).await,
+            opcode::ITEM_OPERATION_REQUEST => self.item_operation(sess, body).await,
             opcode::COMMAND | opcode::DISCOVERY | opcode::LINKSHELL_LIST => {
                 debug!(opcode = format_args!("{op:#06x}"), body = %hex::encode(body), "  not acted on yet");
                 vec![]
@@ -432,6 +433,60 @@ impl Zone {
                 vec![]
             }
         }
+    }
+
+    /// An item operation: done on the server's inventory, then answered (a batch of no steps,
+    /// which releases the client's pending operation) and every slot it touched sent as it now
+    /// is, so the client ends up with the server's state whatever it predicted. Only moves (8) are
+    /// done so far; the others are answered and change nothing.
+    async fn item_operation(&self, sess: &mut Session, body: &[u8]) -> Vec<(u16, Bytes)> {
+        let Some(op) = ipc::ItemOperation::parse(body) else { return vec![] };
+        let mut out = vec![(opcode::ITEM_OPERATION_BATCH, ipc::item_operation_batch(op.context, op.operation, 0, 0))];
+        let (Ok(src_slot), Ok(dst_slot)) = (u16::try_from(op.src_slot), u16::try_from(op.dst_slot)) else {
+            return out;
+        };
+        let (from, to) = ((op.src_container as u16, src_slot), (op.dst_container as u16, dst_slot));
+        let touched = if op.operation == ipc::ItemOperation::MOVE {
+            let stack = sess
+                .inventory
+                .get(from.0, from.1)
+                .and_then(|i| self.data.as_deref().and_then(|d| d.item(i.item_id)))
+                .map_or(1, |i| i.stack_size);
+            match sess.inventory.move_item(from, to, stack) {
+                Ok(changed) => {
+                    info!(from = ?from, to = ?to, "  item moved");
+                    self.save_inventory(sess).await;
+                    changed
+                }
+                Err(e) => {
+                    warn!(from = ?from, to = ?to, "  item move refused: {e:?}");
+                    vec![from, to]
+                }
+            }
+        } else {
+            info!(operation = op.operation, from = ?from, "  item operation not done yet");
+            vec![from]
+        };
+        for (c, s) in &touched {
+            let item = sess.inventory.get(*c, *s).copied().unwrap_or_default();
+            let info = ipc::ItemInfo {
+                container: *c,
+                slot: *s,
+                quantity: item.quantity,
+                item_id: item.item_id,
+                hq: item.hq,
+                condition: item.condition,
+                spiritbond: item.spiritbond,
+                stain: item.stain,
+                ..Default::default()
+            };
+            out.push((opcode::UPDATE_ITEM, info.to_bytes()));
+        }
+        // gear changed: the look others get from now on
+        if touched.iter().any(|(c, _)| *c == container::EQUIPPED) {
+            sess.look = Arc::new(look_of(sess.chara.as_ref(), &sess.inventory, self.data.as_deref()));
+        }
+        out
     }
 
     /// The character's items; a character with none (a new one) gets its class's starting

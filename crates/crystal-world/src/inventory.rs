@@ -219,6 +219,40 @@ impl Inventory {
         Ok(())
     }
 
+    /// What dragging one slot onto another does: into an empty slot it moves; onto the same item
+    /// (and quality) it merges up to `stack_size`, the rest staying behind; onto anything else it
+    /// swaps. The slots that changed.
+    pub fn move_item(
+        &mut self,
+        from: (u16, u16),
+        to: (u16, u16),
+        stack_size: u32,
+    ) -> Result<Vec<(u16, u16)>, InventoryError> {
+        if from.1 >= container::capacity(from.0) || to.1 >= container::capacity(to.0) {
+            return Err(InventoryError::NoSuchSlot);
+        }
+        if from == to {
+            return Ok(vec![]);
+        }
+        let src = *self.slots.get(&from).ok_or(InventoryError::Empty)?;
+        if let Some(dst) = self.slots.get(&to).copied()
+            && dst.item_id == src.item_id
+            && dst.hq == src.hq
+            && stack_size > 1
+        {
+            let moved = (stack_size.saturating_sub(dst.quantity)).min(src.quantity);
+            self.slots.insert(to, Item { quantity: dst.quantity + moved, ..dst });
+            if moved == src.quantity {
+                self.slots.remove(&from);
+            } else {
+                self.slots.insert(from, Item { quantity: src.quantity - moved, ..src });
+            }
+        } else {
+            self.swap(from, to)?;
+        }
+        Ok(vec![from, to])
+    }
+
     pub fn gil(&self) -> u32 {
         self.get(container::CURRENCY, 0).map_or(0, |i| i.quantity)
     }
@@ -273,6 +307,28 @@ mod tests {
         assert_eq!(inv.swap((0, 0), (0, 1)), Err(InventoryError::Empty));
         assert_eq!(inv.swap((0, 99), (0, 1)), Err(InventoryError::NoSuchSlot));
         assert_eq!(inv.set(container::EQUIPPED, 14, Item::new(1, 1)), Err(InventoryError::NoSuchSlot));
+    }
+
+    #[test]
+    fn moving_moves_merges_or_swaps() {
+        let mut inv = Inventory::default();
+        inv.set(0, 0, Item::new(5056, 60)).unwrap();
+        inv.set(0, 1, Item::new(5056, 50)).unwrap();
+        inv.set(0, 2, Item::new(1601, 1)).unwrap();
+        // merge: 49 fit on top of 50, 11 stay behind
+        assert_eq!(inv.move_item((0, 0), (0, 1), 99).unwrap(), vec![(0, 0), (0, 1)]);
+        assert_eq!((inv.get(0, 0).unwrap().quantity, inv.get(0, 1).unwrap().quantity), (11, 99));
+        // swap with something else
+        inv.move_item((0, 0), (0, 2), 99).unwrap();
+        assert_eq!((inv.get(0, 0).unwrap().item_id, inv.get(0, 2).unwrap().item_id), (1601, 5056));
+        // into an empty slot
+        inv.move_item((0, 0), (container::EQUIPPED, slot::MAIN_HAND), 1).unwrap();
+        assert!(inv.get(0, 0).is_none());
+        // a whole stack merges away
+        inv.move_item((0, 2), (0, 1), 999).unwrap();
+        assert!(inv.get(0, 2).is_none());
+        assert_eq!(inv.get(0, 1).unwrap().quantity, 110);
+        assert_eq!(inv.move_item((0, 5), (0, 6), 1), Err(InventoryError::Empty));
     }
 
     #[test]
