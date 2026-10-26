@@ -1027,7 +1027,7 @@ fn event_segment(sess: &Session, event: Event, data: Option<&WorldData>) -> Vec<
             sess.segment(actor, opcode::ACTOR_MOVE, &body.to_bytes())
         }
         // the hit, as the attacker's action (the auto-attack, a damage effect), then the target's HP
-        Event::Damage { source, target, amount, hp, hp_max, level } => {
+        Event::Damage { source, target, amount, hp, hp_max, level, class } => {
             let mut effects = [ipc::Effect::default(); 8];
             effects[0] = ipc::Effect::damage(amount.min(u16::MAX as u32) as u16);
             let hit = ipc::ActionResult {
@@ -1038,7 +1038,10 @@ fn event_segment(sess: &Session, event: Event, data: Option<&WorldData>) -> Vec<
                 effects,
                 ..Default::default()
             };
-            let hud = ipc::hud_param(0, level.min(255) as u8, hp, hp_max, 0, 0, 0);
+            // the player's own HP update keeps its MP and TP
+            let (mp, tp) =
+                if target == sess.actor_id { (sess.look.mp_max.min(u16::MAX as u32) as u16, 1000) } else { (0, 0) };
+            let hud = ipc::hud_param(class, level.min(255) as u8, hp, hp_max, mp, mp, tp);
             return vec![
                 sess.segment(source, opcode::ACTION_RESULT1, &hit.to_bytes()),
                 sess.segment(target, opcode::HUD_PARAM, &hud),

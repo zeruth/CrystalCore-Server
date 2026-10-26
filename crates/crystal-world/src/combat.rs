@@ -13,6 +13,16 @@ pub const CORPSE: Duration = Duration::from_secs(5);
 /// How long until a dead battle NPC is back where it stood.
 pub const RESPAWN: Duration = Duration::from_secs(30);
 
+/// How fast a battle NPC runs after its target, yalms a second.
+pub const CHASE_SPEED: f32 = 6.0;
+/// How far a battle NPC follows from where it stands before it gives up and goes home.
+pub const LEASH: f32 = 40.0;
+
+/// One of a battle NPC's swings at `level`.
+pub fn bnpc_damage(level: u16) -> u32 {
+    (3 + level as u32 * 2).max(1)
+}
+
 /// A battle NPC's HP at `level` (until BNpc parameters are read in).
 pub fn bnpc_hp(level: u16) -> u32 {
     40 + level as u32 * 30
