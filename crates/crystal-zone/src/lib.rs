@@ -16,7 +16,7 @@ pub mod ipc;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use bytes::Bytes;
 use crystal_common::chara::CharaMake;
@@ -55,11 +55,27 @@ pub struct Zone {
     capture_dir: Option<PathBuf>,
 }
 
+/// How often a moving player's position is written to the database (and once more when the zone
+/// connection closes).
+pub const POSITION_SAVE_INTERVAL: Duration = Duration::from_secs(10);
+
 /// One connection's player, once its session init named it.
 struct Session {
     actor_id: u32,
     kind: ConnectionType,
     chara: Option<Character>,
+    /// Where the player is now (from its position updates).
+    position: Position,
+    /// The position changed since it was last saved.
+    moved: bool,
+    last_save: Instant,
+}
+
+impl Session {
+    fn new(actor_id: u32, kind: ConnectionType, chara: Option<Character>) -> Self {
+        let position = chara.as_ref().and_then(|c| c.position).unwrap_or(DEFAULT_POSITION);
+        Self { actor_id, kind, chara, position, moved: false, last_save: Instant::now() }
+    }
 }
 
 impl Zone {
@@ -125,7 +141,7 @@ impl Zone {
                         payload[..4].copy_from_slice(&actor_id.to_le_bytes());
                         let reply = Segment::new(SegmentType::Unknown(2), actor_id, actor_id, payload.into());
                         replies.push(Frame::new(kind, vec![reply]));
-                        session = Some(Session { actor_id, kind, chara });
+                        session = Some(Session::new(actor_id, kind, chara));
                     }
                     SegmentType::KeepAlive => {
                         let pong =
@@ -133,7 +149,7 @@ impl Zone {
                         replies.push(Frame::new(kind, vec![pong]));
                     }
                     SegmentType::Ipc => {
-                        let Some(sess) = &session else {
+                        let Some(sess) = &mut session else {
                             warn!("ipc before the session init");
                             continue;
                         };
@@ -142,7 +158,7 @@ impl Zone {
                             continue;
                         };
                         let body = &segment.payload[IpcHeader::SIZE..];
-                        for (op, body) in self.answer(sess, header.opcode, body) {
+                        for (op, body) in self.answer(sess, header.opcode, body).await {
                             let payload = packet(op, timestamp(), &body);
                             let seg = Segment::new(SegmentType::Ipc, sess.actor_id, sess.actor_id, payload.freeze());
                             replies.push(Frame::new(sess.kind, vec![seg]));
@@ -162,15 +178,32 @@ impl Zone {
         if let Some(mut file) = capture {
             let _ = file.flush().await;
         }
+        if let Some(sess) = &mut session
+            && sess.kind == ConnectionType::Zone
+        {
+            self.save_position(sess).await;
+        }
         info!("closed");
     }
 
     /// The packets that answer one IPC request.
-    fn answer(&self, sess: &Session, op: u16, body: &[u8]) -> Vec<(u16, Bytes)> {
+    async fn answer(&self, sess: &mut Session, op: u16, body: &[u8]) -> Vec<(u16, Bytes)> {
         match op {
             opcode::PING => vec![(opcode::PING, ipc::ping_reply(body))],
+            opcode::UPDATE_POSITION => {
+                if let Some(u) = ipc::PositionUpdate::parse(body) {
+                    let p = &mut sess.position;
+                    (p.x, p.y, p.z, p.rotation) =
+                        (u.pos[0] as f64, u.pos[1] as f64, u.pos[2] as f64, u.rotation as f64);
+                    sess.moved = true;
+                    if sess.last_save.elapsed() >= POSITION_SAVE_INTERVAL {
+                        self.save_position(sess).await;
+                    }
+                }
+                vec![]
+            }
             opcode::INIT => {
-                let pos = sess.chara.as_ref().and_then(|c| c.position).unwrap_or(DEFAULT_POSITION);
+                let pos = sess.position;
                 info!(zone = pos.zone_id, x = pos.x, y = pos.y, z = pos.z, "  init: sending InitZone");
                 vec![(
                     opcode::INIT_ZONE,
@@ -179,12 +212,29 @@ impl Zone {
             }
             opcode::FINISH_LOADING => {
                 info!("  finished loading: spawning the player");
-                vec![(opcode::SPAWN, player_spawn(sess.chara.as_ref()).to_bytes())]
+                vec![(opcode::SPAWN, player_spawn(sess.chara.as_ref(), sess.position).to_bytes())]
             }
             other => {
                 info!(opcode = format_args!("{other:#06x}"), len = body.len(), body = %hex::encode(body), "  unhandled ipc");
                 vec![]
             }
+        }
+    }
+
+    /// Writes the session's position to its character, if it moved.
+    async fn save_position(&self, sess: &mut Session) {
+        let Some(chara) = &sess.chara else { return };
+        if !sess.moved {
+            return;
+        }
+        match self.db.characters.save_position(chara.content_id, sess.position).await {
+            Ok(()) => {
+                let p = sess.position;
+                debug!(zone = p.zone_id, x = p.x, y = p.y, z = p.z, "position saved");
+                sess.moved = false;
+                sess.last_save = Instant::now();
+            }
+            Err(e) => warn!("saving the position: {e}"),
         }
     }
 
@@ -220,8 +270,7 @@ impl Zone {
 
 /// The player's own spawn, from the stored character (its CharaMake text gives the appearance and
 /// class); level 1 and placeholder points until stats exist.
-fn player_spawn(chara: Option<&Character>) -> ipc::Spawn {
-    let pos = chara.and_then(|c| c.position).unwrap_or(DEFAULT_POSITION);
+fn player_spawn(chara: Option<&Character>, pos: Position) -> ipc::Spawn {
     let make = chara.and_then(|c| CharaMake::parse(&c.appearance));
     ipc::Spawn {
         index: 0,

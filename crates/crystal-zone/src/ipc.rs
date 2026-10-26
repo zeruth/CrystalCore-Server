@@ -13,9 +13,27 @@ pub mod opcode {
     pub const FINISH_LOADING: u16 = 0x69;
     /// Down: load a territory and stand at a point in it; see [`super::init_zone`].
     pub const INIT_ZONE: u16 = 0x19a;
+    /// Up (the same number as [`INIT_ZONE`]; the directions have their own tables): where the
+    /// player is, sent as it moves; see [`super::PositionUpdate`].
+    pub const UPDATE_POSITION: u16 = 0x19a;
     /// Down: a character appears; see [`super::Spawn`]. Sent as the client's own actor id (the
     /// segment's source), it becomes the player (@0xa64860 compares it with the id game login gave).
     pub const SPAWN: u16 = 0x190;
+}
+
+/// The body of [`opcode::UPDATE_POSITION`] (0x18 bytes, as the client sends it): rotation @0, two
+/// u32s (zero so far), x, y, z @0xc.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct PositionUpdate {
+    pub rotation: f32,
+    pub pos: [f32; 3],
+}
+
+impl PositionUpdate {
+    pub fn parse(body: &[u8]) -> Option<Self> {
+        let f = |at: usize| body.get(at..at + 4).map(|b| f32::from_le_bytes(b.try_into().unwrap()));
+        Some(Self { rotation: f(0)?, pos: [f(0xc)?, f(0x10)?, f(0x14)?] })
+    }
 }
 
 /// [`opcode::SPAWN`]'s body, 0x288 bytes. The client queues it whole (@0xa5d350) and reads it when
@@ -143,6 +161,16 @@ mod tests {
         assert_eq!(&s[0x26c..0x270], &(-53.0f32).to_le_bytes());
         // rotation 0 is the middle of the turn
         assert_eq!(u16::from_le_bytes([s[0x60], s[0x61]]), 32768);
+    }
+
+    #[test]
+    fn position_update_from_client() {
+        // as the client sent it, walking in Limsa Lominsa Lower Decks
+        let body = hex::decode("4884a3be00000000000000008da57ec2af009041ffc6b140").unwrap();
+        let p = PositionUpdate::parse(&body).unwrap();
+        assert!((p.rotation + 0.3194).abs() < 1e-3);
+        assert!((p.pos[0] + 63.66).abs() < 1e-2 && (p.pos[1] - 18.0).abs() < 1e-2 && (p.pos[2] - 5.55).abs() < 1e-2);
+        assert_eq!(PositionUpdate::parse(&body[..0x10]), None);
     }
 
     #[test]
