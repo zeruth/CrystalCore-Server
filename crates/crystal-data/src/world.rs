@@ -24,6 +24,26 @@ const ALL_LAYOUT_FILES: [&str; 7] =
 const NPC_EQUIP_MODELS: [usize; 10] = [4, 7, 9, 11, 13, 15, 17, 19, 21, 23];
 const NPC_EQUIP_DYES: [usize; 10] = [5, 8, 10, 12, 14, 16, 18, 20, 22, 24];
 
+/// The main attributes' base by level (1-50; index 0 unused): Sapphire's `levelTable` MAIN
+/// column, ARR's numbers, until the β's own are found.
+pub const MAIN_BASE: [i64; 51] = [
+    1, 20, 21, 22, 24, 26, 27, 29, 31, 33, 35, 36, 38, 41, 44, 46, 49, 52, 54, 57, 60, 63, 67, 71, 74, 78, 81, 85, 89,
+    92, 97, 101, 106, 110, 115, 119, 124, 128, 134, 139, 144, 150, 155, 161, 166, 171, 177, 183, 189, 196, 202,
+];
+
+/// A character's base attributes and maximum HP/MP (before gear).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct Stats {
+    pub strength: u32,
+    pub dexterity: u32,
+    pub vitality: u32,
+    pub intelligence: u32,
+    pub mind: u32,
+    pub piety: u32,
+    pub hp: u32,
+    pub mp: u32,
+}
+
 /// What the server reads of an `Item` row.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ItemRow {
@@ -413,6 +433,33 @@ impl WorldData {
             models[model_slot] = item.model_main as u32;
         }
         (main, sub, models)
+    }
+
+    /// A character's base attributes and maximum HP/MP before gear: the level's main base
+    /// ([`MAIN_BASE`], Sapphire's table: the β's `ParamGrow` does not carry it) times the class's
+    /// modifier (`ClassJob` cols 5-12: HP, MP, STR, VIT, DEX, INT, MND, PIE) over 100, plus the
+    /// tribe's bonus (`Tribe` cols 4-9: STR, DEX, VIT, INT, MND, PIE); HP and MP from
+    /// `ParamGrow`'s bases (cols 5 and 4) by the class's modifiers.
+    pub fn base_stats(&self, class: u8, tribe: u8, level: u8) -> Option<Stats> {
+        let cj = self.sheet("ClassJob").ok()?;
+        let class_row = cj.row(class as u32)?;
+        let m = |i: usize| class_row.get(i).and_then(|v| v.as_i64()).unwrap_or(100);
+        let tribes = self.sheet("Tribe").ok()?;
+        let t = |i: usize| tribes.row(tribe as u32).and_then(|r| r.get(i)).and_then(|v| v.as_i64()).unwrap_or(0);
+        let grow = self.sheet("ParamGrow").ok()?;
+        let g = |i: usize| grow.row(level as u32).and_then(|r| r.get(i)).and_then(|v| v.as_i64()).unwrap_or(0);
+        let main = MAIN_BASE[(level as usize).min(MAIN_BASE.len() - 1)];
+        let attr = |modifier: i64, bonus: i64| (main * modifier / 100 + bonus).max(1) as u32;
+        Some(Stats {
+            strength: attr(m(7), t(4)),
+            dexterity: attr(m(9), t(5)),
+            vitality: attr(m(8), t(6)),
+            intelligence: attr(m(10), t(7)),
+            mind: attr(m(11), t(8)),
+            piety: attr(m(12), t(9)),
+            hp: (g(5) * m(5) / 100).max(1) as u32,
+            mp: (g(4) * m(6) / 100).max(0) as u32,
+        })
     }
 
     /// Which of the 19 level slots (`PlayerStatus` @0x66) a class's level is kept in

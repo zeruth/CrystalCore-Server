@@ -65,6 +65,12 @@ fn looks_gear_and_warps() {
     let (main, _, looks) = world.equipment_look(&items);
     assert_eq!(main, shortsword.model_main);
     assert_ne!(looks[1], 0, "a body piece");
+    // a Midlander gladiator at level 1: 20 × the class's modifier / 100 + the tribe's bonus
+    let s = world.base_stats(1, 1, 1).unwrap();
+    assert_eq!((s.strength, s.vitality, s.dexterity), (20, 19, 18));
+    assert_eq!(s.hp, 104 * 110 / 100);
+    let thm = world.base_stats(7, 1, 1).unwrap();
+    assert!(thm.intelligence > s.intelligence, "a thaumaturge is the cleverer: {thm:?} {s:?}");
     // layout files in the older format (f1d1's planner.lgb) are left out, not fatal
     assert!(world.layer_names(164).is_ok());
 }

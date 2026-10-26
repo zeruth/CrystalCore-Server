@@ -55,6 +55,10 @@ pub struct PlayerLook {
     pub main_weapon: u64,
     pub sub_weapon: u64,
     pub models: [u32; 10],
+    pub hp_max: u32,
+    pub mp_max: u32,
+    /// Base attributes: strength, dexterity, vitality, intelligence, mind, piety.
+    pub attributes: [u32; 6],
 }
 
 /// An event NPC the game data places in a territory.

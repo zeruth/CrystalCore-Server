@@ -400,7 +400,7 @@ impl Zone {
                 vec![
                     (opcode::PLAYER_STATUS, self.player_status(sess)),
                     (opcode::CLASS_INFO, ipc::class_info(sess.look.class, level, level, 0)),
-                    (opcode::BASE_PARAM, starting_params()),
+                    (opcode::BASE_PARAM, starting_params(&sess.look)),
                 ]
                 .into_iter()
                 .chain(inventory_packets(&sess.inventory, &mut sess.item_sequence))
@@ -714,6 +714,18 @@ fn look_of(chara: Option<&Character>, inventory: &Inventory, data: Option<&World
         Some(d) => d.starting_gear(class).unwrap_or_default(),
         None => Default::default(),
     };
+    // base stats from the class, the tribe (customize[4]) and the level
+    let tribe = make.as_ref().map_or(1, |m| m.customize[4]);
+    let stats = data.and_then(|d| d.base_stats(class, tribe, 1)).unwrap_or(crystal_data::Stats {
+        strength: 20,
+        dexterity: 20,
+        vitality: 20,
+        intelligence: 20,
+        mind: 20,
+        piety: 20,
+        hp: 100,
+        mp: 100,
+    });
     PlayerLook {
         name: chara.map_or_else(|| "Crystal".into(), |c| c.name.clone()),
         content_id: chara.map_or(0, |c| c.content_id),
@@ -723,6 +735,9 @@ fn look_of(chara: Option<&Character>, inventory: &Inventory, data: Option<&World
         main_weapon,
         sub_weapon,
         models,
+        hp_max: stats.hp,
+        mp_max: stats.mp,
+        attributes: [stats.strength, stats.dexterity, stats.vitality, stats.intelligence, stats.mind, stats.piety],
     }
 }
 
@@ -759,14 +774,12 @@ fn inventory_packets(inv: &Inventory, sequence: &mut u32) -> Vec<(u16, Bytes)> {
     out
 }
 
-/// Level-1 attributes until stats exist: 20 in each of the six, the HP and MP the spawn shows,
-/// full TP.
-fn starting_params() -> Bytes {
+/// The player's attributes (BaseParam slots 0-5 are strength, dexterity, vitality, intelligence,
+/// mind, piety, as `PlayerLook::attributes`), its maximum HP and MP, full TP.
+fn starting_params(look: &PlayerLook) -> Bytes {
     let mut v = [0u32; 40];
-    for a in &mut v[ipc::param::STRENGTH..=ipc::param::PIETY] {
-        *a = 20;
-    }
-    (v[ipc::param::HP], v[ipc::param::MP], v[ipc::param::TP]) = (100, 100, 1000);
+    v[ipc::param::STRENGTH..=ipc::param::PIETY].copy_from_slice(&look.attributes);
+    (v[ipc::param::HP], v[ipc::param::MP], v[ipc::param::TP]) = (look.hp_max, look.mp_max, 1000);
     ipc::base_params(&v, &[0; 6])
 }
 
@@ -779,10 +792,10 @@ fn player_spawn(look: &PlayerLook, slot: u8, pos: [f32; 3], rotation: f32) -> ip
         rotation,
         level: look.level,
         class: look.class,
-        hp: 100,
-        hp_max: 100,
-        mp: 100,
-        mp_max: 100,
+        hp: look.hp_max,
+        hp_max: look.hp_max,
+        mp: look.mp_max as u16,
+        mp_max: look.mp_max as u16,
         name: look.name.clone(),
         customize: look.customize,
         main_weapon: look.main_weapon,
