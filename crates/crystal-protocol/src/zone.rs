@@ -51,6 +51,18 @@ pub mod opcode {
     pub const CLASS_INFO: u16 = 0x19f;
     /// Down: the player's attributes; see [`super::base_params`] (case 0x4a → @0xa4ecf0).
     pub const BASE_PARAM: u16 = 0x1a1;
+    /// Down: one item of a container being sent; see [`super::ItemInfo`]. Queued under the
+    /// sequence @0 (@0xa55990 → @0xa54d40) until [`ITEM_SIZE`] closes it.
+    pub const NORMAL_ITEM: u16 = 0x1af;
+    /// Down: a container is complete: the sequence @0, its item count @4, the container @8;
+    /// see [`super::container_info`]. Once that many items arrived, the client takes them
+    /// (@0xa55990 case 1 → @0xa49c10).
+    pub const ITEM_SIZE: u16 = 0x1b0;
+    /// Down: a currency or crystal "item" (gil is item 1 in container 2000), queued as
+    /// [`NORMAL_ITEM`] is; sent with [`super::ItemInfo`]'s layout (not yet seen in a reader).
+    pub const GIL_ITEM: u16 = 0x1b3;
+    /// Down: one slot changes (0x40 bytes, @0xa4e610): [`super::ItemInfo`]'s layout.
+    pub const UPDATE_ITEM: u16 = 0x1b6;
     /// Up and down: the block list; see [`super::blacklist`]. Up (0x18 bytes, from
     /// `InfoProxyBlacklist::vf4` @0x43fb60 and vf7): the page index wanted @0x10, the request key
     /// @0x11. Down (case 0x11 → @0xb037e0 → info proxy 4, `InfoProxyBlacklist::vf7` @0x43fa50).
@@ -367,6 +379,82 @@ pub fn base_params(values: &[u32; 40], extra: &[u32; 6]) -> Bytes {
     for (i, v) in values.iter().chain(extra).enumerate() {
         b[4 * i..4 * i + 4].copy_from_slice(&v.to_le_bytes());
     }
+    b.freeze()
+}
+
+/// An item in a container slot, as [`opcode::UPDATE_ITEM`] (@0xa4e610) and, queued,
+/// [`opcode::NORMAL_ITEM`] carry it (0x40 bytes; Sapphire's ItemInfo):
+///
+/// ```text
+/// 0x00  u32  sequence (the container batch it belongs to)
+/// 0x08  u16  container        0x0A  u16  slot
+/// 0x0C  u32  quantity         0x10  u32  item id (Item row)
+/// 0x18  u64  signature (crafter's content id)
+/// 0x20  u8   high quality     0x22  u16  condition (30000 is 100%)
+/// 0x24  u16  spiritbond       0x26  u8   dye (Stain row)
+/// 0x28  u32  glamour item     0x2C  u16 x5  materia, 0x36 u8 x5 their grades (not yet told apart)
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct ItemInfo {
+    pub sequence: u32,
+    pub container: u16,
+    pub slot: u16,
+    pub quantity: u32,
+    pub item_id: u32,
+    pub signature: u64,
+    pub hq: bool,
+    pub condition: u16,
+    pub spiritbond: u16,
+    pub stain: u8,
+    pub glamour: u32,
+}
+
+impl ItemInfo {
+    pub const SIZE: usize = 0x40;
+    /// A new item's condition.
+    pub const FULL_CONDITION: u16 = 30000;
+
+    pub fn to_bytes(&self) -> Bytes {
+        let mut b = BytesMut::zeroed(Self::SIZE);
+        b[0..4].copy_from_slice(&self.sequence.to_le_bytes());
+        b[8..0xa].copy_from_slice(&self.container.to_le_bytes());
+        b[0xa..0xc].copy_from_slice(&self.slot.to_le_bytes());
+        b[0xc..0x10].copy_from_slice(&self.quantity.to_le_bytes());
+        b[0x10..0x14].copy_from_slice(&self.item_id.to_le_bytes());
+        b[0x18..0x20].copy_from_slice(&self.signature.to_le_bytes());
+        b[0x20] = self.hq as u8;
+        b[0x22..0x24].copy_from_slice(&self.condition.to_le_bytes());
+        b[0x24..0x26].copy_from_slice(&self.spiritbond.to_le_bytes());
+        b[0x26] = self.stain;
+        b[0x28..0x2c].copy_from_slice(&self.glamour.to_le_bytes());
+        b.freeze()
+    }
+
+    pub fn parse(b: &[u8]) -> Option<Self> {
+        let b = b.get(..Self::SIZE)?;
+        let u16_at = |at: usize| u16::from_le_bytes([b[at], b[at + 1]]);
+        Some(Self {
+            sequence: u32_at(b, 0)?,
+            container: u16_at(8),
+            slot: u16_at(0xa),
+            quantity: u32_at(b, 0xc)?,
+            item_id: u32_at(b, 0x10)?,
+            signature: u64::from_le_bytes(b[0x18..0x20].try_into().unwrap()),
+            hq: b[0x20] != 0,
+            condition: u16_at(0x22),
+            spiritbond: u16_at(0x24),
+            stain: b[0x26],
+            glamour: u32_at(b, 0x28)?,
+        })
+    }
+}
+
+/// [`opcode::ITEM_SIZE`] (0x10 bytes): closes the batch `sequence` of `count` items of `container`.
+pub fn container_info(sequence: u32, count: u32, container: u16) -> Bytes {
+    let mut b = BytesMut::zeroed(0x10);
+    b[0..4].copy_from_slice(&sequence.to_le_bytes());
+    b[4..8].copy_from_slice(&count.to_le_bytes());
+    b[8..0xc].copy_from_slice(&(container as u32).to_le_bytes());
     b.freeze()
 }
 
@@ -746,6 +834,31 @@ mod tests {
         assert_eq!(s[0x1a], 1);
         assert_eq!(&s[0x34..0x40], b"Null Crystal");
         assert_eq!(&s[0x68..0x6a], &1u16.to_le_bytes(), "slot 1, the gladiator's");
+    }
+
+    #[test]
+    fn item_layouts() {
+        let item = ItemInfo {
+            sequence: 7,
+            container: 1000,
+            slot: 0,
+            quantity: 1,
+            item_id: 1601,
+            hq: true,
+            condition: ItemInfo::FULL_CONDITION,
+            stain: 3,
+            ..Default::default()
+        };
+        let b = item.to_bytes();
+        assert_eq!(b.len(), 0x40);
+        // where @0xa4e610 reads them
+        assert_eq!(&b[8..0xc], &[0xe8, 0x03, 0, 0]);
+        assert_eq!(&b[0x10..0x14], &1601u32.to_le_bytes());
+        assert_eq!(&b[0x22..0x24], &30000u16.to_le_bytes());
+        assert_eq!((b[0x20], b[0x26]), (1, 3));
+        assert_eq!(ItemInfo::parse(&b), Some(item));
+        let c = container_info(7, 1, 1000);
+        assert_eq!(&c[..], &[7, 0, 0, 0, 1, 0, 0, 0, 0xe8, 3, 0, 0, 0, 0, 0, 0]);
     }
 
     #[test]

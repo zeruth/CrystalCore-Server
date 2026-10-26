@@ -7,6 +7,7 @@
 //! Nothing here knows the wire format: the zone service turns events into the client build's
 //! packets.
 
+pub mod inventory;
 pub mod zone;
 
 use std::collections::HashMap;

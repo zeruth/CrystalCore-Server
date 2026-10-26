@@ -84,6 +84,25 @@ async fn exercise(db: &Databases) {
         .get(0);
     assert_eq!(build, 672261);
 
+    // inventories: saved whole, read back in slot order, replaced on the next save
+    let me = back.id;
+    assert!(chars.inventory(me).await.unwrap().is_empty());
+    let weapon = InventoryRow {
+        container: 1000,
+        slot: 0,
+        item_id: 1601,
+        quantity: 1,
+        hq: true,
+        condition: 30000,
+        spiritbond: 0,
+        stain: 0,
+    };
+    let gil = InventoryRow { container: 2000, slot: 0, item_id: 1, quantity: 999_999_999, hq: false, ..weapon };
+    chars.save_inventory(me, &[gil, weapon]).await.unwrap();
+    assert_eq!(chars.inventory(me).await.unwrap(), vec![weapon, gil]);
+    chars.save_inventory(me, &[gil]).await.unwrap();
+    assert_eq!(chars.inventory(me).await.unwrap(), vec![gil]);
+
     // the world repository: overrides and battle NPC spawns
     let w = &db.world;
     let o = ExdOverride { sheet: "BNpcName".into(), row_id: 2, col: 0, value: "ruins sprinter".into(), comment: None };

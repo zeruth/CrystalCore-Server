@@ -27,6 +27,19 @@ pub struct Position {
     pub rotation: f64,
 }
 
+/// A filled inventory slot (`inventory`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct InventoryRow {
+    pub container: u16,
+    pub slot: u16,
+    pub item_id: u32,
+    pub quantity: u32,
+    pub hq: bool,
+    pub condition: u16,
+    pub spiritbond: u16,
+    pub stain: u8,
+}
+
 const COLUMNS: &str = "id, account_id, content_id, world_id, name, appearance, zone_id, pos_x, pos_y, pos_z, rotation";
 
 fn from_row(row: &sqlx::any::AnyRow) -> std::result::Result<Character, sqlx::Error> {
@@ -155,6 +168,62 @@ impl Database {
         .await
         .map_err(|e| self.sql(e))?;
         Ok(())
+    }
+
+    /// A character's filled slots, by container and slot.
+    pub async fn inventory(&self, character_id: i64) -> Result<Vec<InventoryRow>> {
+        let rows = sqlx::query(
+            "SELECT container, slot, item_id, quantity, hq, condition, spiritbond, stain FROM inventory \
+             WHERE character_id = $1 ORDER BY container, slot",
+        )
+        .bind(character_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| self.sql(e))?;
+        rows.iter()
+            .map(|r| {
+                Ok(InventoryRow {
+                    container: r.try_get::<i64, _>(0)? as u16,
+                    slot: r.try_get::<i64, _>(1)? as u16,
+                    item_id: r.try_get::<i64, _>(2)? as u32,
+                    quantity: r.try_get::<i64, _>(3)? as u32,
+                    hq: r.try_get::<i64, _>(4)? != 0,
+                    condition: r.try_get::<i64, _>(5)? as u16,
+                    spiritbond: r.try_get::<i64, _>(6)? as u16,
+                    stain: r.try_get::<i64, _>(7)? as u8,
+                })
+            })
+            .collect::<std::result::Result<_, sqlx::Error>>()
+            .map_err(|e| self.sql(e))
+    }
+
+    /// Replaces a character's items with `rows`, in one transaction.
+    pub async fn save_inventory(&self, character_id: i64, rows: &[InventoryRow]) -> Result<()> {
+        let mut tx = self.pool.begin().await.map_err(|e| self.sql(e))?;
+        sqlx::query("DELETE FROM inventory WHERE character_id = $1")
+            .bind(character_id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| self.sql(e))?;
+        for r in rows {
+            sqlx::query(
+                "INSERT INTO inventory (character_id, container, slot, item_id, quantity, hq, condition, spiritbond, stain) \
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+            )
+            .bind(character_id)
+            .bind(r.container as i32)
+            .bind(r.slot as i32)
+            .bind(r.item_id as i64)
+            .bind(r.quantity as i64)
+            .bind(r.hq as i32)
+            .bind(r.condition as i32)
+            .bind(r.spiritbond as i32)
+            .bind(r.stain as i32)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| self.sql(e))?;
+        }
+        tx.commit().await.map_err(|e| self.sql(e))
     }
 
     /// The highest content id given so far (0 when none), to continue from.
