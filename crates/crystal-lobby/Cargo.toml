@@ -9,6 +9,7 @@ publish.workspace = true
 [dependencies]
 anyhow.workspace = true
 bytes.workspace = true
+crystal-common.workspace = true
 crystal-db.workspace = true
 crystal-net.workspace = true
 crystal-state.workspace = true

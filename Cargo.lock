@@ -364,6 +364,7 @@ version = "0.1.0"
 dependencies = [
  "figment",
  "serde",
+ "serde_json",
  "thiserror",
  "tracing-subscriber",
 ]
@@ -386,6 +387,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bytes",
+ "crystal-common",
  "crystal-db",
  "crystal-net",
  "crystal-state",
@@ -463,6 +465,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bytes",
+ "crystal-common",
  "crystal-db",
  "crystal-net",
  "crystal-state",

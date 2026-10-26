@@ -19,6 +19,7 @@ use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use bytes::Bytes;
+use crystal_common::chara::CharaMake;
 use crystal_db::{Character, Databases, Position};
 use crystal_net::codec::{FrameCodec, RawFrameCodec, decode_frame};
 use crystal_net::ipc::{IpcHeader, packet, timestamp};
@@ -36,9 +37,9 @@ use crate::ipc::opcode;
 /// Player actor ids are this plus the character's row id (as the lobby's game login gives them).
 pub const PLAYER_ACTOR_BASE: u32 = 0x1000_0000;
 
-/// Where a character with no stored position stands: Limsa Lominsa's opening territory (see the
-/// lobby's `chara::start_point`).
-pub const DEFAULT_POSITION: Position = Position { zone_id: 181, x: -53.0, y: 18.0, z: 0.0, rotation: 1.5 };
+/// Where a character with no stored position stands: Limsa Lominsa's start (see
+/// `crystal_common::chara::start_point`).
+pub const DEFAULT_POSITION: Position = Position { zone_id: 129, x: -62.0, y: 18.0, z: -4.0, rotation: 0.2 };
 
 /// The actor id in a session init's payload: decimal text @4, zero-terminated.
 pub fn session_actor(payload: &[u8]) -> Option<u32> {
@@ -177,8 +178,8 @@ impl Zone {
                 )]
             }
             opcode::FINISH_LOADING => {
-                info!("  finished loading");
-                vec![]
+                info!("  finished loading: spawning the player");
+                vec![(opcode::SPAWN, player_spawn(sess.chara.as_ref()).to_bytes())]
             }
             other => {
                 info!(opcode = format_args!("{other:#06x}"), len = body.len(), body = %hex::encode(body), "  unhandled ipc");
@@ -214,6 +215,29 @@ impl Zone {
                 None
             }
         }
+    }
+}
+
+/// The player's own spawn, from the stored character (its CharaMake text gives the appearance and
+/// class); level 1 and placeholder points until stats exist.
+fn player_spawn(chara: Option<&Character>) -> ipc::Spawn {
+    let pos = chara.and_then(|c| c.position).unwrap_or(DEFAULT_POSITION);
+    let make = chara.and_then(|c| CharaMake::parse(&c.appearance));
+    ipc::Spawn {
+        index: 0,
+        status: 1,
+        kind: 1,
+        rotation: pos.rotation as f32,
+        level: 1,
+        class: make.as_ref().map_or(1, |m| m.class),
+        hp: 100,
+        hp_max: 100,
+        mp: 100,
+        mp_max: 100,
+        name: chara.map_or_else(|| "Crystal".into(), |c| c.name.clone()),
+        customize: make.as_ref().map_or([0; 26], |m| m.customize),
+        pos: [pos.x as f32, pos.y as f32, pos.z as f32],
+        ..Default::default()
     }
 }
 

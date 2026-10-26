@@ -137,14 +137,16 @@ impl ClientSelectData {
     }
 }
 
-/// Where a new character first stands, by its starting city: the city's opening territory and a
-/// point in it (x, y, z, rotation). From Sapphire's new-character table (a later client's; to be
-/// checked against this build's layout data): 181 Limsa Lominsa, 183 Gridania, 182 Ul'dah.
+/// Where a new character first stands, by its starting city: a city territory and a point in it
+/// (x, y, z, rotation). Not the opening territories (181-183): those are private areas whose
+/// opening event the client waits for before it shows the world. The points stand beside event
+/// NPCs placed in the client's `Level` sheet (rows 4069046 in 129 Limsa Lominsa Lower Decks,
+/// 1140471 in 132 New Gridania, 2360563 in 130 Ul'dah - Steps of Nald), so on walkable ground.
 pub fn start_point(city: u8) -> (u16, [f64; 4]) {
     match city {
-        2 => (183, [127.0, -13.0, 147.0, -2.1]),
-        3 => (182, [42.0, 4.0, -157.6, -0.3]),
-        _ => (181, [-53.0, 18.0, 0.0, 1.5]),
+        2 => (132, [27.0, -8.0, 108.0, 1.6]),
+        3 => (130, [-86.0, 2.55, -51.0, 1.5]),
+        _ => (129, [-62.0, 18.0, -4.0, 0.2]),
     }
 }
 
@@ -179,7 +181,7 @@ mod tests {
         assert_eq!(c.len(), 23);
         assert_eq!(c[0], "Null Crystal");
         assert_eq!(c[1].as_array().unwrap().len(), 19);
-        assert_eq!((c[8].as_str(), c[10].as_str()), (Some("3"), Some("181")));
+        assert_eq!((c[8].as_str(), c[10].as_str()), (Some("3"), Some("129")));
         assert_eq!(c[11].as_array().unwrap().len(), 26);
         assert_eq!(c[14].as_array().unwrap().len(), 10);
         assert!(json.len() < 0x450 - 0x4a, "fits the entry's text field");

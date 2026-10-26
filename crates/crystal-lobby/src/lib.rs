@@ -2,7 +2,7 @@
 //! login with the world and character lists, making a character, game login). Frames received are
 //! captured for replay when configured.
 
-pub mod chara;
+pub use crystal_common::chara;
 pub mod crypt;
 pub mod ipc;
 
@@ -24,9 +24,9 @@ use tokio_util::codec::{FramedRead, FramedWrite};
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, info, warn};
 
-use crate::chara::{CharaMake, ClientSelectData, starting_zone};
 use crate::crypt::{Blowfish, KEY_PHRASE_LEN, lobby_key};
 use crate::ipc::{CharaEntry, IpcHeader, ServiceAccount, World, opcode};
+use crystal_common::chara::{CharaMake, ClientSelectData, starting_zone};
 
 /// The world characters are played on.
 pub const CRYSTAL_WORLD: u16 = 1;
