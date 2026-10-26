@@ -27,9 +27,17 @@ for ln in code.splitlines():
         current.append(int(m.group(1), 0))
         continue
     if current:
-        call = re.search(r"(FUN_[0-9a-f]{8}|\(\*\*\(code \*\*\)\(\*piVar2 \+ 0x7c\)\)\(piVar2,(\d+))", ln)
+        # the UIModule slot-31 calls first: their case also calls FUN_00424750 to get the module
+        call = re.search(r"\(\*\*\(code \*\*\)\(\*piVar2 \+ 0x7c\)\)\(piVar2,(\d+)", ln)
         if call:
-            target = call.group(1) if call.group(1).startswith("FUN_") else f"module->vf31(kind {call.group(2)})"
+            target = f"module->vf31(kind {call.group(1)})"
+        elif "FUN_00424750" in ln:
+            continue
+        else:
+            # any named or unnamed function called with the body (Global::HandleSpawn, FUN_...)
+            call = re.search(r"=\s*([A-Za-z_][\w:]*)\(", ln)
+            target = call.group(1) if call else None
+        if target:
             for c in current:
                 cases[c] = target
             current = []
