@@ -7,6 +7,7 @@
 //! Nothing here knows the wire format: the zone service turns events into the client build's
 //! packets.
 
+pub mod combat;
 pub mod inventory;
 pub mod progress;
 pub mod zone;
@@ -144,6 +145,18 @@ pub enum Event {
         pos: [f32; 3],
         rotation: f32,
         motion: Motion,
+    },
+    /// `source` hit `target` for `amount`; its HP now.
+    Damage {
+        source: ActorId,
+        target: ActorId,
+        amount: u32,
+        hp: u32,
+        hp_max: u32,
+    },
+    /// The actor died.
+    Death {
+        actor: ActorId,
     },
     /// The actor's gear changed (players; the actor's own client is told too).
     Look {
@@ -288,6 +301,16 @@ pub struct ZoneHandle {
 
 impl ZoneHandle {
     /// The player moved. Dropped when the territory is overloaded (the next move corrects it).
+    /// The player targets `target` (`None`: nothing).
+    pub fn set_target(&self, id: ActorId, target: Option<ActorId>) {
+        let _ = self.tx.try_send(Request::Target { id, target });
+    }
+
+    /// The player starts or stops auto-attacking its target.
+    pub fn set_auto_attack(&self, id: ActorId, on: bool) {
+        let _ = self.tx.try_send(Request::AutoAttack { id, on });
+    }
+
     /// The player's gear changed.
     pub fn set_look(&self, id: ActorId, look: Arc<PlayerLook>) {
         let _ = self.tx.try_send(Request::Look { id, look });

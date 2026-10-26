@@ -196,13 +196,16 @@ impl Zone {
                 }
                 Input::Event(Some(first)) => {
                     let sess = session.as_mut().expect("events come to a session");
-                    let mut segments = vec![event_segment(sess, first, self.data.as_deref())];
+                    let mut segments: Vec<Segment> =
+                        event_segment(sess, first, self.data.as_deref()).into_iter().collect();
                     while segments.len() < EVENTS_PER_FRAME
                         && let Some(Ok(e)) = sess.entry.as_mut().map(|e| e.events.try_recv())
                     {
-                        segments.push(event_segment(sess, e, self.data.as_deref()));
+                        segments.extend(event_segment(sess, e, self.data.as_deref()));
                     }
-                    replies.push(Frame::new(sess.kind, segments));
+                    if !segments.is_empty() {
+                        replies.push(Frame::new(sess.kind, segments));
+                    }
                 }
             }
             let mut failed = false;
@@ -398,7 +401,11 @@ impl Zone {
             }
             opcode::TALK_EVENT => self.talk_event(sess, body).await,
             opcode::ITEM_OPERATION_REQUEST => self.item_operation(sess, body).await,
-            opcode::COMMAND | opcode::DISCOVERY | opcode::LINKSHELL_LIST => {
+            opcode::COMMAND => {
+                self.trigger(sess, body);
+                vec![]
+            }
+            opcode::DISCOVERY | opcode::LINKSHELL_LIST => {
                 debug!(opcode = format_args!("{op:#06x}"), body = %hex::encode(body), "  not acted on yet");
                 vec![]
             }
@@ -575,6 +582,27 @@ impl Zone {
             changed.iter().map(|(c, s)| (opcode::UPDATE_ITEM, slot_update(&sess.inventory, *c, *s))).collect();
         out.push((opcode::CHAT_DOWN, system_message(&format!("You obtain {quantity} {name}."))));
         out
+    }
+
+    /// A client command: targeting and auto-attack go to the territory; the rest is logged.
+    fn trigger(&self, sess: &mut Session, body: &[u8]) {
+        let Some((command, args)) = ipc::trigger::parse(body) else { return };
+        let Some(entry) = &sess.entry else { return };
+        match command {
+            ipc::trigger::TARGET => {
+                let target = (args[0] != ipc::trigger::NO_TARGET && args[0] != 0).then_some(args[0]);
+                debug!(target = ?target.map(|t| format!("{t:#x}")), "  target");
+                entry.zone.set_target(sess.actor_id, target);
+            }
+            ipc::trigger::AUTO_ATTACK => {
+                info!(on = args[0] != 0, target = format_args!("{:#x}", args[1]), "  auto-attack");
+                if args[0] != 0 && args[1] != ipc::trigger::NO_TARGET {
+                    entry.zone.set_target(sess.actor_id, Some(args[1]));
+                }
+                entry.zone.set_auto_attack(sess.actor_id, args[0] != 0);
+            }
+            other => debug!(command = other, args = ?args, "  command not acted on yet"),
+        }
     }
 
     /// The character's items; a character with none (a new one) gets its class's starting
@@ -956,8 +984,8 @@ fn actor_spawn(slot: u8, actor: &ActorView, data: Option<&WorldData>) -> ipc::Sp
 }
 
 /// A world event as the packet the client gets, sent as the actor it is about.
-fn event_segment(sess: &Session, event: Event, data: Option<&WorldData>) -> Segment {
-    match event {
+fn event_segment(sess: &Session, event: Event, data: Option<&WorldData>) -> Option<Segment> {
+    Some(match event {
         Event::Spawn { slot, actor } => {
             sess.segment(actor.id, opcode::SPAWN, &actor_spawn(slot, &actor, data).to_bytes())
         }
@@ -978,6 +1006,22 @@ fn event_segment(sess: &Session, event: Event, data: Option<&WorldData>) -> Segm
             };
             sess.segment(actor, opcode::ACTOR_MOVE, &body.to_bytes())
         }
+        // the packets that show them come next (ActionResult, the HP update)
+        Event::Damage { source, target, amount, hp, hp_max } => {
+            debug!(
+                source = format_args!("{source:#x}"),
+                target = format_args!("{target:#x}"),
+                amount,
+                hp,
+                hp_max,
+                "damage"
+            );
+            return None;
+        }
+        Event::Death { actor } => {
+            debug!(actor = format_args!("{actor:#x}"), "death");
+            return None;
+        }
         Event::Look { actor, look } => {
             sess.segment(actor, opcode::EQUIP, &ipc::equip(look.main_weapon, look.sub_weapon, &look.models))
         }
@@ -985,7 +1029,7 @@ fn event_segment(sess: &Session, event: Event, data: Option<&WorldData>) -> Segm
             let body = ipc::ChatDown { kind, actor, content_id, name: name.to_string(), text: text.to_string() };
             sess.segment(actor, opcode::CHAT_DOWN, &body.to_bytes())
         }
-    }
+    })
 }
 
 /// A line from the server in the chat log.

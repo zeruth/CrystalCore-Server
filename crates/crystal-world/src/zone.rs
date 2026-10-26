@@ -11,7 +11,7 @@ use tracing::{debug, info, warn};
 
 use crate::{
     ActorId, ActorKind, ActorView, BNPC_ACTOR_BASE, BnpcPlacement, ChatRange, DESPAWN_RANGE, Event, Motion,
-    NPC_ACTOR_BASE, NpcPlacement, PlayerLook, SAY_RANGE, SLOTS, SPAWN_RANGE, VISIBILITY_INTERVAL,
+    NPC_ACTOR_BASE, NpcPlacement, PlayerLook, SAY_RANGE, SLOTS, SPAWN_RANGE, VISIBILITY_INTERVAL, combat,
 };
 
 /// The most event NPCs one territory takes (the id space under its territory number).
@@ -31,6 +31,17 @@ pub(crate) enum Request {
     Locate { id: ActorId, reply: oneshot::Sender<Option<([f32; 3], f32)>> },
     AddBnpc { bnpc: BnpcPlacement, reply: oneshot::Sender<ActorId> },
     Look { id: ActorId, look: Arc<PlayerLook> },
+    Target { id: ActorId, target: Option<ActorId> },
+    AutoAttack { id: ActorId, on: bool },
+}
+
+/// A player's fighting state.
+#[derive(Debug, Clone, Copy)]
+struct Fighter {
+    target: Option<ActorId>,
+    auto_attack: bool,
+    /// When its next auto-attack may land (`None`: now).
+    next_swing: Option<Instant>,
 }
 
 /// A player's view of the territory: which actor is in which of its client's slots.
@@ -62,6 +73,12 @@ pub struct ZoneState {
     failed: Vec<ActorId>,
     /// Battle NPCs placed so far (the next one's index).
     bnpcs: u32,
+    /// Current and maximum HP of whatever can be hurt (battle NPCs, players).
+    health: HashMap<ActorId, (u32, u32)>,
+    fighters: HashMap<ActorId, Fighter>,
+    /// Dead battle NPCs: when their bodies go, and when they come back as they were.
+    corpses: Vec<(Instant, ActorId)>,
+    respawns: Vec<(Instant, ActorView)>,
 }
 
 fn distance2(a: [f32; 3], b: [f32; 3]) -> f32 {
@@ -92,8 +109,25 @@ impl ZoneState {
             let kind = ActorKind::BattleNpc { base_id: b.base_id, name_id: b.name_id, level: b.level };
             (id, ActorView { id, kind, pos: b.pos, rotation: b.rotation })
         });
-        let actors = enpcs.chain(bnpcs).collect();
-        Self { territory, actors, viewers: HashMap::new(), failed: Vec::new(), bnpcs: placed }
+        let actors: HashMap<ActorId, ActorView> = enpcs.chain(bnpcs).collect();
+        let health = actors
+            .values()
+            .filter_map(|a| match a.kind {
+                ActorKind::BattleNpc { level, .. } => Some((a.id, (combat::bnpc_hp(level), combat::bnpc_hp(level)))),
+                _ => None,
+            })
+            .collect();
+        Self {
+            territory,
+            actors,
+            viewers: HashMap::new(),
+            failed: Vec::new(),
+            bnpcs: placed,
+            health,
+            fighters: HashMap::new(),
+            corpses: Vec::new(),
+            respawns: Vec::new(),
+        }
     }
 
     /// Places a battle NPC now (players see it on the next visibility pass); its actor id.
@@ -102,7 +136,97 @@ impl ZoneState {
         let id = BNPC_ACTOR_BASE + ((self.territory as u32) << 14) + self.bnpcs;
         let kind = ActorKind::BattleNpc { base_id: b.base_id, name_id: b.name_id, level: b.level };
         self.actors.insert(id, ActorView { id, kind, pos: b.pos, rotation: b.rotation });
+        self.health.insert(id, (combat::bnpc_hp(b.level), combat::bnpc_hp(b.level)));
         id
+    }
+
+    /// An actor's current and maximum HP.
+    pub fn health(&self, id: ActorId) -> Option<(u32, u32)> {
+        self.health.get(&id).copied()
+    }
+
+    /// The player targets `target` (`None`: nothing); auto-attack stops when the target goes.
+    pub fn set_target(&mut self, id: ActorId, target: Option<ActorId>) {
+        let f = self.fighters.entry(id).or_insert(Fighter { target: None, auto_attack: false, next_swing: None });
+        if f.target != target {
+            f.auto_attack = false;
+        }
+        f.target = target;
+    }
+
+    /// The player starts (its first swing as soon as its last one allows) or stops auto-attacking.
+    pub fn set_auto_attack(&mut self, id: ActorId, on: bool) {
+        let f = self.fighters.entry(id).or_insert(Fighter { target: None, auto_attack: false, next_swing: None });
+        f.auto_attack = on;
+    }
+
+    /// Lands the auto-attacks that are due at `now`, and takes away and brings back the dead.
+    pub fn combat_tick(&mut self, now: Instant) {
+        // the dead: bodies go, and later they are back as they were
+        let (gone, kept): (Vec<_>, Vec<_>) = self.corpses.drain(..).partition(|(at, _)| *at <= now);
+        self.corpses = kept;
+        for (_, id) in gone {
+            self.actors.remove(&id);
+        }
+        let (back, waiting): (Vec<_>, Vec<_>) = self.respawns.drain(..).partition(|(at, _)| *at <= now);
+        self.respawns = waiting;
+        for (_, actor) in back {
+            if let ActorKind::BattleNpc { level, .. } = actor.kind {
+                self.health.insert(actor.id, (combat::bnpc_hp(level), combat::bnpc_hp(level)));
+            }
+            self.actors.insert(actor.id, actor);
+        }
+        // the swings
+        let due: Vec<(ActorId, ActorId)> = self
+            .fighters
+            .iter()
+            .filter(|(_, f)| f.auto_attack && f.next_swing.is_none_or(|t| t <= now))
+            .filter_map(|(id, f)| Some((*id, f.target?)))
+            .collect();
+        for (attacker, target) in due {
+            self.swing(attacker, target, now);
+        }
+        self.drop_failed();
+    }
+
+    /// One auto-attack: on a live battle NPC in reach, damage by the attacker's level and strength.
+    fn swing(&mut self, attacker: ActorId, target: ActorId, now: Instant) {
+        let (Some(a), Some(t)) = (self.actors.get(&attacker), self.actors.get(&target)) else {
+            if let Some(f) = self.fighters.get_mut(&attacker) {
+                f.auto_attack = false;
+            }
+            return;
+        };
+        let ActorKind::Player(look) = &a.kind else { return };
+        if !matches!(t.kind, ActorKind::BattleNpc { .. }) || distance2(a.pos, t.pos) > combat::MELEE_RANGE.powi(2) {
+            return;
+        }
+        let Some((hp, hp_max)) = self.health.get(&target).copied().filter(|(hp, _)| *hp > 0) else { return };
+        let amount = combat::auto_attack_damage(look.level, look.attributes[0]).min(hp);
+        let hp = hp - amount;
+        self.health.insert(target, (hp, hp_max));
+        if let Some(f) = self.fighters.get_mut(&attacker) {
+            f.next_swing = Some(now + combat::SWING);
+        }
+        let failed = &mut self.failed;
+        for (&vid, viewer) in &self.viewers {
+            if vid == attacker || viewer.visible.contains_key(&target) {
+                send(vid, viewer, Event::Damage { source: attacker, target, amount, hp, hp_max }, failed);
+                if hp == 0 {
+                    send(vid, viewer, Event::Death { actor: target }, failed);
+                }
+            }
+        }
+        if hp == 0 {
+            debug!(territory = self.territory, target = format_args!("{target:#x}"), "battle NPC died");
+            for f in self.fighters.values_mut().filter(|f| f.target == Some(target)) {
+                f.auto_attack = false;
+            }
+            self.corpses.push((now + combat::CORPSE, target));
+            if let Some(view) = self.actors.get(&target) {
+                self.respawns.push((now + combat::RESPAWN, view.clone()));
+            }
+        }
     }
 
     pub fn players(&self) -> usize {
@@ -122,6 +246,8 @@ impl ZoneState {
             Request::Move { id, pos, rotation, motion } => self.moved(id, pos, rotation, motion),
             Request::Chat { id, range, kind, text } => self.chat(id, range, kind, text),
             Request::Look { id, look } => self.set_look(id, look),
+            Request::Target { id, target } => self.set_target(id, target),
+            Request::AutoAttack { id, on } => self.set_auto_attack(id, on),
             Request::AddBnpc { bnpc, reply } => {
                 let _ = reply.send(self.add_bnpc(bnpc));
             }
@@ -161,6 +287,7 @@ impl ZoneState {
         }
         self.viewers.remove(&id);
         self.actors.remove(&id);
+        self.fighters.remove(&id);
         let failed = &mut self.failed;
         for (&vid, viewer) in &mut self.viewers {
             if let Some(slot) = viewer.visible.remove(&id) {
@@ -280,6 +407,7 @@ pub(crate) async fn run(mut state: ZoneState, mut rx: mpsc::Receiver<Request>, s
             },
             _ = tick.tick() => {
                 let started = Instant::now();
+                state.combat_tick(started);
                 state.update_visibility();
                 if started.elapsed() > SLOW_PASS {
                     warn!(territory = state.territory, players = state.players(), took = ?started.elapsed(), "slow visibility pass");
@@ -459,6 +587,88 @@ mod tests {
             _ => None,
         });
         assert!(matches!(alpha.unwrap().kind, ActorKind::Player(l) if l.main_weapon == sword.main_weapon));
+    }
+
+    fn fighter(name: &str) -> Arc<PlayerLook> {
+        Arc::new(PlayerLook { level: 1, attributes: [20, 20, 20, 20, 20, 20], ..(*look(name)).clone() })
+    }
+
+    #[test]
+    fn auto_attacks_land_on_the_swing_and_kill() {
+        let rat = BnpcPlacement { base_id: 347, name_id: 417, level: 1, pos: [2.0, 0.0, 0.0], rotation: 0.0 };
+        let mut zone = ZoneState::new(129, &[], &[rat]);
+        let rat_id = BNPC_ACTOR_BASE + (129 << 14) + 1;
+        let (tx_a, mut a) = mpsc::channel(256);
+        let (tx_b, mut b) = mpsc::channel(256);
+        zone.enter(A, 1, fighter("Alpha"), [0.0; 3], 0.0, tx_a);
+        zone.enter(B, 2, look("Beta"), [4.0, 0.0, 0.0], 0.0, tx_b);
+        drain(&mut a);
+        drain(&mut b);
+        let (hp_max, damage) = (combat::bnpc_hp(1), combat::auto_attack_damage(1, 20));
+        assert_eq!(zone.health(rat_id), Some((hp_max, hp_max)));
+
+        let t0 = Instant::now();
+        zone.set_target(A, Some(rat_id));
+        zone.set_auto_attack(A, true);
+        zone.combat_tick(t0);
+        // the first swing at once, seen by the attacker and whoever sees the rat
+        assert!(
+            matches!(drain(&mut a)[..], [Event::Damage { source: A, target, amount, .. }] if target == rat_id && amount == damage)
+        );
+        assert_eq!(drain(&mut b).len(), 1);
+        // not again before the swing time
+        zone.combat_tick(t0 + Duration::from_secs(1));
+        assert!(drain(&mut a).is_empty());
+
+        // swing until it dies
+        let mut t = t0;
+        let mut died = None;
+        for _ in 0..100 {
+            t += combat::SWING;
+            zone.combat_tick(t);
+            if drain(&mut a).iter().any(|e| matches!(e, Event::Death { actor } if *actor == rat_id)) {
+                died = Some(t);
+                break;
+            }
+        }
+        let died = died.expect("it died");
+        assert_eq!(zone.health(rat_id), Some((0, hp_max)));
+        assert!(drain(&mut b).iter().any(|e| matches!(e, Event::Death { .. })));
+        // no more swings at a dead rat
+        zone.combat_tick(died + combat::SWING);
+        assert!(drain(&mut a).is_empty());
+
+        // the body goes, then the rat is back, whole
+        zone.combat_tick(died + combat::CORPSE);
+        zone.update_visibility();
+        assert!(drain(&mut a).iter().any(|e| matches!(e, Event::Despawn { actor, .. } if *actor == rat_id)));
+        zone.combat_tick(died + combat::RESPAWN);
+        zone.update_visibility();
+        assert!(spawned(&drain(&mut a)).contains(&rat_id));
+        assert_eq!(zone.health(rat_id), Some((hp_max, hp_max)));
+    }
+
+    #[test]
+    fn no_swing_out_of_reach_or_at_a_changed_target() {
+        let rat = BnpcPlacement { base_id: 347, name_id: 417, level: 1, pos: [20.0, 0.0, 0.0], rotation: 0.0 };
+        let mut zone = ZoneState::new(129, &[], &[rat]);
+        let rat_id = BNPC_ACTOR_BASE + (129 << 14) + 1;
+        let (tx, mut a) = mpsc::channel(256);
+        zone.enter(A, 1, fighter("Alpha"), [0.0; 3], 0.0, tx);
+        drain(&mut a);
+        let t0 = Instant::now();
+        zone.set_target(A, Some(rat_id));
+        zone.set_auto_attack(A, true);
+        zone.combat_tick(t0);
+        assert!(drain(&mut a).is_empty(), "20 yalms off");
+        // walks up: it lands
+        zone.moved(A, [18.0, 0.0, 0.0], 0.0, Motion::default());
+        zone.combat_tick(t0 + Duration::from_millis(250));
+        assert_eq!(drain(&mut a).iter().filter(|e| matches!(e, Event::Damage { .. })).count(), 1);
+        // another target stops auto-attack
+        zone.set_target(A, None);
+        zone.combat_tick(t0 + Duration::from_secs(10));
+        assert!(drain(&mut a).is_empty());
     }
 
     #[test]

@@ -90,8 +90,9 @@ pub mod opcode {
     /// Down: an event ends and frees the player; see [`super::event_finish`] (case 0x66 →
     /// @0x6fd010).
     pub const EVENT_FINISH: u16 = 0x1cd;
-    /// Up: the client's command / target changes (Sapphire's ClientTrigger family), and the
-    /// discovery of a map area; not acted on yet.
+    /// Up (0x30 bytes): the client's commands (Sapphire's ClientTrigger), built by
+    /// `Global::SendClientTrigger` @0xa51200: the command @0, four u32 arguments @4; see
+    /// [`super::trigger`] (`tools/re/triggers.py` lists every sender).
     pub const COMMAND: u16 = 0x191;
     pub const DISCOVERY: u16 = 0x194;
     /// Up (8 bytes, after Init): the linkshell list is wanted; not answered yet.
@@ -556,6 +557,25 @@ pub fn container_info(sequence: u32, count: u32, container: u16) -> Bytes {
     b[4..8].copy_from_slice(&count.to_le_bytes());
     b[8..0xc].copy_from_slice(&(container as u32).to_le_bytes());
     b.freeze()
+}
+
+/// [`opcode::COMMAND`]'s commands, as the client's senders use them.
+pub mod trigger {
+    /// The weapon drawn (arg 1 = 1) or sheathed (0) (@0xa7ef20).
+    pub const WEAPON: u32 = 0x00;
+    /// Auto-attack on (arg 1 = 1) or off, at the target in arg 2 (@0xa7ede0; the client draws
+    /// the weapon first if needed).
+    pub const AUTO_ATTACK: u32 = 0x01;
+    /// The target changed: its actor id in arg 1 (0xe0000000: none) (@0x5326b0).
+    pub const TARGET: u32 = 0x02;
+    /// The id the client uses for no target.
+    pub const NO_TARGET: u32 = 0xe000_0000;
+
+    /// The command and its four arguments.
+    pub fn parse(b: &[u8]) -> Option<(u32, [u32; 4])> {
+        let u = |at: usize| b.get(at..at + 4).map(|x| u32::from_le_bytes(x.try_into().unwrap()));
+        Some((u(0)?, [u(4)?, u(8)?, u(0xc)?, u(0x10)?]))
+    }
 }
 
 /// Event handler types: an event id's top 16 bits.
