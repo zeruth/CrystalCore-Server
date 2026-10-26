@@ -625,9 +625,16 @@ pub fn coordinate_from_u16(v: u16) -> f32 {
 /// 0x01  u8      rotation before slipping (the head, for Sapphire)
 /// 0x02  u8      movement flags (as the mover's PositionUpdate @8)
 /// 0x03  u8      collision flags (as @9)
-/// 0x04  u8      speed (Sapphire: 24 walking, 60 running)
+/// 0x04  u8      speed, tenths of a yalm a second (the client divides by 10.0: 60 runs at 6)
 /// 0x06  u16 x3  position (see coordinate_to_u16)
 /// ```
+///
+/// The client plays a move over the time since that actor's previous one (@0xae90c0) and snaps
+/// instead of animating when that time is not positive, or when the step is 12 yalms or more at
+/// over four times the speed (@0xafc4f0: 4.0 @0x1094788). A character whose +0x8e bit 0x40 is
+/// set (`GameObject::vf21` @0xa5ff20) skips all that and is placed directly: players' bots on
+/// this server do that (they snap), so something sets the bit for them; which caller does is
+/// for a breakpoint trace (`tools/re/bptrace.py` on @0xa5ff20) with the client running.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct ActorMove {
     pub rotation: f32,
