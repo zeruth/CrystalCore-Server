@@ -40,6 +40,15 @@ pub fn auto_attack_damage(level: u8, strength: u32) -> u32 {
     (strength * 2 / 5 + level as u32).max(1)
 }
 
+/// The global cooldown weaponskills and spells share (ARR's 2.5 s; an action's own recast is
+/// used when it names one).
+pub const GCD: Duration = Duration::from_millis(2500);
+
+/// An action's damage: the auto-attack's scaled by its potency (an auto-attack being about 100).
+pub fn action_damage(level: u8, strength: u32, potency: u32) -> u32 {
+    (auto_attack_damage(level, strength) * potency / 100).max(1)
+}
+
 /// The experience for defeating a battle NPC of `target_level` at `level`: more for stronger
 /// ones, little for those far below (until the β's own rules are known).
 pub fn kill_exp(level: u8, target_level: u16) -> u32 {

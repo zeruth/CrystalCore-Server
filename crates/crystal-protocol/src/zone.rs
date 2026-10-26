@@ -106,6 +106,9 @@ pub mod opcode {
     /// [`super::trigger`] (`tools/re/triggers.py` lists every sender).
     pub const COMMAND: u16 = 0x191;
     pub const DISCOVERY: u16 = 0x194;
+    /// Up (0x18 bytes): the player uses an action; see [`super::ActionRequest`] (sent by
+    /// @0xa51de0).
+    pub const ACTION_REQUEST: u16 = 0x196;
     /// Up (8 bytes, after Init): the linkshell list is wanted; not answered yet.
     pub const LINKSHELL_LIST: u16 = 0xf6;
     /// Down: a character goes away; see [`super::despawn`] (case 0x3d → @0xa64000).
@@ -687,6 +690,46 @@ impl ActionResult {
             value: u16::from_le_bytes([e[6], e[7]]),
         };
         Some((u16::from_le_bytes([b[0], b[1]]), u32_at(b, 0x10)?, effect))
+    }
+}
+
+/// [`opcode::ACTION_REQUEST`]'s body (0x18 bytes, as @0xa51de0 fills it):
+///
+/// ```text
+/// 0x00  u8   exec proc        0x01  u8   action kind (1: an Action row)
+/// 0x04  u32  action
+/// 0x08  u32  the request's sequence: the ActionResult echoes it, which ends the client's lock
+/// 0x0C  u16  rotation         0x0E  u16  rotation to the target
+/// 0x10  u64  target
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct ActionRequest {
+    pub kind: u8,
+    pub action: u32,
+    pub sequence: u32,
+    pub target: u64,
+}
+
+impl ActionRequest {
+    pub const SIZE: usize = 0x18;
+
+    pub fn to_bytes(&self) -> Bytes {
+        let mut b = BytesMut::zeroed(Self::SIZE);
+        b[1] = self.kind;
+        b[4..8].copy_from_slice(&self.action.to_le_bytes());
+        b[8..0xc].copy_from_slice(&self.sequence.to_le_bytes());
+        b[0x10..0x18].copy_from_slice(&self.target.to_le_bytes());
+        b.freeze()
+    }
+
+    pub fn parse(b: &[u8]) -> Option<Self> {
+        let b = b.get(..Self::SIZE)?;
+        Some(Self {
+            kind: b[1],
+            action: u32_at(b, 4)?,
+            sequence: u32_at(b, 8)?,
+            target: u64::from_le_bytes(b[0x10..0x18].try_into().ok()?),
+        })
     }
 }
 

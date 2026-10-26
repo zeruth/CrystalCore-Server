@@ -44,6 +44,36 @@ pub struct Stats {
     pub mp: u32,
 }
 
+/// What the server reads of an `Action` row.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct ActionRow {
+    pub name: String,
+    /// `ActionCategory`: 1 auto-attack, 2 spell, 3 weaponskill, 4 ability, ...
+    pub category: u8,
+    pub class: i8,
+    pub level: u8,
+    /// Yalms; -1 (or 0) for melee.
+    pub range: i8,
+    pub hostile: bool,
+    pub cost_type: u8,
+    pub cost: u16,
+    pub cast_100ms: u16,
+    pub recast_100ms: u16,
+    /// From the description; 0 when it names none.
+    pub potency: u32,
+}
+
+/// The number after "potency of" in an action's description.
+pub fn potency_in(description: &str) -> u32 {
+    let Some(at) = description.find("potency of ") else { return 0 };
+    description[at + "potency of ".len()..]
+        .chars()
+        .take_while(|c| c.is_ascii_digit())
+        .collect::<String>()
+        .parse()
+        .unwrap_or(0)
+}
+
 /// What the server reads of an `Item` row.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ItemRow {
@@ -349,6 +379,30 @@ impl WorldData {
             *m = u(i) as u32;
         }
         Some((u(5), u(6), models))
+    }
+
+    /// An `Action` row as the server needs it (the β's columns: category 3, class 9, level 10,
+    /// range 11, hostile 15, cost type 27 and cost 28, cast 33 and recast 34 in tenths of a
+    /// second; SaintCoinach 2.5 has the last four one higher). The potency is read from the
+    /// description ("... with a potency of 150").
+    pub fn action(&self, id: u32) -> Option<ActionRow> {
+        let sheet = self.sheet("Action").ok()?;
+        let r = sheet.row(id)?;
+        let u = |i: usize| r.get(i).and_then(|v| v.as_u64()).unwrap_or(0);
+        let description = r.get(1).and_then(|v| v.as_str()).unwrap_or_default();
+        Some(ActionRow {
+            name: r.first().and_then(|v| v.as_str()).unwrap_or_default().to_owned(),
+            category: u(3) as u8,
+            class: r.get(9).and_then(|v| v.as_i64()).unwrap_or(0) as i8,
+            level: u(10) as u8,
+            range: r.get(11).and_then(|v| v.as_i64()).unwrap_or(0) as i8,
+            hostile: r.get(15).and_then(|v| v.as_u64()) == Some(1),
+            cost_type: u(27) as u8,
+            cost: u(28) as u16,
+            cast_100ms: u(33) as u16,
+            recast_100ms: u(34) as u16,
+            potency: potency_in(description),
+        })
     }
 
     /// An `Item` row as the server needs it (the β's columns: `StackSize` 14, `EquipSlotCategory`

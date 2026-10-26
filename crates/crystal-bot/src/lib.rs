@@ -65,6 +65,8 @@ pub enum Down {
     Action {
         source: u32,
         action: u16,
+        /// The request it answers (0: none).
+        sequence: u32,
         target: u32,
         effect: ipc::Effect,
     },
@@ -187,6 +189,12 @@ impl Bot {
     }
 
     /// A client command (`ipc::trigger`): target changes, auto-attack, ...
+    /// Uses an action (an Action row) on `target`, as request `sequence`.
+    pub async fn use_action(&mut self, action: u32, target: u32, sequence: u32) -> anyhow::Result<()> {
+        let req = ipc::ActionRequest { kind: 1, action, sequence, target: target as u64 };
+        self.send(opcode::ACTION_REQUEST, &req.to_bytes()).await
+    }
+
     pub async fn trigger(&mut self, command: u32, args: [u32; 4]) -> anyhow::Result<()> {
         let mut body = [0u8; 0x30];
         body[..4].copy_from_slice(&command.to_le_bytes());
@@ -285,7 +293,8 @@ fn decode(source: u32, payload: &Bytes) -> Option<Down> {
         }
         opcode::ACTION_RESULT1 => {
             let (action, target, effect) = ipc::ActionResult::parse(body)?;
-            Down::Action { source, action, target, effect }
+            let sequence = u32::from_le_bytes(body.get(8..12)?.try_into().ok()?);
+            Down::Action { source, action, sequence, target, effect }
         }
         opcode::CLASS_INFO => Down::ClassInfo {
             class: *body.first()?,

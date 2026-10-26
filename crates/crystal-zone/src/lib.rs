@@ -29,7 +29,7 @@ use crystal_net::{ConnectionType, Frame, Segment, SegmentType};
 use crystal_state::State;
 use crystal_world::inventory::{Inventory, Item, container};
 use crystal_world::progress::Progress;
-use crystal_world::{ActorKind, ActorView, ChatRange, Entry, Event, Motion, PlayerLook, World};
+use crystal_world::{ActionUse, ActorKind, ActorView, ChatRange, Entry, Event, Motion, PlayerLook, World};
 use futures_util::{SinkExt, StreamExt};
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
@@ -91,6 +91,8 @@ struct Session {
     /// Level and experience per class slot (ClassJob col 4), and the current class's slot.
     progress: [Progress; 19],
     class_slot: usize,
+    /// What the player has targeted (for actions sent without one).
+    target: Option<u32>,
 }
 
 impl Session {
@@ -122,6 +124,7 @@ impl Session {
             item_sequence: 1,
             progress,
             class_slot,
+            target: None,
         }
     }
 
@@ -425,6 +428,10 @@ impl Zone {
                 self.trigger(sess, body);
                 vec![]
             }
+            opcode::ACTION_REQUEST => {
+                self.action_request(sess, body);
+                vec![]
+            }
             opcode::DISCOVERY | opcode::LINKSHELL_LIST => {
                 debug!(opcode = format_args!("{op:#06x}"), body = %hex::encode(body), "  not acted on yet");
                 vec![]
@@ -613,11 +620,13 @@ impl Zone {
                 let target = (args[0] != ipc::trigger::NO_TARGET && args[0] != 0).then_some(args[0]);
                 debug!(target = ?target.map(|t| format!("{t:#x}")), "  target");
                 entry.zone.set_target(sess.actor_id, target);
+                sess.target = target;
             }
             ipc::trigger::AUTO_ATTACK => {
                 info!(on = args[0] != 0, target = format_args!("{:#x}", args[1]), "  auto-attack");
                 if args[0] != 0 && args[1] != ipc::trigger::NO_TARGET {
                     entry.zone.set_target(sess.actor_id, Some(args[1]));
+                    sess.target = Some(args[1]);
                 }
                 entry.zone.set_auto_attack(sess.actor_id, args[0] != 0);
             }
@@ -627,6 +636,47 @@ impl Zone {
             }
             other => debug!(command = other, args = ?args, "  command not acted on yet"),
         }
+    }
+
+    /// An action: read from the Action sheet, checked against the player's class and level, and
+    /// handed to the territory (which checks range and recast, and answers with the result).
+    fn action_request(&self, sess: &mut Session, body: &[u8]) {
+        let Some(req) = ipc::ActionRequest::parse(body) else { return };
+        let Some(entry) = &sess.entry else { return };
+        let Some(row) = self.data.as_ref().and_then(|d| d.action(req.action)) else {
+            debug!(action = req.action, "  action: not in the Action sheet");
+            return;
+        };
+        info!(action = req.action, name = %row.name, target = format_args!("{:#x}", req.target), "  action");
+        // a class's own (0: any), and learnt
+        if (row.class > 0 && row.class as u8 != sess.look.class) || row.level > sess.look.level {
+            debug!(class = row.class, level = row.level, "  action: not this class's yet");
+            return;
+        }
+        if !row.hostile {
+            debug!(action = req.action, "  action: only hostile ones are carried out yet");
+            return;
+        }
+        let gcd = matches!(row.category, 2 | 3);
+        let recast = match row.recast_100ms {
+            0 if gcd => crystal_world::combat::GCD,
+            r => Duration::from_millis(r as u64 * 100),
+        };
+        let range = if row.range <= 0 { crystal_world::combat::MELEE_RANGE } else { row.range as f32 + 1.0 };
+        let target = if req.target == 0 || req.target as u32 == ipc::trigger::NO_TARGET {
+            sess.target.unwrap_or(0)
+        } else {
+            req.target as u32
+        };
+        let action = ActionUse {
+            action: req.action as u16,
+            sequence: req.sequence,
+            potency: row.potency.max(100),
+            range,
+            recast,
+            gcd,
+        };
+        entry.zone.use_action(sess.actor_id, target, action);
     }
 
     /// The character's items; a character with none (a new one) gets its class's starting
@@ -1030,18 +1080,12 @@ fn event_segment(sess: &Session, event: Event, data: Option<&WorldData>) -> Vec<
             };
             sess.segment(actor, opcode::ACTOR_MOVE, &body.to_bytes())
         }
-        // the hit, as the attacker's action (the auto-attack, a damage effect), then the target's HP
-        Event::Damage { source, target, amount, hp, hp_max, level, class } => {
+        // the hit, as the attacker's action (a damage effect; the request's sequence frees the
+        // user's client), then the target's HP
+        Event::Damage { source, target, action, sequence, amount, hp, hp_max, level, class } => {
             let mut effects = [ipc::Effect::default(); 8];
             effects[0] = ipc::Effect::damage(amount.min(u16::MAX as u32) as u16);
-            let hit = ipc::ActionResult {
-                action: ipc::ActionResult::AUTO_ATTACK,
-                kind: 1,
-                lock: 0.6,
-                target,
-                effects,
-                ..Default::default()
-            };
+            let hit = ipc::ActionResult { action, kind: 1, sequence, lock: 0.6, target, effects, ..Default::default() };
             // the player's own HP update keeps its MP and TP
             let (mp, tp) =
                 if target == sess.actor_id { (sess.look.mp_max.min(u16::MAX as u32) as u16, 1000) } else { (0, 0) };

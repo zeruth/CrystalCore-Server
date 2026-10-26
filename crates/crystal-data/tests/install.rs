@@ -71,6 +71,11 @@ fn looks_gear_and_warps() {
     assert_eq!(s.hp, 104 * 110 / 100);
     let thm = world.base_stats(7, 1, 1).unwrap();
     assert!(thm.intelligence > s.intelligence, "a thaumaturge is the cleverer: {thm:?} {s:?}");
+    // Fast Blade: a gladiator's level-1 weaponskill, melee, 70 TP, the 2.5 s recast, potency 150
+    let fb = world.action(9).unwrap();
+    assert_eq!((fb.name.as_str(), fb.category, fb.class, fb.level), ("Fast Blade", 3, 1, 1));
+    assert_eq!((fb.range, fb.hostile, fb.cost, fb.recast_100ms, fb.potency), (-1, true, 70, 25, 150));
+    assert_eq!(crystal_data::world::potency_in("Deals damage with a potency of 40."), 40);
     // layout files in the older format (f1d1's planner.lgb) are left out, not fatal
     assert!(world.layer_names(164).is_ok());
 }

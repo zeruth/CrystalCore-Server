@@ -200,7 +200,7 @@ async fn players_see_each_other() {
     alpha.trigger(ipc::trigger::AUTO_ATTACK, [1, rat, 0, 0]).await.unwrap();
     let (action, target, effect) = alpha
         .wait_for(T, |d| match d {
-            Down::Action { source, action, target, effect } if *source == a => Some((*action, *target, *effect)),
+            Down::Action { source, action, target, effect, .. } if *source == a => Some((*action, *target, *effect)),
             _ => None,
         })
         .await

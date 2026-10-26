@@ -152,6 +152,9 @@ pub enum Event {
     Damage {
         source: ActorId,
         target: ActorId,
+        /// The Action row (7: the auto-attack) and the player's request it answers (0: none).
+        action: u16,
+        sequence: u32,
         amount: u32,
         hp: u32,
         hp_max: u32,
@@ -188,6 +191,20 @@ pub enum Event {
         kind: u16,
         text: Arc<str>,
     },
+}
+
+/// An action a player uses, as the zone service read it from the Action sheet.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ActionUse {
+    pub action: u16,
+    /// The client's request, echoed in the result.
+    pub sequence: u32,
+    pub potency: u32,
+    /// Yalms (melee: [`combat::MELEE_RANGE`]).
+    pub range: f32,
+    pub recast: std::time::Duration,
+    /// On the global cooldown (weaponskills and spells) rather than its own.
+    pub gcd: bool,
 }
 
 /// Who is online, and where.
@@ -327,6 +344,11 @@ impl ZoneHandle {
     /// A dead player gets up (whole, where it fell).
     pub fn revive(&self, id: ActorId) {
         let _ = self.tx.try_send(Request::Revive { id });
+    }
+
+    /// The player uses an action on `target`.
+    pub fn use_action(&self, id: ActorId, target: ActorId, action: ActionUse) {
+        let _ = self.tx.try_send(Request::UseAction { id, target, action });
     }
 
     /// The player starts or stops auto-attacking its target.

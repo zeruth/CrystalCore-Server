@@ -10,7 +10,7 @@ use tokio_util::sync::CancellationToken;
 use tracing::{debug, info, warn};
 
 use crate::{
-    ActorId, ActorKind, ActorView, BNPC_ACTOR_BASE, BnpcPlacement, ChatRange, DESPAWN_RANGE, Event, Motion,
+    ActionUse, ActorId, ActorKind, ActorView, BNPC_ACTOR_BASE, BnpcPlacement, ChatRange, DESPAWN_RANGE, Event, Motion,
     NPC_ACTOR_BASE, NpcPlacement, PlayerLook, SAY_RANGE, SLOTS, SPAWN_RANGE, VISIBILITY_INTERVAL, combat,
 };
 
@@ -34,6 +34,7 @@ pub(crate) enum Request {
     Target { id: ActorId, target: Option<ActorId> },
     AutoAttack { id: ActorId, on: bool },
     Revive { id: ActorId },
+    UseAction { id: ActorId, target: ActorId, action: ActionUse },
 }
 
 /// A battle NPC in a fight: where it came from, who it is after, when it next swings.
@@ -42,6 +43,17 @@ struct Mob {
     home: [f32; 3],
     target: ActorId,
     next_swing: Option<Instant>,
+}
+
+/// The action a hit came from, and the player's request it answers (0: none).
+#[derive(Debug, Clone, Copy)]
+struct ActionResultKey {
+    action: u16,
+    sequence: u32,
+}
+
+impl ActionResultKey {
+    const AUTO_ATTACK: Self = Self { action: 7, sequence: 0 };
 }
 
 /// A player's fighting state.
@@ -95,6 +107,8 @@ pub struct ZoneState {
     next_server_tick: Option<Instant>,
     /// Battle NPCs that attack players who come near.
     aggressive: std::collections::HashSet<ActorId>,
+    /// When a player's actions are ready again: by action, or 0 for the global cooldown.
+    recasts: HashMap<(ActorId, u16), Instant>,
 }
 
 fn distance2(a: [f32; 3], b: [f32; 3]) -> f32 {
@@ -154,6 +168,7 @@ impl ZoneState {
             last_tick: None,
             next_server_tick: None,
             aggressive,
+            recasts: HashMap::new(),
         }
     }
 
@@ -367,7 +382,17 @@ impl ZoneState {
                 send(
                     vid,
                     viewer,
-                    Event::Damage { source: id, target, amount, hp, hp_max, level: player_level, class: look.class },
+                    Event::Damage {
+                        source: id,
+                        target,
+                        action: ActionResultKey::AUTO_ATTACK.action,
+                        sequence: 0,
+                        amount,
+                        hp,
+                        hp_max,
+                        level: player_level,
+                        class: look.class,
+                    },
                     failed,
                 );
                 if hp == 0 {
@@ -385,38 +410,76 @@ impl ZoneState {
 
     /// One auto-attack: on a live battle NPC in reach, damage by the attacker's level and strength.
     fn swing(&mut self, attacker: ActorId, target: ActorId, now: Instant) {
-        let (Some(a), Some(t)) = (self.actors.get(&attacker), self.actors.get(&target)) else {
+        if !self.actors.contains_key(&attacker) || !self.actors.contains_key(&target) {
             if let Some(f) = self.fighters.get_mut(&attacker) {
                 f.auto_attack = false;
             }
             return;
-        };
-        let ActorKind::Player(look) = &a.kind else { return };
-        let ActorKind::BattleNpc { level: target_level, .. } = t.kind else { return };
-        if distance2(a.pos, t.pos) > combat::MELEE_RANGE.powi(2) {
-            return;
         }
-        // the dead do not swing
-        if self.health.get(&attacker).is_some_and(|(hp, _)| *hp == 0) {
-            return;
-        }
-        let Some((hp, hp_max)) = self.health.get(&target).copied().filter(|(hp, _)| *hp > 0) else { return };
-        let amount = combat::auto_attack_damage(look.level, look.attributes[0]).min(hp);
-        let home = t.pos;
-        let hp = hp - amount;
-        self.health.insert(target, (hp, hp_max));
+        let Some(look) = self.can_hit(attacker, target, combat::MELEE_RANGE) else { return };
+        let amount = combat::auto_attack_damage(look.level, look.attributes[0]);
         if let Some(f) = self.fighters.get_mut(&attacker) {
             f.next_swing = Some(now + combat::SWING);
         }
+        self.strike(attacker, target, amount, ActionResultKey::AUTO_ATTACK, now);
+    }
+
+    /// The attacker's look, when it is a live player and `target` a live battle NPC within `range`.
+    fn can_hit(&self, attacker: ActorId, target: ActorId, range: f32) -> Option<Arc<PlayerLook>> {
+        let (a, t) = (self.actors.get(&attacker)?, self.actors.get(&target)?);
+        let ActorKind::Player(look) = &a.kind else { return None };
+        let ActorKind::BattleNpc { .. } = t.kind else { return None };
+        let alive = |id| self.health.get(&id).is_some_and(|(hp, _)| *hp > 0);
+        (distance2(a.pos, t.pos) <= range.powi(2) && alive(attacker) && alive(target)).then(|| look.clone())
+    }
+
+    /// The player uses an action on `target`: refused (and logged) while its recast runs, out of
+    /// range, or on what it cannot hit.
+    pub fn use_action(&mut self, id: ActorId, target: ActorId, action: ActionUse, now: Instant) -> bool {
+        let key = (id, if action.gcd { 0 } else { action.action });
+        if self.recasts.get(&key).is_some_and(|t| *t > now) {
+            debug!(player = format_args!("{id:#x}"), action = action.action, "action refused: recasting");
+            return false;
+        }
+        let Some(look) = self.can_hit(id, target, action.range) else {
+            debug!(player = format_args!("{id:#x}"), action = action.action, "action refused: no target in range");
+            return false;
+        };
+        self.recasts.insert(key, now + action.recast);
+        let amount = combat::action_damage(look.level, look.attributes[0], action.potency);
+        self.strike(id, target, amount, ActionResultKey { action: action.action, sequence: action.sequence }, now);
+        self.drop_failed();
+        true
+    }
+
+    /// A player's hit on a battle NPC (checked by [`Self::can_hit`]): its HP and the hit go out,
+    /// and it fights back or dies.
+    fn strike(&mut self, attacker: ActorId, target: ActorId, amount: u32, key: ActionResultKey, now: Instant) {
+        let Some((hp, hp_max)) = self.health.get(&target).copied() else { return };
+        let Some(t) = self.actors.get(&target) else { return };
+        let ActorKind::BattleNpc { level: target_level, .. } = t.kind else { return };
+        let home = t.pos;
+        let amount = amount.min(hp);
+        let hp = hp - amount;
+        self.health.insert(target, (hp, hp_max));
+        let ActionResultKey { action, sequence } = key;
         let failed = &mut self.failed;
         for (&vid, viewer) in &self.viewers {
             if vid == attacker || viewer.visible.contains_key(&target) {
-                send(
-                    vid,
-                    viewer,
-                    Event::Damage { source: attacker, target, amount, hp, hp_max, level: target_level, class: 0 },
-                    failed,
-                );
+                // the request's sequence is the user's alone
+                let sequence = if vid == attacker { sequence } else { 0 };
+                let event = Event::Damage {
+                    source: attacker,
+                    target,
+                    action,
+                    sequence,
+                    amount,
+                    hp,
+                    hp_max,
+                    level: target_level,
+                    class: 0,
+                };
+                send(vid, viewer, event, failed);
                 if hp == 0 {
                     send(
                         vid,
@@ -464,6 +527,9 @@ impl ZoneState {
             Request::Target { id, target } => self.set_target(id, target),
             Request::AutoAttack { id, on } => self.set_auto_attack(id, on),
             Request::Revive { id } => self.revive(id),
+            Request::UseAction { id, target, action } => {
+                self.use_action(id, target, action, Instant::now());
+            }
             Request::AddBnpc { bnpc, reply } => {
                 let _ = reply.send(self.add_bnpc(bnpc));
             }
@@ -914,6 +980,38 @@ mod tests {
         zone.set_target(A, None);
         zone.combat_tick(t0 + Duration::from_secs(10));
         assert!(!drain(&mut a).iter().any(|e| matches!(e, Event::Damage { source: A, .. })));
+    }
+
+    #[test]
+    fn actions_hit_by_potency_and_wait_out_their_recast() {
+        let (mut zone, mut a, rat_id, t0) = in_a_fight(tough("Alpha"));
+        let fast_blade = |sequence| ActionUse {
+            action: 9,
+            sequence,
+            potency: 150,
+            range: combat::MELEE_RANGE,
+            recast: combat::GCD,
+            gcd: true,
+        };
+        let look = tough("Alpha");
+        let damage = combat::action_damage(look.level, look.attributes[0], 150);
+        assert!(damage > combat::auto_attack_damage(look.level, look.attributes[0]));
+        let before = zone.health(rat_id).unwrap().0;
+        assert!(zone.use_action(A, rat_id, fast_blade(41), t0));
+        // the result names the action and echoes the request
+        assert!(drain(&mut a).iter().any(|e| matches!(e,
+            Event::Damage { source: A, action: 9, sequence: 41, amount, .. } if *amount == damage)));
+        assert_eq!(zone.health(rat_id).unwrap().0, before - damage);
+        // on the global cooldown: refused until it runs out, even as another weaponskill
+        assert!(!zone.use_action(A, rat_id, fast_blade(42), t0 + Duration::from_secs(1)));
+        assert!(!zone.use_action(A, rat_id, ActionUse { action: 10, ..fast_blade(43) }, t0 + Duration::from_secs(2)));
+        // an ability has its own
+        assert!(zone.use_action(A, rat_id, ActionUse { action: 16, gcd: false, ..fast_blade(44) }, t0));
+        assert!(zone.use_action(A, rat_id, fast_blade(45), t0 + combat::GCD));
+        // out of reach, and at nothing to hit
+        zone.moved(A, [30.0, 0.0, 0.0], 0.0, Motion::default());
+        assert!(!zone.use_action(A, rat_id, fast_blade(46), t0 + combat::GCD * 2));
+        assert!(!zone.use_action(A, B, fast_blade(47), t0 + combat::GCD * 3));
     }
 
     fn tough(name: &str) -> Arc<PlayerLook> {
