@@ -40,11 +40,21 @@ impl PositionUpdate {
     }
 }
 
+/// [`Spawn::kind`] values (the client's switch on @0x30, @0xaac200).
+pub mod kind {
+    pub const PLAYER: u8 = 1;
+    pub const BATTLE_NPC: u8 = 2;
+    pub const EVENT_NPC: u8 = 3;
+}
+
 /// [`opcode::SPAWN`]'s body, 0x288 bytes. The client queues it whole (@0xa5d350) and reads it when
 /// the character is made (@0xaac200). The offsets below are the client's; where Sapphire's 4.0
 /// ActorSpawn agrees (weapons @0x48 on), its names are used.
 #[derive(Debug, Clone, Default)]
 pub struct Spawn {
+    /// What the character is made from (@4): for an event NPC (kind 3) its `ENpcBase` row, from
+    /// which the client builds its look itself (@0xaac200 → @0xaaa870).
+    pub base_id: u32,
     /// Which of the client's 100 character slots (0 for the player).
     pub index: u8,
     /// 1 alive, 2 dead, 3 posed (@0x2c; Sapphire's `status`).
@@ -75,6 +85,7 @@ impl Spawn {
 
     pub fn to_bytes(&self) -> Bytes {
         let mut b = BytesMut::zeroed(Self::SIZE);
+        b[4..8].copy_from_slice(&self.base_id.to_le_bytes());
         b[0x2b] = self.index;
         b[0x2c] = self.status;
         b[0x30] = self.kind;

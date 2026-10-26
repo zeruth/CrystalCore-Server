@@ -37,6 +37,10 @@ use crate::ipc::opcode;
 
 /// Player actor ids are this plus the character's row id (as the lobby's game login gives them).
 pub const PLAYER_ACTOR_BASE: u32 = 0x1000_0000;
+/// Event NPC actor ids are this plus their character slot (per connection, until zones own actors).
+pub const NPC_ACTOR_BASE: u32 = 0x4000_0000;
+/// The client keeps 100 characters (@0xa64860); slot 0 is the player.
+pub const MAX_SPAWNED_NPCS: usize = 99;
 
 /// Where a character with no stored position stands: Limsa Lominsa's start (see
 /// `crystal_common::chara::start_point`).
@@ -167,6 +171,17 @@ impl Zone {
                             replies.push(Frame::new(sess.kind, vec![seg]));
                             info!(opcode = format_args!("{op:#06x}"), "  ipc sent");
                         }
+                        // Once the player stands in the territory, its event NPCs appear: each
+                        // spawn is sent as the NPC's own actor id (the segment's source).
+                        if header.opcode == opcode::FINISH_LOADING {
+                            let npcs = self.npc_spawns(sess.position.zone_id as u16);
+                            info!(count = npcs.len(), "  spawning event NPCs");
+                            for (actor, spawn) in npcs {
+                                let payload = packet(opcode::SPAWN, timestamp(), &spawn.to_bytes());
+                                let seg = Segment::new(SegmentType::Ipc, actor, sess.actor_id, payload.freeze());
+                                replies.push(Frame::new(sess.kind, vec![seg]));
+                            }
+                        }
                     }
                     other => debug!(r#type = ?other, payload = %hex::encode(&segment.payload), "segment"),
                 }
@@ -259,6 +274,38 @@ impl Zone {
                 vec![]
             }
         }
+    }
+
+    /// Spawns for the event NPCs the game data places in `territory` (up to the client's 99 free
+    /// character slots), each with its actor id.
+    fn npc_spawns(&self, territory: u16) -> Vec<(u32, ipc::Spawn)> {
+        let Some(world) = &self.world else { return vec![] };
+        let npcs = match world.npcs(territory) {
+            Ok(n) => n,
+            Err(e) => {
+                warn!(territory, "event NPCs: {e}");
+                return vec![];
+            }
+        };
+        npcs.iter()
+            .take(MAX_SPAWNED_NPCS)
+            .enumerate()
+            .map(|(i, n)| {
+                let index = i as u8 + 1;
+                let spawn = ipc::Spawn {
+                    base_id: n.enpc,
+                    index,
+                    status: 1,
+                    kind: ipc::kind::EVENT_NPC,
+                    rotation: n.rotation,
+                    pos: n.pos,
+                    hp: 1,
+                    hp_max: 1,
+                    ..Default::default()
+                };
+                (NPC_ACTOR_BASE + index as u32, spawn)
+            })
+            .collect()
     }
 
     /// Writes the session's position to its character, if it moved.

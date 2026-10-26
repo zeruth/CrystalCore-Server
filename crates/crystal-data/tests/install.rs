@@ -30,6 +30,15 @@ fn territory_type_and_level_sheets() {
 }
 
 #[test]
+fn lower_decks_npcs() {
+    let Some(game) = game() else { return };
+    let world = WorldData::open(&game).unwrap();
+    let npcs = world.npcs(129).unwrap();
+    assert_eq!(npcs.len(), 45);
+    assert!(npcs.iter().any(|n| n.enpc == 1003604 && (n.pos[0] + 60.44).abs() < 0.01));
+}
+
+#[test]
 fn lower_decks_exit_to_middle_la_noscea() {
     let Some(game) = game() else { return };
     let world = WorldData::open(&game).unwrap();
