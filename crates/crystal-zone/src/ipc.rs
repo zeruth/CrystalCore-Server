@@ -16,6 +16,19 @@ pub mod opcode {
     /// Up (the same number as [`INIT_ZONE`]; the directions have their own tables): where the
     /// player is, sent as it moves; see [`super::PositionUpdate`].
     pub const UPDATE_POSITION: u16 = 0x19a;
+    /// Up: chat (0x420 bytes: actor id @4, position @8, facing @0x14, chat type @0x18 (0x0a say,
+    /// 0x0b shout), text @0x1a). The sender's client shows its own message; nearby players get it
+    /// as the down packet of the same number (Phase 3).
+    pub const CHAT: u16 = 0x67;
+    /// Up (0x18 bytes, a flag @0): log out (sent by @0xc2bba0, after the menu's Logout set the
+    /// client's logout-pending flag). Answered with [`LOGOUT_REPLY`]; the client then closes its
+    /// connections itself. A server-side close is shown as "connection with the server lost".
+    pub const LOGOUT: u16 = 0x263;
+    /// Down: go ahead and log out. The game dispatcher passes it to `UIModule` slot 31 as kind 7
+    /// (@0xba51d0 case 0x92 → @0x46af90 → @0x433ab0), which, with logout pending, starts the logout
+    /// (@0x7e4b80: fade, a 60-frame countdown, then @0xc2e910 tears down the zone and chat
+    /// connections and reports logout code 0, no error).
+    pub const LOGOUT_REPLY: u16 = 0x2d6;
     /// Up (0x10 bytes): the player walked into a zone exit: the exit range's instance id @0 (in the
     /// territory's layout), the player's position @4. Answered with [`INIT_ZONE`] for where the exit
     /// leads.

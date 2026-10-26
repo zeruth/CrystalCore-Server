@@ -257,6 +257,18 @@ impl Zone {
                     }
                 }
             }
+            opcode::CHAT => {
+                let kind = body.get(0x18..0x1a).map_or(0, |b| u16::from_le_bytes([b[0], b[1]]));
+                let text = body.get(0x1a..).unwrap_or_default();
+                let text = &text[..text.iter().position(|&b| b == 0).unwrap_or(text.len())];
+                info!(kind, text = %String::from_utf8_lossy(text), "  chat");
+                vec![]
+            }
+            opcode::LOGOUT => {
+                info!("  logout");
+                self.save_position(sess).await;
+                vec![(opcode::LOGOUT_REPLY, Bytes::from_static(&[0; 8]))]
+            }
             opcode::INIT => {
                 let pos = sess.position;
                 info!(zone = pos.zone_id, x = pos.x, y = pos.y, z = pos.z, "  init: sending InitZone");
