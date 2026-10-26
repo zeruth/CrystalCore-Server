@@ -155,7 +155,7 @@ test.
 **Done when:** the β client's lobby connection is accepted and its first packets are logged and
 decoded as frames, by the Rust server.
 
-### Phase 1: Protocol and lobby (lobby flow working to game login, 2026-10-25; storage next)
+### Phase 1: Protocol and lobby (done 2026-10-26, except character deletion and the replay tool)
 
 - Extract the opcode tables for 672261 from the port (lobby, zone, chat; client to server and server
   to client) into `protocol/672261/`.
@@ -171,7 +171,11 @@ decoded as frames, by the Rust server.
 **Done when:** the client reaches character select against the server, creates a character, and
 sees it in the list after a restart.
 
-### Phase 2: Entering the world
+### Phase 2: Entering the world (done 2026-10-26, except relaying chat and teleports)
+
+Done: zone handoff from game login, session init, InitZone, the player's spawn, event NPCs from
+the game data (`Level`), position saved and restored, zone exits from the layouts (exit range →
+pop range), graceful logout. Chat is read but needs other players to go anywhere (Phase 3).
 
 - World select hands the client the zone and chat addresses.
 - Zone connection: init, player setup, the first zone (the character's starting city), player spawn.

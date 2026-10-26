@@ -1,82 +1,68 @@
 # Handoff
 
 State of CrystalCore-Server for the next session. Repo: `C:\Users\tyler\Documents\code\CrystalCore-Server`
-(branch `main`). The client is `C:\Users\tyler\Documents\code\CrystalCore` (branch `2013.08.09.672261`).
-Read [ROADMAP.md](ROADMAP.md) first.
+(branch `main`, pushed to https://github.com/zeruth/CrystalCore-Server). The client is
+`C:\Users\tyler\Documents\code\CrystalCore`. Read [ROADMAP.md](ROADMAP.md) first.
 
-## Where it stands (2026-10-25)
+## Where it stands (2026-10-26)
 
-Phase 0 is done. Phase 1's lobby works against the real β client up to the game login: encryption
-handshake, Start, character select, character creation, and the client's game-login request (which
-waits for the zone server, Phase 2). Characters are kept in memory only; storing them is next.
+Phases 0-2 work against the real β client, unmodified: log in, make a character (stored), pick it,
+enter Limsa Lominsa, see its event NPCs, move (position saved), walk through a zone exit into Middle
+La Noscea, log out cleanly, log back in where you left. Chat is read but not relayed (no other
+players yet: Phase 3).
 
 | crate | what is there |
 |---|---|
-| `crystal-common` | `Config` (figment: defaults → `crystal.toml` → `CRYSTAL_*` env), `Role`, `LobbyConfig`, `log::init` |
-| `crystal-net` | `FrameHeader` (0x20 bytes in this build), `SegmentHeader` (0x10), `SegmentType` (with the client's fixed sizes per type), `FrameCodec`/`RawFrameCodec`, zlib, `Listener` + `serve` |
-| `crystal-db` | `Databases { login, characters, world }` over `sqlx::Any`, PostgreSQL or SQLite (WAL); migrations per db per backend in `sql/<db>/<backend>/` |
-| `crystal-state` | `State` enum: `Memory` or `Redis`. get/set/set_if_absent/delete with TTL, publish/subscribe |
-| `crystal-lobby` | `crypt` (MD5 key, the client's Blowfish), `ipc` (header, opcodes, every packet below), `Lobby::handle` per connection with a `HostRole` |
-| `crystal-runtime` | `Server::start(config)` / `local_addr(role)` / `shutdown()`; binds one lobby port, or two (one per client lobby host) |
-| `apps/crystal-server` | clap (`--config`, `--role`), mimalloc, Ctrl-C shutdown |
+| `crystal-common` | `Config` (`[lobby]`, `[zone]`, `[data] game`), `chara` (CharaMake / ClientSelectData JSON, start points) |
+| `crystal-net` | frame/segment codec, `SegmentType` with the client's fixed sizes, the IPC header (`ipc`) |
+| `crystal-db` | three databases on Postgres or SQLite; `characters` repository (content id, CharaMake text, position) |
+| `crystal-state` | Redis / in-process key-value; the lobby's game-login session handoff |
+| `crystal-data` | SqPack, EXD sheets, LGB layouts; `WorldData`: territory layouts, zone exits (exit range → pop range), event NPC placements (`Level`) |
+| `crystal-lobby` | encryption, service accounts, worlds, characters (from the db; one placeholder entry when none), making characters (Lobby world → Crystal), game login (0x0f → zone) |
+| `crystal-zone` | session init, InitZone, the player's spawn, event NPC spawns, position updates, zone exits, ping, logout |
+| `crystal-runtime` | `Server::start`: lobby (two ports) and zone, one process |
 
-Tests (23). CI is `.github/workflows/ci.yml` (Windows, Linux with Postgres + Redis, MSRV 1.94).
-Remote: `origin` = https://github.com/zeruth/CrystalCore-Server.
+29+ tests; the game-data tests run when `CRYSTAL_TEST_GAME` names the install's `game` folder.
 
-## The lobby protocol, as found in the client
+## The protocol, as found in the client
 
-Every address below is ffxiv.exe 672261 at its preferred base; each is named, with the evidence, in
-`CrystalCore/data/names.json` (and `structs.json` for `LobbyCryptEngine`, `Blowfish`, `MD5Context`).
-The doc comments in `crates/crystal-lobby/src/{crypt/mod.rs,ipc.rs,lib.rs}` say the same per field.
+Every finding is in `CrystalCore/data/names.json` with its evidence (55 functions) and in the doc
+comments of `crates/crystal-lobby/src/{crypt,ipc}` and `crates/crystal-zone/src/{lib,ipc}.rs`.
 
-1. **Handshake.** Client: segment 9 (key phrase @0x24, key = its `time()` @0x64). Key =
-   `MD5(0x12345678 | key | 1000 | phrase[32])` (LE). Blowfish is standard but with LE block halves
-   and a sign-extending key schedule; verified against the client's own code under emulation.
-   Server: segment 10, 0x290 bytes, payload encrypted, its u32 @0 the connection id (non-zero).
-   IPC payloads are then encrypted in their leading multiple of 32 bytes.
-2. **IPC** header 0x10: `u16 0x14 | u16 opcode | 0 | u16 server | u32 time | 0`.
-   - up 0x05 client version → down 0x0c service accounts (0x50-byte entries @0x10)
-   - up 0x03 service login → down 0x15 worlds (0x54-byte entries @0x18; flags @4: 4 = open for new
-     characters) and 0x0d characters (0x450-byte entries @0x18, two a packet; @0x10 u16 per-world
-     limit, @0x12 u16 account slots, @8 bit 0 last page)
-   - up 0x0b make character (step @0x19: 1 reserve name, 2 make with CharaMake JSON) → down 0x0e
-     (@9 = 1, step @0xa, the character entry @0x10)
-   - up 0x04 game login (content id @8) → down 0x0f (Phase 2), or 0x02 error (code @8, text @0x14)
-3. **Quirks that cost time:**
-   - The character list must hold at least one entry: character select waits for every entry's
-     sheet rows, and with none the waiter never fires. An entry with content id 0 is a placeholder.
-   - The client makes characters through its first region (lobby host 01, "JP") and its world
-     picker shows that region's worlds. So host 01 shows a world "Lobby" (open, login refused) and
-     host 02 ("NA") shows "Crystal" (login, no new characters); the server places characters made
-     on Lobby on Crystal in its reply. That needs `DEV.LobbyPort02=54995` (`lobby.bind_2`).
-   - The exe is relocated by ASLR (seen at 0xf40000): subtract the base and add 0x400000 before
-     looking an address up.
+- **Lobby** (encrypted, see crypt): 0x05 version → 0x0c accounts; 0x03 service login → 0x15
+  worlds, 0x0d characters; 0x0b make (steps 1, 2) → 0x0e; 0x04 game login → 0x0f (zone host,
+  port, actor id).
+- **Zone** (not encrypted; the client opens a zone and a chat connection to the same address): the
+  session init (type 1, actor id as text) → type 2 with the actor id; up 0x66 Init → down 0x19a
+  InitZone; the client sends 0x69 FinishLoading → down 0x190 spawn (the player as its own actor id;
+  event NPCs as kind 3 with their ENpc id); up 0x19a position; up 0x190 zone exit (exit range id) →
+  InitZone for the destination; up 0x65 ping → 0x65; up 0x67 chat; up 0x263 logout → down 0x2d6.
+- **Quirks**: the character list must hold an entry (a placeholder); the client makes characters
+  through its first region (host 01 shows "Lobby", host 02 "Crystal"); the opening territories
+  (181-183) wait for their opening event, so new characters start in the city zones; the exe is
+  relocated by ASLR (0xf40000 here).
 
 ## Next
 
-1. **Store characters** (characters db): account from the session, the CharaMake JSON, content id;
-   the character list from the db (still with the placeholder when empty); keep the Lobby → Crystal
-   move. Then retainers (0x17) and 0x16 if the UI wants them.
-2. **Phase 2**: answer game login (0x0f, read @0xe408c0) with the zone server, and the zone's own
-   handshake.
-3. Commit `CrystalCore/data/names.json` and `structs.json` in the client repo (left uncommitted
-   there) and update its launch arguments (`rhipper.json`, MANIFEST) to `DEV.LobbyPort02=54995`.
-
-## Tools (in this session's scratchpad; worth moving into `tools/`)
-
-- corpus queries over `CrystalCore/build/corpus.jsonl` (names, grep, show, callers);
-- a Win32 debug-API tracer: attaches to the running `ffxiv.exe`, rebases, logs breakpoint hits
-  (re-armed by single-step), dumps memory at an argument;
-- a 32-bit Unicorn harness that runs the client's MD5/Blowfish for test vectors.
+1. **Phase 3**: more than one player: a world/zone task that owns actors, spawning players for each
+   other by range, relaying movement and chat (down 0x67). Zones should own NPC actor ids too (they
+   are per connection now).
+2. Sapphire sends player setup, stats and class before InitZone (`PlayerMgr::onMoveZone`); this
+   client went in without them, but the UI (HP bars, class, gear) will want them: find this
+   build's packets (Sapphire's 4.0 opcodes don't apply; the client's `PacketDispatcher` table is in
+   `tools/re/zonetable.py`).
+3. Gear: the spawn's model fields are zero (no equipment); class starting gear from the game data.
+4. Commit `CrystalCore/data/names.json` and `structs.json` in the client repo, and its launch
+   arguments (`DEV.LobbyPort02=54995`).
 
 ## Environment notes
 
-- **No WSL** (memory). Dev services are portable Windows builds via `tools/dev.ps1` (Redis 8.10.2 msys2
-  build, PostgreSQL 18.4 EDB zip). User `crystal`, trust auth, 127.0.0.1 only: `tools/dev.ps1 start`.
-- Builds and tests with `-j 2` (the machine is shared with translation jobs).
-- To try the client: run `crystal-server` (ports 54994 and 54995), then start
-  `CrystalCore/archive/installs/beta-672261/game/ffxiv.exe` with the launcher arguments in
-  `CrystalCore/archive/MANIFEST.md` but `DEV.LobbyPort02=54995`. Only one client runs at a time.
-  Set `CRYSTAL_LOBBY__CAPTURE_DIR` to save the traffic. The user drives the client.
-- Hooks on this machine block shell file deletion and heredoc writes; use the Write/Edit tools. The
-  Bash tool returns no output here: use PowerShell.
+- **No WSL**. Dev services via `tools/dev.ps1` (Redis, PostgreSQL); stopped at the end of sessions.
+- Builds and tests with `-j 2`.
+- Run: `$env:CRYSTAL_DATA__GAME = "<CrystalCore>/archive/installs/beta-672261/game"`, then
+  `cargo run -p crystal-server` (lobby 54994/54995, zone 54992). Client: `ffxiv.exe` with the
+  MANIFEST's arguments but `DEV.LobbyPort02=54995`. One client at a time; the user drives it.
+- RE tools are in `tools/re/` (see its README). Sapphire is cloned at `code/3rdparty/Sapphire` as a
+  cross-check (4.0 era; the client is the authority).
+- Hooks block shell file deletion and heredoc writes; the Bash tool returns no output here (use
+  PowerShell).
