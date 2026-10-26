@@ -151,6 +151,23 @@ async fn players_see_each_other() {
     beta.wait_for(T, |d| matches!(d, Down::Despawn { actor, .. } if *actor == a).then_some(())).await.unwrap();
     beta.wait_for(T, |d| matches!(d, Down::Spawn { actor, .. } if *actor == a).then_some(())).await.unwrap();
 
+    // levels: set, then experience on top; the client told, the database kept it
+    alpha.chat(chat::SAY, ".level 10").await.unwrap();
+    let info = alpha
+        .wait_for(T, |d| if let Down::ClassInfo { level, exp, .. } = d { Some((*level, *exp)) } else { None })
+        .await
+        .unwrap();
+    assert_eq!(info, (10, 0));
+    alpha.chat(chat::SAY, ".exp 77").await.unwrap();
+    // no game data here, so no table to level up by: the experience is kept
+    let info = alpha
+        .wait_for(T, |d| if let Down::ClassInfo { level, exp, .. } = d { Some((*level, *exp)) } else { None })
+        .await
+        .unwrap();
+    assert_eq!(info, (10, 77));
+    let progress = server.db.characters.class_progress((a - 0x1000_0000) as i64).await.unwrap();
+    assert!(progress.contains(&(0, 10, 77)), "{progress:?}");
+
     // a battle NPC placed by hand: saved, and Beta (53 yalms off, in range) sees it appear
     alpha.chat(chat::SAY, ".bnpc 37 37 2").await.unwrap();
     let placed = line(&mut alpha).await;

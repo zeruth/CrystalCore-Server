@@ -49,6 +49,12 @@ pub enum Down {
         sub_weapon: u64,
         models: [u32; 10],
     },
+    /// The player's class, level and experience.
+    ClassInfo {
+        class: u8,
+        level: u16,
+        exp: u32,
+    },
     /// An item operation was answered.
     OperationDone {
         context: u32,
@@ -240,6 +246,11 @@ fn decode(source: u32, payload: &Bytes) -> Option<Down> {
         opcode::PING => Down::Pong(u32::from_le_bytes(body.get(..4)?.try_into().ok()?)),
         opcode::LOGOUT_REPLY => Down::LogoutReply,
         opcode::NORMAL_ITEM | opcode::GIL_ITEM | opcode::UPDATE_ITEM => Down::Item(ipc::ItemInfo::parse(body)?),
+        opcode::CLASS_INFO => Down::ClassInfo {
+            class: *body.first()?,
+            level: u16::from_le_bytes(body.get(2..4)?.try_into().ok()?),
+            exp: u32::from_le_bytes(body.get(8..12)?.try_into().ok()?),
+        },
         opcode::EQUIP => {
             let (main_weapon, sub_weapon, models) = ipc::parse_equip(body)?;
             Down::Equip { actor: source, main_weapon, sub_weapon, models }

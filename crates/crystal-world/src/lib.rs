@@ -8,6 +8,7 @@
 //! packets.
 
 pub mod inventory;
+pub mod progress;
 pub mod zone;
 
 use std::collections::HashMap;

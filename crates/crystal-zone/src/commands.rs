@@ -92,6 +92,8 @@ pub struct Context<'a> {
     pub(crate) replies: Vec<String>,
     pub(crate) teleport: Option<Teleport>,
     pub(crate) gm_mode: Option<bool>,
+    pub(crate) level: Option<u8>,
+    pub(crate) exp: Option<u32>,
 }
 
 impl<'a> Context<'a> {
@@ -102,7 +104,18 @@ impl<'a> Context<'a> {
         data: Option<&'a WorldData>,
         commands: &'a Commands,
     ) -> Self {
-        Self { player, world, db, data, commands, replies: vec![], teleport: None, gm_mode: None }
+        Self {
+            player,
+            world,
+            db,
+            data,
+            commands,
+            replies: vec![],
+            teleport: None,
+            gm_mode: None,
+            level: None,
+            exp: None,
+        }
     }
 
     /// A line in the player's chat log.
@@ -113,6 +126,16 @@ impl<'a> Context<'a> {
     /// Sends the player to `territory` (it loads it, even when it is the one it is in).
     pub fn teleport(&mut self, territory: u16, pos: [f32; 3], rotation: f32) {
         self.teleport = Some(Teleport { territory, pos, rotation });
+    }
+
+    /// Sets the player's level in its current class.
+    pub fn set_level(&mut self, level: u8) {
+        self.level = Some(level);
+    }
+
+    /// Gives the player experience in its current class.
+    pub fn add_exp(&mut self, amount: u32) {
+        self.exp = Some(amount);
     }
 
     /// Switches GM mode for the rest of the session.

@@ -28,6 +28,7 @@ use crystal_net::ipc::{IpcHeader, packet, timestamp};
 use crystal_net::{ConnectionType, Frame, Segment, SegmentType};
 use crystal_state::State;
 use crystal_world::inventory::{Inventory, Item, container};
+use crystal_world::progress::Progress;
 use crystal_world::{ActorKind, ActorView, ChatRange, Entry, Event, Motion, PlayerLook, World};
 use futures_util::{SinkExt, StreamExt};
 use tokio::io::AsyncWriteExt;
@@ -87,6 +88,9 @@ struct Session {
     inventory: Inventory,
     /// The next item batch's sequence.
     item_sequence: u32,
+    /// Level and experience per class slot (ClassJob col 4), and the current class's slot.
+    progress: [Progress; 19],
+    class_slot: usize,
 }
 
 impl Session {
@@ -96,10 +100,13 @@ impl Session {
         chara: Option<Character>,
         gm_level: u8,
         inventory: Inventory,
+        progress: [Progress; 19],
         data: Option<&WorldData>,
     ) -> Self {
         let position = chara.as_ref().and_then(|c| c.position).unwrap_or(DEFAULT_POSITION);
-        let look = Arc::new(look_of(chara.as_ref(), &inventory, data));
+        let class = chara.as_ref().and_then(|c| CharaMake::parse(&c.appearance)).map_or(1, |m| m.class);
+        let class_slot = data.and_then(|d| d.class_level_slot(class)).unwrap_or(0);
+        let look = Arc::new(look_of(chara.as_ref(), &inventory, progress[class_slot].level, data));
         Self {
             actor_id,
             kind,
@@ -113,6 +120,8 @@ impl Session {
             gm_mode: gm_level > 0,
             inventory,
             item_sequence: 1,
+            progress,
+            class_slot,
         }
     }
 
@@ -267,7 +276,12 @@ impl Zone {
                         (Some(c), ConnectionType::Zone) => self.load_inventory(c).await,
                         _ => Inventory::default(),
                     };
-                    *session = Some(Session::new(actor_id, kind, chara, gm_level, inventory, self.data.as_deref()));
+                    let progress = match &chara {
+                        Some(c) => self.load_progress(c).await,
+                        None => Default::default(),
+                    };
+                    *session =
+                        Some(Session::new(actor_id, kind, chara, gm_level, inventory, progress, self.data.as_deref()));
                 }
                 SegmentType::KeepAlive => {
                     let pong =
@@ -399,7 +413,10 @@ impl Zone {
                 let level = sess.look.level as u16;
                 vec![
                     (opcode::PLAYER_STATUS, self.player_status(sess)),
-                    (opcode::CLASS_INFO, ipc::class_info(sess.look.class, level, level, 0)),
+                    (
+                        opcode::CLASS_INFO,
+                        ipc::class_info(sess.look.class, level, level, sess.progress[sess.class_slot].exp),
+                    ),
                     (opcode::BASE_PARAM, starting_params(&sess.look)),
                 ]
                 .into_iter()
@@ -484,13 +501,69 @@ impl Zone {
         }
         // gear changed: the look others get from now on
         if touched.iter().any(|(c, _)| *c == container::EQUIPPED) {
-            sess.look = Arc::new(look_of(sess.chara.as_ref(), &sess.inventory, self.data.as_deref()));
+            sess.look = Arc::new(look_of(
+                sess.chara.as_ref(),
+                &sess.inventory,
+                sess.progress[sess.class_slot].level,
+                self.data.as_deref(),
+            ));
             // the territory tells whoever sees the player, and the player's own client
             if let Some(entry) = &sess.entry {
                 entry.zone.set_look(sess.actor_id, sess.look.clone());
             }
         }
         out
+    }
+
+    /// The character's level and experience per class slot; a slot never played is level 0 (the
+    /// client's `not started`), and the current class starts at 1.
+    async fn load_progress(&self, chara: &Character) -> [Progress; 19] {
+        let mut progress = [Progress { level: 0, exp: 0 }; 19];
+        match self.db.characters.class_progress(chara.id).await {
+            Ok(rows) => {
+                for (slot, level, exp) in rows {
+                    if let Some(p) = progress.get_mut(slot as usize) {
+                        *p = Progress { level, exp };
+                    }
+                }
+            }
+            Err(e) => warn!("class progress: {e}"),
+        }
+        let class = CharaMake::parse(&chara.appearance).map_or(1, |m| m.class);
+        let slot = self.data.as_deref().and_then(|d| d.class_level_slot(class)).unwrap_or(0);
+        if progress[slot].level == 0 {
+            progress[slot] = Progress::default();
+        }
+        progress
+    }
+
+    /// Sets the current class's level and/or adds experience (GM commands now, battles later):
+    /// saved, and the client told its class info and attributes; who sees the player sees the new
+    /// level on its next spawn.
+    async fn change_progress(&self, sess: &mut Session, level: Option<u8>, exp: Option<u32>) -> Vec<(u16, Bytes)> {
+        let slot = sess.class_slot;
+        if let Some(l) = level {
+            sess.progress[slot].set_level(l);
+        }
+        if let Some(n) = exp {
+            let data = self.data.as_deref();
+            sess.progress[slot].gain(n, |l| data.and_then(|d| d.exp_to_next(l)));
+        }
+        let p = sess.progress[slot];
+        info!(level = p.level, exp = p.exp, "  progress");
+        if let Some(chara) = &sess.chara
+            && let Err(e) = self.db.characters.set_class_progress(chara.id, slot as u8, p.level, p.exp).await
+        {
+            warn!("saving class progress: {e}");
+        }
+        sess.look = Arc::new(look_of(sess.chara.as_ref(), &sess.inventory, p.level, self.data.as_deref()));
+        if let Some(entry) = &sess.entry {
+            entry.zone.set_look(sess.actor_id, sess.look.clone());
+        }
+        vec![
+            (opcode::CLASS_INFO, ipc::class_info(sess.look.class, p.level as u16, p.level as u16, p.exp)),
+            (opcode::BASE_PARAM, starting_params(&sess.look)),
+        ]
     }
 
     /// The character's items; a character with none (a new one) gets its class's starting
@@ -560,8 +633,9 @@ impl Zone {
     fn player_status(&self, sess: &Session) -> Bytes {
         let look = &sess.look;
         let mut levels = [0u16; 19];
-        if let Some(slot) = self.data.as_deref().and_then(|d| d.class_level_slot(look.class)) {
-            levels[slot] = look.level as u16;
+        let mut exp = [0u32; 19];
+        for (i, p) in sess.progress.iter().enumerate() {
+            (levels[i], exp[i]) = (p.level as u16, p.exp);
         }
         ipc::PlayerStatus {
             content_id: look.content_id,
@@ -569,7 +643,7 @@ impl Zone {
             class: look.class,
             name: look.name.clone(),
             levels,
-            ..Default::default()
+            exp,
         }
         .to_bytes()
     }
@@ -648,6 +722,9 @@ impl Zone {
         }
         let mut out: Vec<(u16, Bytes)> =
             cx.replies.iter().map(|line| (opcode::CHAT_DOWN, system_message(line))).collect();
+        if cx.level.is_some() || cx.exp.is_some() {
+            out.extend(self.change_progress(sess, cx.level, cx.exp).await);
+        }
         if let Some(t) = cx.teleport {
             out.extend(self.move_to(sess, t.territory, t.pos, t.rotation).await);
         }
@@ -704,7 +781,7 @@ impl Zone {
 /// What others see of a stored character: its CharaMake text gives the appearance and class,
 /// the class its starting gear (`CharaMakeClassEquip`) until there is an inventory; level 1
 /// until stats exist.
-fn look_of(chara: Option<&Character>, inventory: &Inventory, data: Option<&WorldData>) -> PlayerLook {
+fn look_of(chara: Option<&Character>, inventory: &Inventory, level: u8, data: Option<&WorldData>) -> PlayerLook {
     let make = chara.and_then(|c| CharaMake::parse(&c.appearance));
     let class = make.as_ref().map_or(1, |m| m.class);
     // what it wears, from its equipped items; the class's starting look when it has none
@@ -716,7 +793,7 @@ fn look_of(chara: Option<&Character>, inventory: &Inventory, data: Option<&World
     };
     // base stats from the class, the tribe (customize[4]) and the level
     let tribe = make.as_ref().map_or(1, |m| m.customize[4]);
-    let stats = data.and_then(|d| d.base_stats(class, tribe, 1)).unwrap_or(crystal_data::Stats {
+    let stats = data.and_then(|d| d.base_stats(class, tribe, level)).unwrap_or(crystal_data::Stats {
         strength: 20,
         dexterity: 20,
         vitality: 20,
@@ -730,7 +807,7 @@ fn look_of(chara: Option<&Character>, inventory: &Inventory, data: Option<&World
         name: chara.map_or_else(|| "Crystal".into(), |c| c.name.clone()),
         content_id: chara.map_or(0, |c| c.content_id),
         class,
-        level: 1,
+        level,
         customize: make.as_ref().map_or([0; 26], |m| m.customize),
         main_weapon,
         sub_weapon,

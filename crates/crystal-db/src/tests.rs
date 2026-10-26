@@ -103,6 +103,13 @@ async fn exercise(db: &Databases) {
     chars.save_inventory(me, &[gil]).await.unwrap();
     assert_eq!(chars.inventory(me).await.unwrap(), vec![gil]);
 
+    // class progress: per slot, replaced when set again
+    assert!(chars.class_progress(me).await.unwrap().is_empty());
+    chars.set_class_progress(me, 1, 5, 120).await.unwrap();
+    chars.set_class_progress(me, 0, 1, 0).await.unwrap();
+    chars.set_class_progress(me, 1, 6, 3).await.unwrap();
+    assert_eq!(chars.class_progress(me).await.unwrap(), vec![(0, 1, 0), (1, 6, 3)]);
+
     // the world repository: overrides and battle NPC spawns
     let w = &db.world;
     let o = ExdOverride { sheet: "BNpcName".into(), row_id: 2, col: 0, value: "ruins sprinter".into(), comment: None };

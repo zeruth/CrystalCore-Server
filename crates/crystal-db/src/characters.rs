@@ -226,6 +226,39 @@ impl Database {
         tx.commit().await.map_err(|e| self.sql(e))
     }
 
+    /// A character's (slot, level, experience) for every class slot it has levelled.
+    pub async fn class_progress(&self, character_id: i64) -> Result<Vec<(u8, u8, u32)>> {
+        let rows = sqlx::query("SELECT slot, level, exp FROM class_progress WHERE character_id = $1 ORDER BY slot")
+            .bind(character_id)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| self.sql(e))?;
+        rows.iter()
+            .map(|r| Ok((r.try_get::<i64, _>(0)? as u8, r.try_get::<i64, _>(1)? as u8, r.try_get::<i64, _>(2)? as u32)))
+            .collect::<std::result::Result<_, sqlx::Error>>()
+            .map_err(|e| self.sql(e))
+    }
+
+    /// Sets one class slot's level and experience.
+    pub async fn set_class_progress(&self, character_id: i64, slot: u8, level: u8, exp: u32) -> Result<()> {
+        let mut tx = self.pool.begin().await.map_err(|e| self.sql(e))?;
+        sqlx::query("DELETE FROM class_progress WHERE character_id = $1 AND slot = $2")
+            .bind(character_id)
+            .bind(slot as i32)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| self.sql(e))?;
+        sqlx::query("INSERT INTO class_progress (character_id, slot, level, exp) VALUES ($1, $2, $3, $4)")
+            .bind(character_id)
+            .bind(slot as i32)
+            .bind(level as i32)
+            .bind(exp as i64)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| self.sql(e))?;
+        tx.commit().await.map_err(|e| self.sql(e))
+    }
+
     /// The highest content id given so far (0 when none), to continue from.
     pub async fn max_content_id(&self) -> Result<u64> {
         let row = sqlx::query("SELECT COALESCE(MAX(content_id), 0) FROM characters")

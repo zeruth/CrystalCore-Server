@@ -3,7 +3,7 @@
 //! master, 3 administrator (`crystal-tools account set-gm`).
 //!
 //! `.bnpc` places battle NPCs by hand (Phase 4's third source, after imports and captures).
-//! `.item` and `.level` wait for inventory and stats (Phase 5).
+//! `.level` and `.exp` change the current class's progress; `.item` waits for item grants.
 
 use crystal_db::{BETA_PATCH, BnpcSpawn};
 use crystal_world::BnpcPlacement;
@@ -23,6 +23,66 @@ pub fn register(commands: &mut Commands) {
     commands.register(Tele);
     commands.register(Goto);
     commands.register(Bnpc);
+    commands.register(Level);
+    commands.register(Exp);
+}
+
+/// `.level <1-50>`: the current class's level.
+struct Level;
+
+impl Command for Level {
+    fn name(&self) -> &'static str {
+        "level"
+    }
+    fn usage(&self) -> &'static str {
+        "<1-50>"
+    }
+    fn help(&self) -> &'static str {
+        "sets your level in your current class"
+    }
+    fn level(&self) -> u8 {
+        GAME_MASTER
+    }
+    fn run<'a>(&'a self, cx: &'a mut Context<'_>, args: &'a str) -> BoxFuture<'a, ()> {
+        Box::pin(async move {
+            match args.trim().parse::<u8>() {
+                Ok(l) if (1..=50).contains(&l) => {
+                    cx.set_level(l);
+                    cx.reply(format!("Level {l}."));
+                }
+                _ => cx.reply("Usage: .level <1-50>"),
+            }
+        })
+    }
+}
+
+/// `.exp <amount>`: experience in the current class (levelling up as the table allows).
+struct Exp;
+
+impl Command for Exp {
+    fn name(&self) -> &'static str {
+        "exp"
+    }
+    fn usage(&self) -> &'static str {
+        "<amount>"
+    }
+    fn help(&self) -> &'static str {
+        "gives you experience in your current class"
+    }
+    fn level(&self) -> u8 {
+        GAME_MASTER
+    }
+    fn run<'a>(&'a self, cx: &'a mut Context<'_>, args: &'a str) -> BoxFuture<'a, ()> {
+        Box::pin(async move {
+            match args.trim().parse::<u32>() {
+                Ok(n) => {
+                    cx.add_exp(n);
+                    cx.reply(format!("{n} experience."));
+                }
+                Err(_) => cx.reply("Usage: .exp <amount>"),
+            }
+        })
+    }
 }
 
 /// `.bnpc add <BNpcBase> <BNpcName> (level)`, `.bnpc near (yalms)`: battle NPCs placed by hand.

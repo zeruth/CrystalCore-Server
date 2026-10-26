@@ -462,6 +462,12 @@ impl WorldData {
         })
     }
 
+    /// The experience a level needs to reach the next (`ParamGrow` col 0); `None` past the table.
+    pub fn exp_to_next(&self, level: u8) -> Option<u32> {
+        let v = self.sheet("ParamGrow").ok()?.row(level as u32)?.first()?.as_i64()?;
+        (v > 0).then_some(v as u32)
+    }
+
     /// Which of the 19 level slots (`PlayerStatus` @0x66) a class's level is kept in
     /// (`ClassJob` col 4: gladiator and paladin share 1, ...).
     pub fn class_level_slot(&self, class: u8) -> Option<usize> {
