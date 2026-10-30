@@ -461,7 +461,8 @@ impl Zone {
             }
             opcode::TALK_EVENT => self.talk_event(sess, body).await,
             opcode::EVENT_REQUEST => self.event_request(sess, body),
-            opcode::RANGE_EVENT => self.range_event(sess, body),
+            opcode::RANGE_EVENT => self.range_event(sess, body, ipc::event::WITHIN_RANGE),
+            opcode::OUTSIDE_RANGE_EVENT => self.range_event(sess, body, ipc::event::OUTSIDE_RANGE),
             opcode::SCENE_RESULT | opcode::SCENE_RESULT_4 | opcode::SCENE_RESULT_8 => {
                 self.scene_result(sess, body).await
             }
@@ -880,10 +881,12 @@ impl Zone {
     /// 20 a seq-1 one (the quest NPC calls the player back). The client names a range by its
     /// object's +0x14, the script's id for it (the Gridania opening's six registered ranges, read
     /// in the client, carry exactly the `Opening` sheet's ids).
-    fn range_event(&self, sess: &mut Session, body: &[u8]) -> Vec<(u16, Bytes)> {
+    /// `kind`: entering a range (10, Gridania's way out) or leaving one (11, Limsa's and Ul'dah's:
+    /// their scripts enable it as `EVENT_OUTSIDE_RANGE`); the same scenes answer either.
+    fn range_event(&self, sess: &mut Session, body: &[u8], kind: u8) -> Vec<(u16, Bytes)> {
         let Some((range, event_id, pos)) = ipc::parse_range_event(body) else { return vec![] };
-        info!(event = format_args!("{event_id:#x}"), range, ?pos, "  range event");
-        let mut out = start_event(sess, sess.actor_id as u64, event_id, ipc::event::WITHIN_RANGE, range);
+        info!(event = format_args!("{event_id:#x}"), range, kind, ?pos, "  range event");
+        let mut out = start_event(sess, sess.actor_id as u64, event_id, kind, range);
         let is = |name: &str| self.data.as_deref().and_then(|d| d.opening_value(event_id, name)) == Some(range);
         let scene = if (event_id >> 16) as u16 != ipc::event::OPENING {
             None

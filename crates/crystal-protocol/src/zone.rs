@@ -113,6 +113,10 @@ pub mod opcode {
     /// 10, the range's id as the argument, the player as the target) until a matching
     /// [`EVENT_START`]; the handler's script vets the range first (`OnPreWithinRange`).
     pub const RANGE_EVENT: u16 = 0x1c4;
+    /// Up (0x28 bytes): the player left an event range a handler watches for leaving (the Limsa
+    /// and Ul'dah openings' way out, `EVENT_OUTSIDE_RANGE`); sent by @0x6f8390, kind 11, the same
+    /// layout as [`RANGE_EVENT`]. Seen: Ul'dah's ERANGE_SEQ_1_CLOSED_1 (4101587).
+    pub const OUTSIDE_RANGE_EVENT: u16 = 0x1c5;
     /// Up: a scene of an event has ended; see [`super::parse_scene_result`]. Sent by @0xa50640:
     /// 0x1d7 with up to 2 values, 0x1d8 with 4, 0x1d9 with 8 (more through @0xa5d9c0..). Seen when
     /// the Gridania opening's scene 0 had played to its end: (0x130002, scene 0, one value 3).
@@ -965,6 +969,8 @@ pub mod event {
     pub const NEST: u8 = 7;
     /// The kind of an event an event range starts (@0x6f7db0 sets 10).
     pub const WITHIN_RANGE: u8 = 10;
+    /// The kind of an event leaving an event range starts (@0x6f8390 sets 11).
+    pub const OUTSIDE_RANGE: u8 = 11;
     /// The kind the client gives an event a territory's handlers offer on entering it
     /// (@0x70dfa0 sets 0xf before asking them).
     pub const ENTER_TERRITORY: u8 = 0xf;
