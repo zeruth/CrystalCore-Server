@@ -322,7 +322,7 @@ impl Lobby {
                 .characters
                 .create_character(account, making.content_id, making.world_id, &making.name, &appearance, now())
                 .await?;
-            let (zone_id, [x, y, z, rotation]) = chara::start_point(make.city);
+            let (zone_id, [x, y, z, rotation]) = chara::opening_point(make.city);
             let start = crystal_db::Position { zone_id: zone_id as u32, x, y, z, rotation };
             self.db.characters.save_position(making.content_id, start).await?;
             info!(id, content_id = making.content_id, name = %making.name, city = make.city, class = make.class, zone_id, "  character made");

@@ -5,6 +5,7 @@
 //! - `import`: server-only content into the world database (Sapphire's battle NPCs).
 //! - `export`: the world's battle NPC spawns as the repository's seed file.
 //! - `prune`: world content that does not belong in this client build, found (and removed).
+//! - `file`: raw files out of the client's SqPack by path (quest scripts, layouts).
 //! - `bots`: headless clients that log into the zone service, walk circles around a point, ping and
 //!   talk, for load tests and for seeing other players from the real client.
 //!
@@ -76,6 +77,14 @@ enum Command {
     Prune {
         #[arg(long)]
         apply: bool,
+    },
+    /// Reads files out of the client's SqPack by path (`game_script/quest/000/ManFst000_00083.luab`),
+    /// writing each to `--out` (default: the current folder) under its file name, or reports
+    /// which of the paths the install lacks.
+    File {
+        paths: Vec<String>,
+        #[arg(long, default_value = ".")]
+        out: PathBuf,
     },
     /// Runs headless clients against the zone service until Ctrl+C.
     Bots {
@@ -227,6 +236,20 @@ async fn main() -> anyhow::Result<()> {
             let data = game_data(&config, None, true).await?;
             prune::run(&db, &data, apply).await?;
             db.close().await;
+        }
+        Command::File { paths, out } => {
+            let data = game_data(&config, None, true).await?;
+            std::fs::create_dir_all(&out)?;
+            for path in &paths {
+                match data.pack().read(path) {
+                    Ok(bytes) => {
+                        let name = path.rsplit('/').next().unwrap_or(path);
+                        std::fs::write(out.join(name), &bytes)?;
+                        println!("{path}: {} bytes", bytes.len());
+                    }
+                    Err(e) => println!("{path}: {e}"),
+                }
+            }
         }
         Command::Bots { count, territory, at, radius, look, chat_every, rate } => {
             let db = Databases::connect(&config.database).await.context("databases")?;
