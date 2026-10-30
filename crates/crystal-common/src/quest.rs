@@ -51,6 +51,9 @@ pub struct Talk {
     /// the scene playing when it completes.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub action: Option<u32>,
+    /// What the talk does before its scene (attune an aetheryte, unlock something).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub then: Vec<Action>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -191,6 +194,10 @@ pub enum Action {
     /// town's opening copy to the town (183 `f1t1_opening` → 132 `f1t1`, the same map), as
     /// Sapphire's `requestMoveTerritoryType` without a position keeps the player's.
     MoveTerritory { territory: u16 },
+    /// Attune the character to an aetheryte (`Aetheryte` row).
+    Attune { aetheryte: u32 },
+    /// Unlock something for the character (1 Return, 4 Teleport).
+    Unlock { id: u32 },
 }
 
 /// Every definition in `dir` (`*.json`), by quest id; a file that does not read is an error
@@ -273,7 +280,7 @@ mod tests {
             quest: 0x10027,
             script: "ManFst001_00039".into(),
             source: Source::Sapphire,
-            talks: vec![Talk { actor: 1001148, when: vec![Cond::Seq { op: Op::Eq, value: 0 }], scene: 0, action: None }],
+            talks: vec![Talk { actor: 1001148, when: vec![Cond::Seq { op: Op::Eq, value: 0 }], scene: 0, action: None, then: vec![] }],
             scenes: [(0, vec![Rule {
                 when: vec![Cond::Result { index: 0, op: Op::Eq, value: 1 }],
                 then: vec![Action::Play { scene: 1 }],

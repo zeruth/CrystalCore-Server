@@ -47,7 +47,7 @@ pub fn derive(data: &WorldData, quest_id: u32) -> Option<QuestDef> {
     match (first("QuestOffer"), first("QuestAccepted")) {
         // (one scene may both offer and accept: ClsAlc050_00578's scene 0)
         (Some(offer), Some(accepted)) if offer <= accepted && start != 0 => {
-            talks.push(Talk { actor: start, when: vec![Cond::Seq { op: Op::Eq, value: 0 }], scene: offer, action: None });
+            talks.push(Talk { actor: start, when: vec![Cond::Seq { op: Op::Eq, value: 0 }], scene: offer, action: None, then: vec![] });
             let chain: Vec<u16> = (offer..=accepted).filter(|n| scenes.get(n).is_some_and(|f| !f.uses.is_empty())).collect();
             for pair in chain.windows(2) {
                 let when = if pair[0] == offer { vec![accepted_1.clone()] } else { vec![] };
@@ -66,7 +66,7 @@ pub fn derive(data: &WorldData, quest_id: u32) -> Option<QuestDef> {
                 (calls(p, "PlayCutScene") || calls(p, "Talk")) && !calls(p, "QuestOffer") && !calls(p, "QuestAccepted")
             });
             let first_scene = lead.unwrap_or(reward);
-            talks.push(Talk { actor: end, when: vec![Cond::Seq { op: Op::Eq, value: 255 }], scene: first_scene, action: None });
+            talks.push(Talk { actor: end, when: vec![Cond::Seq { op: Op::Eq, value: 255 }], scene: first_scene, action: None, then: vec![] });
             if let Some(p) = lead {
                 rules.insert(p, vec![Rule { when: vec![], then: vec![Action::Play { scene: reward }] }]);
             }

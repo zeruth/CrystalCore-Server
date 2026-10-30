@@ -110,6 +110,16 @@ async fn exercise(db: &Databases) {
     chars.set_class_progress(me, 1, 6, 3).await.unwrap();
     assert_eq!(chars.class_progress(me).await.unwrap(), vec![(0, 1, 0), (1, 6, 3)]);
 
+    // aetherytes and unlocks: sets, added to once
+    assert!(chars.aetherytes(me).await.unwrap().is_empty());
+    chars.add_aetheryte(me, 25).await.unwrap();
+    chars.add_aetheryte(me, 2).await.unwrap();
+    chars.add_aetheryte(me, 25).await.unwrap();
+    assert_eq!(chars.aetherytes(me).await.unwrap(), vec![2, 25]);
+    chars.add_unlock(me, 1).await.unwrap();
+    chars.add_unlock(me, 1).await.unwrap();
+    assert_eq!(chars.unlocks(me).await.unwrap(), vec![1]);
+
     // deleting: only the owner's, then gone from every lookup, its name free again
     let other = db.login.ensure_account("someone else", 1).await.unwrap();
     let doomed = content_id + 2;

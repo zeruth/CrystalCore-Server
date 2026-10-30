@@ -99,6 +99,11 @@ enum Command {
         #[arg(long)]
         kind: Option<u32>,
     },
+    /// Any of the client's scripts (`game_script/transport/Aetheryte.luab`): its functions, what
+    /// each calls and the numbers it returns.
+    Script {
+        path: String,
+    },
     /// A quest as the β has it: its row's listeners, to-dos and rewards, its script's scenes and
     /// what each calls; `--stats` tallies what every quest script calls.
     Quest {
@@ -322,6 +327,14 @@ async fn main() -> anyhow::Result<()> {
             let data = game_data(&config, Some(&db), false).await?;
             coverage::run(&data, &db, &out).await?;
             db.close().await;
+        }
+        Command::Script { path } => {
+            let data = game_data(&config, None, true).await?;
+            let script = crystal_data::luac::Script::parse(&data.pack().read(&path)?)?;
+            for (name, f) in &script.functions {
+                println!("{name}: returns {:?}", f.returns);
+                println!("    {}", f.uses.join(" "));
+            }
         }
         Command::Layout { territory, kind } => {
             let data = game_data(&config, None, true).await?;

@@ -340,6 +340,48 @@ impl Database {
             .map_err(|e| self.sql(e))
     }
 
+    /// The aetherytes a character is attuned to (`Aetheryte` rows).
+    pub async fn aetherytes(&self, character_id: i64) -> Result<Vec<u32>> {
+        self.id_set("SELECT aetheryte_id FROM aetherytes WHERE character_id = $1 ORDER BY aetheryte_id", character_id)
+            .await
+    }
+
+    /// Attunes a character to an aetheryte (again is fine).
+    pub async fn add_aetheryte(&self, character_id: i64, aetheryte_id: u32) -> Result<()> {
+        self.id_set_add("aetherytes", "aetheryte_id", character_id, aetheryte_id).await
+    }
+
+    /// A character's unlocks (1 Return, 4 Teleport, ...).
+    pub async fn unlocks(&self, character_id: i64) -> Result<Vec<u32>> {
+        self.id_set("SELECT unlock_id FROM unlocks WHERE character_id = $1 ORDER BY unlock_id", character_id).await
+    }
+
+    pub async fn add_unlock(&self, character_id: i64, unlock_id: u32) -> Result<()> {
+        self.id_set_add("unlocks", "unlock_id", character_id, unlock_id).await
+    }
+
+    async fn id_set(&self, sql: &'static str, character_id: i64) -> Result<Vec<u32>> {
+        let rows = sqlx::query(sql).bind(character_id).fetch_all(&self.pool).await.map_err(|e| self.sql(e))?;
+        rows.iter()
+            .map(|r| Ok(r.try_get::<i64, _>(0)? as u32))
+            .collect::<std::result::Result<_, sqlx::Error>>()
+            .map_err(|e| self.sql(e))
+    }
+
+    async fn id_set_add(&self, table: &str, column: &str, character_id: i64, id: u32) -> Result<()> {
+        let sql = format!(
+            "INSERT INTO {table} (character_id, {column}) SELECT $1, $2 \
+             WHERE NOT EXISTS (SELECT 1 FROM {table} WHERE character_id = $1 AND {column} = $2)"
+        );
+        sqlx::query(sqlx::AssertSqlSafe(sql))
+            .bind(character_id)
+            .bind(id as i32)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| self.sql(e))?;
+        Ok(())
+    }
+
     /// Completes a quest: out of its slot, into the completed ones.
     pub async fn complete_quest(&self, character_id: i64, slot: u8, quest_id: u32) -> Result<()> {
         let mut tx = self.pool.begin().await.map_err(|e| self.sql(e))?;

@@ -17,7 +17,7 @@ impl Zone {
     /// start NPC (`Quest` col 27); a completed one plays nothing. The talked-to NPC is the target's
     /// `Level` row (a layout NPC's id is its layout id with high half 1, and its `Level` row's
     /// col 6 is its ENpc: Bertennant 1985150 → 1001148).
-    pub(crate) fn quest_talk(&self, sess: &Session, quest_id: u32, target: u64) -> Option<u16> {
+    pub(crate) fn quest_talk(&self, sess: &Session, quest_id: u32, target: u64) -> Option<(u16, Vec<Action>)> {
         if sess.completed.contains(&quest_id) {
             return None;
         }
@@ -44,7 +44,20 @@ impl Zone {
             // the event action's cast bar (down packet not yet known): the scene plays at once
             info!(action, "  quest talk: event action skipped");
         }
-        Some(talk.scene)
+        Some((talk.scene, talk.then.clone()))
+    }
+
+    /// What a talk does before its scene: attune, unlock.
+    pub(crate) async fn quest_talk_actions(&self, sess: &mut Session, actions: &[Action]) -> Vec<(u16, Bytes)> {
+        let mut out = Vec::new();
+        for a in actions {
+            match *a {
+                Action::Attune { aetheryte } => out.extend(self.attune(sess, aetheryte).await),
+                Action::Unlock { id } => out.extend(self.unlock(sess, id).await),
+                ref other => warn!(?other, "  quest talk: action not run at a talk"),
+            }
+        }
+        out
     }
 
     /// A quest's scene ended: the definition's first rule for the scene whose conditions hold
@@ -119,6 +132,8 @@ impl Zone {
                     ended = true;
                 }
                 Action::Warp { territory, pos, rotation } => warp = Some((territory, pos, rotation)),
+                Action::Attune { aetheryte } => out.extend(self.attune(sess, aetheryte).await),
+                Action::Unlock { id } => out.extend(self.unlock(sess, id).await),
                 Action::MoveTerritory { territory } => {
                     warp = Some((territory, sess.pos(), sess.position.rotation as f32));
                 }

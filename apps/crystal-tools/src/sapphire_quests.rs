@@ -815,16 +815,35 @@ impl Conv<'_> {
                     }
                     match (args.iter().find_map(scene_in), actor, action) {
                         (Some(scene), Some(actor), Some(action)) => {
-                            out.push(Talk { actor, when: when.clone(), scene, action: Some(action) })
+                            let then = talk_effects(&show(e));
+                            out.push(Talk { actor, when: when.clone(), scene, action: Some(action), then })
                         }
                         _ => self.review.push(format!("onTalk event action `{}`", show(e))),
                     }
                 }
                 Stmt::Expr(e) => {
                     let scene = self.call(e).and_then(|(m, _)| m.strip_prefix("Scene")?.parse::<u16>().ok());
-                    match (scene, actor) {
-                        (Some(scene), Some(actor)) => out.push(Talk { actor, when: when.clone(), scene, action: None }),
-                        (Some(scene), None) => self.review.push(format!("onTalk plays scene {scene} for any actor")),
+                    // what the talk itself does (in Sapphire, in its event action's completion):
+                    // attune an aetheryte, unlock something; kept on that actor's talk
+                    let done = match self.call(e) {
+                        Some(("registerAetheryte", [a])) => self.value(a).map(|v| Action::Attune { aetheryte: v as u32 }),
+                        Some(("setRewardFlag", [a])) => match show(a).rsplit('.').next() {
+                            // Sapphire's UnlockEntry; the β client tests unlock bits 1 and 4
+                            Some("Return") => Some(Action::Unlock { id: 1 }),
+                            Some("Teleport") => Some(Action::Unlock { id: 4 }),
+                            _ => None,
+                        },
+                        _ => None,
+                    };
+                    match (scene, actor, done) {
+                        (_, Some(actor), Some(done)) => match out.iter_mut().rev().find(|t| t.actor == actor) {
+                            Some(t) => t.then.push(done),
+                            None => self.review.push(format!("onTalk statement `{}` before its talk", show(e))),
+                        },
+                        (Some(scene), Some(actor), None) => {
+                            out.push(Talk { actor, when: when.clone(), scene, action: None, then: vec![] })
+                        }
+                        (Some(scene), None, _) => self.review.push(format!("onTalk plays scene {scene} for any actor")),
                         _ => self.review.push(format!("onTalk statement `{}`", show(e))),
                     }
                 }
@@ -868,6 +887,32 @@ fn convert(src: &str, script: &str) -> Option<QuestDef> {
     review.sort();
     review.dedup();
     Some(QuestDef { quest: s.quest, script: script.to_owned(), source: Source::Sapphire, talks, scenes, review })
+}
+
+/// What an event action's completion does besides its scene, from its text (the lambda body
+/// the parser keeps whole): `registerAetheryte( n )`, `setRewardFlag( ..UnlockEntry::Return )`
+/// (Sapphire's UnlockEntry: Return 1, Teleport 4; the β client tests unlock bits 1 and 4).
+fn talk_effects(text: &str) -> Vec<Action> {
+    let mut out = Vec::new();
+    let mut rest = text;
+    while let Some(i) = rest.find("registerAetheryte(") {
+        rest = &rest[i + "registerAetheryte(".len()..];
+        let n: String = rest.trim_start().chars().take_while(|c| c.is_ascii_digit()).collect();
+        if let Ok(aetheryte) = n.parse() {
+            out.push(Action::Attune { aetheryte });
+        }
+    }
+    let mut rest = text;
+    while let Some(i) = rest.find("setRewardFlag(") {
+        rest = &rest[i + "setRewardFlag(".len()..];
+        let arg: String = rest.chars().take_while(|&c| c != ')').collect();
+        match arg.rsplit(['.', ':']).next().map(str::trim) {
+            Some("Return") => out.push(Action::Unlock { id: 1 }),
+            Some("Teleport") => out.push(Action::Unlock { id: 4 }),
+            _ => {}
+        }
+    }
+    out
 }
 
 /// `conds` given what `actions` (a path so far) set: `None` when one is then known false, else
@@ -1017,8 +1062,8 @@ public:
         assert_eq!(
             d.talks,
             [
-                Talk { actor: 1001148, when: vec![], scene: 0, action: None },
-                Talk { actor: 1001140, when: vec![], scene: 4, action: None }
+                Talk { actor: 1001148, when: vec![], scene: 0, action: None, then: vec![] },
+                Talk { actor: 1001140, when: vec![], scene: 4, action: None, then: vec![] }
             ]
         );
         let r1 = Cond::Result { index: 0, op: Op::Eq, value: 1 };
@@ -1076,8 +1121,14 @@ QuestScript( 65643 )
         assert_eq!(
             d.talks,
             [
-                Talk { actor: 1002732, when: vec![seq(1), Cond::Var { var: al, op: Op::Ne, value: 1 }], scene: 5, action: None },
-                Talk { actor: 1002732, when: vec![Cond::Seq { op: Op::Ne, value: 1 }, seq(255)], scene: 13, action: None },
+                Talk { actor: 1002732, when: vec![seq(1), Cond::Var { var: al, op: Op::Ne, value: 1 }], scene: 5, action: None, then: vec![] },
+                Talk {
+                    actor: 1002732,
+                    when: vec![Cond::Seq { op: Op::Ne, value: 1 }, seq(255)],
+                    scene: 13,
+                    action: None,
+                    then: vec![],
+                },
             ]
         );
         assert_eq!(

@@ -122,6 +122,17 @@ impl std::fmt::Display for Misfit {
     }
 }
 
+/// An aetheryte or aethernet shard; see [`WorldData::aetheryte`].
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct AetheryteInfo {
+    pub id: u32,
+    /// An aetheryte (teleport destination), not an aethernet shard.
+    pub main: bool,
+    pub territory: u16,
+    /// Where travel to it puts the player (its pop range), when the layout has it.
+    pub arrival: Option<Arrival>,
+}
+
 /// Where a zone exit puts the player.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Arrival {
@@ -613,6 +624,22 @@ impl WorldData {
         let f = |i: usize| row.get(i).and_then(|v| v.as_f32()).unwrap_or(0.0);
         let territory = row.get(9)?.as_u64()? as u16;
         Some(Arrival { territory, pos: [f(0), f(1), f(2)], rotation: f(3) })
+    }
+
+    /// An `Aetheryte` row as the β has it: col 16 true for an aetheryte (teleport), false for an
+    /// aethernet shard; col 11 its territory; col 12 the pop range players arrive at (a type-40
+    /// layout object: 2563653 in New Gridania for shard 25, 1359064 for its aetheryte, 2).
+    pub fn aetheryte(&self, id: u32) -> Option<AetheryteInfo> {
+        let sheet = self.sheet("Aetheryte").ok()?;
+        let row = sheet.row(id)?;
+        let territory = row.get(11)?.as_u64()? as u16;
+        let main = row.get(16).and_then(|v| v.as_u64()).unwrap_or(0) != 0;
+        let pop = row.get(12)?.as_u64()? as u32;
+        let arrival = self.layout(territory).ok().and_then(|l| {
+            let o = l.find(pop)?;
+            Some(Arrival { territory, pos: o.pos, rotation: o.rot[1] })
+        });
+        Some(AetheryteInfo { id, main, territory, arrival })
     }
 
     pub fn has_territory(&self, territory: u16) -> bool {

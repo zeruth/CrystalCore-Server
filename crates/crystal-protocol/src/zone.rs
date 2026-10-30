@@ -419,6 +419,9 @@ pub fn parse_blacklist_request(b: &[u8]) -> Option<(u8, u8)> {
 /// 0x34  char[64]  name
 /// 0x66  u16 x19   level per class slot (ClassJob col 4)
 /// 0x8C  u32 x19   experience per class slot
+/// 0xD8  u8 x16    unlocks, bit (1 << id & 7) of byte id >> 3 (→ @0x14b4ec0; 1 Return, 4 Teleport)
+/// 0xE8  u8 x12    aetherytes attuned, the same way by `Aetheryte` row (→ @0x14b4ed0, which
+///                 the aethernet menu reads, @0x714f80)
 /// ```
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct PlayerStatus {
@@ -430,6 +433,20 @@ pub struct PlayerStatus {
     pub name: String,
     pub levels: [u16; 19],
     pub exp: [u32; 19],
+    pub unlocks: [u8; 16],
+    pub aetherytes: [u8; 12],
+}
+
+/// Ids as the client's bit arrays hold them: bit 1 << (id & 7) of byte id >> 3 (ids past the
+/// array left out).
+pub fn id_bits<const N: usize>(ids: &[u32]) -> [u8; N] {
+    let mut bits = [0u8; N];
+    for &id in ids {
+        if let Some(b) = bits.get_mut((id >> 3) as usize) {
+            *b |= 1 << (id & 7);
+        }
+    }
+    bits
 }
 
 impl PlayerStatus {
@@ -450,6 +467,8 @@ impl PlayerStatus {
         for (i, e) in self.exp.iter().enumerate() {
             b[0x8c + 4 * i..0x90 + 4 * i].copy_from_slice(&e.to_le_bytes());
         }
+        b[0xd8..0xe8].copy_from_slice(&self.unlocks);
+        b[0xe8..0xf4].copy_from_slice(&self.aetherytes);
         b.freeze()
     }
 }
@@ -748,6 +767,12 @@ pub mod order_kind {
     /// interrupted. The player's own cast bar stops (@0xac2f90 on the cast @0x14bcf40, as
     /// RequestCast's), the character's cast too (@0xaa3360).
     pub const CAST_END: u16 = 0xf;
+    /// An unlock set (arg 2 non-zero) or cleared: arg 1 its id, the player's bit @0x14b4ec0
+    /// (@0xa55f80 case 0x29 → @0xa6e020; Sapphire's SetRewardFlag, 1 Return, 4 Teleport).
+    pub const SET_UNLOCK: u16 = 0x29;
+    /// Attuned (arg 2 non-zero) to the `Aetheryte` row arg 1: the player's bit @0x14b4ed0
+    /// (@0xa55f80 case 0xbb → @0xa69ac0; Sapphire's LearnTeleport).
+    pub const LEARN_AETHERYTE: u16 = 0x1fd;
 }
 
 /// LogMessage rows a cast's end logs.
@@ -985,6 +1010,9 @@ pub mod trigger {
 pub mod event {
     pub const QUEST: u16 = 0x0001;
     pub const WARP: u16 = 0x0002;
+    /// An aetheryte or aethernet shard (its `Aetheryte` row in the low 16 bits; the client's
+    /// `game_script/transport/Aetheryte` runs its scenes).
+    pub const AETHERYTE: u16 = 0x0005;
     /// The opening's handlers (the `Opening` sheet's rows, 0x130001-0x130003).
     pub const OPENING: u16 = 0x0013;
     /// The event kind `EVENT_START` and `EVENT_FINISH` carry for talking.
@@ -1538,6 +1566,9 @@ mod tests {
         }
         .to_bytes();
         assert_eq!((s[0xf], s[0x10]), (1, 5));
+        // Gridania's aetheryte (2) and its first aethernet shard (25)
+        let bits: [u8; 12] = id_bits(&[2, 25]);
+        assert_eq!((bits[0], bits[3]), (0x04, 0x02));
         assert_eq!(s.len(), PlayerStatus::SIZE);
         assert_eq!(&s[8..0xc], &0x1000_0001u32.to_le_bytes());
         assert_eq!(s[0x1a], 1);

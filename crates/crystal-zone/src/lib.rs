@@ -10,6 +10,7 @@
 //! moving, talking, going away) comes back as packets. The packet layouts are in
 //! [`crystal_protocol::zone`] (re-exported as [`ipc`]).
 
+mod aetherytes;
 pub mod commands;
 mod objects;
 mod quests;
@@ -119,6 +120,9 @@ struct Session {
     quests: Vec<ipc::QuestSlot>,
     /// The quests it has completed.
     completed: Vec<u32>,
+    /// The aetherytes the character is attuned to, and its unlocks.
+    aetherytes: Vec<u32>,
+    unlocks: Vec<u32>,
     /// The client's object slots: the gathering point in each.
     objects: [Option<u32>; ipc::object::SLOTS as usize],
     /// Where the player stood when the objects were last worked out.
@@ -158,6 +162,8 @@ impl Session {
             events: Vec::new(),
             quests: Vec::new(),
             completed: Vec::new(),
+            aetherytes: Vec::new(),
+            unlocks: Vec::new(),
             objects: [None; ipc::object::SLOTS as usize],
             objects_at: None,
         }
@@ -371,8 +377,23 @@ impl Zone {
                         }),
                         None => vec![],
                     };
+                    let (aetherytes, unlocks) = match &chara {
+                        Some(c) => {
+                            let a = self.db.characters.aetherytes(c.id).await.unwrap_or_else(|e| {
+                                warn!("aetherytes: {e}");
+                                vec![]
+                            });
+                            let u = self.db.characters.unlocks(c.id).await.unwrap_or_else(|e| {
+                                warn!("unlocks: {e}");
+                                vec![]
+                            });
+                            (a, u)
+                        }
+                        None => (vec![], vec![]),
+                    };
                     let mut s =
                         Session::new(actor_id, kind, chara, gm_level, inventory, progress, self.data.as_deref());
+                    (s.aetherytes, s.unlocks) = (aetherytes, unlocks);
                     s.quests = quests
                         .into_iter()
                         .map(|q| ipc::QuestSlot { slot: q.slot, quest_id: q.quest_id, sequence: q.sequence, vars: q.vars })
@@ -865,6 +886,8 @@ impl Zone {
             name: look.name.clone(),
             levels,
             exp,
+            unlocks: ipc::id_bits(&sess.unlocks),
+            aetherytes: ipc::id_bits(&sess.aetherytes),
         }
         .to_bytes()
     }
@@ -878,9 +901,14 @@ impl Zone {
         info!(target = format_args!("{target:#x}"), event = format_args!("{event_id:#x}"), handler, "  talk event");
         let mut out = start_event(sess, target, event_id, ipc::event::TALK, 0);
         if handler == ipc::event::QUEST
-            && let Some(scene) = self.quest_talk(sess, event_id, target)
+            && let Some((scene, then)) = self.quest_talk(sess, event_id, target)
         {
+            out.extend(self.quest_talk_actions(sess, &then).await);
             out.extend(play_scene(sess, scene, &[]));
+            return out;
+        }
+        if handler == ipc::event::AETHERYTE {
+            out.extend(self.aetheryte_talk(sess, event_id).await);
             return out;
         }
         // nothing to play: ended at once (the end clears what the talk set)
@@ -962,6 +990,7 @@ impl Zone {
         match (r.event_id >> 16) as u16 {
             ipc::event::OPENING => self.opening_scene_result(sess, &r).await,
             ipc::event::QUEST => self.quest_scene_result(sess, &r).await,
+            ipc::event::AETHERYTE => self.aetheryte_scene_result(sess, &r).await,
             _ => vec![],
         }
     }

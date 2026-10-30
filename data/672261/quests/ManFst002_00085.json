@@ -287,7 +287,7 @@
     "condition `varIdx == 3` not expressible; the if left out",
     "onTalk statement `;eventMgr().eventActionStart(player,327682,19,event,nullptr,327682);`",
     "onTalk statement `auto event=[&](Entity::Player&player,uint32_t eventId,uint64_t additional){eventMgr().sendEventNotice(player,327682,0,1,0,0);`",
-    "onTalk statement `player.registerAetheryte(2)`",
-    "onTalk statement `player.setRewardFlag(Common.UnlockEntry.Return)`"
+    "onTalk statement `player.registerAetheryte(2)` before its talk",
+    "onTalk statement `player.setRewardFlag(Common.UnlockEntry.Return)` before its talk"
   ]
 }

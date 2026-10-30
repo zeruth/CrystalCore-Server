@@ -14,7 +14,7 @@ pub use exd::{Column, ColumnKind, Header, Language};
 pub use exd::{Sheet, Value};
 pub use lgb::{ExitRange, Layer, Layout, Object};
 pub use sqpack::SqPack;
-pub use world::{ActionRow, Arrival, ItemRow, MAIN_BASE, Misfit, NpcLook, NpcPlacement, Overrides, Stats, WorldData};
+pub use world::{ActionRow, AetheryteInfo, Arrival, ItemRow, MAIN_BASE, Misfit, NpcLook, NpcPlacement, Overrides, Stats, WorldData};
 
 #[derive(Debug, thiserror::Error)]
 pub enum DataError {

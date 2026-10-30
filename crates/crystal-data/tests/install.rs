@@ -54,6 +54,21 @@ fn classes_start_in_their_towns() {
 }
 
 #[test]
+fn aetherytes_and_shards() {
+    let Some(game) = game() else { return };
+    let world = WorldData::open(&game).unwrap();
+    // New Gridania's aetheryte and an aethernet shard, with their pop ranges in 132's layout
+    let a = world.aetheryte(2).unwrap();
+    assert!(a.main && a.territory == 132);
+    let pos = a.arrival.unwrap().pos;
+    assert!((pos[0] - 40.2).abs() < 0.1 && (pos[2] - 33.5).abs() < 0.1, "{pos:?}");
+    let s = world.aetheryte(25).unwrap();
+    assert!(!s.main && s.territory == 132);
+    let pos = s.arrival.unwrap().pos;
+    assert!((pos[0] - 165.2).abs() < 0.1 && (pos[2] - 83.0).abs() < 0.1, "{pos:?}");
+}
+
+#[test]
 fn quest_exp_as_the_client_works_it_out() {
     let Some(game) = game() else { return };
     let world = WorldData::open(&game).unwrap();

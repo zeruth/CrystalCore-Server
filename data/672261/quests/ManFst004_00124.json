@@ -32,7 +32,17 @@
         }
       ],
       "scene": 51,
-      "action": 19
+      "action": 19,
+      "then": [
+        {
+          "do": "attune",
+          "aetheryte": 2
+        },
+        {
+          "do": "unlock",
+          "id": 1
+        }
+      ]
     },
     {
       "actor": 1000323,

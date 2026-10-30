@@ -66,7 +66,13 @@
         }
       ],
       "scene": 2,
-      "action": 19
+      "action": 19,
+      "then": [
+        {
+          "do": "unlock",
+          "id": 1
+        }
+      ]
     }
   ],
   "scenes": {
