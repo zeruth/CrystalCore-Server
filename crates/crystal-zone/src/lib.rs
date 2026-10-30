@@ -424,6 +424,9 @@ impl Zone {
             }
             opcode::TALK_EVENT => self.talk_event(sess, body).await,
             opcode::EVENT_REQUEST => self.event_request(sess, body),
+            opcode::SCENE_RESULT | opcode::SCENE_RESULT_4 | opcode::SCENE_RESULT_8 => {
+                self.scene_result(sess, body).await
+            }
             opcode::ITEM_OPERATION_REQUEST => self.item_operation(sess, body).await,
             opcode::COMMAND => {
                 self.trigger(sess, body);
@@ -802,20 +805,59 @@ impl Zone {
     /// The client asks for an event it found on entering its territory (an opening's, so far).
     /// The start must match what the client holds pending: its own id (`GameObject::vf0`
     /// @0xa5f080: the actor id, high half 0), the event, kind 0xf and the territory. An opening
-    /// then plays its scene 0, whose script hands its first parameter to `onLogin` as the
-    /// opening's sequence (`OPENING_SEQ_0` = 0 for a new character, registered @0x6efc70).
+    /// then plays scene 0 (the cutscenes) for a character that has not seen them, else scene 40
+    /// (the scripts' re-entry: only `onLogin`). Both scripts hand their first parameter to
+    /// `onLogin` as the opening's sequence (`OPENING_SEQ_0`-`2` = 0-2, registered @0x6efc70).
     fn event_request(&self, sess: &mut Session, body: &[u8]) -> Vec<(u16, Bytes)> {
         let Some(event_id) = ipc::parse_event_request(body) else { return vec![] };
         let territory = sess.position.zone_id;
-        info!(event = format_args!("{event_id:#x}"), territory, "  event request");
+        let opening = sess.chara.as_ref().map_or(0, |c| c.opening);
+        info!(event = format_args!("{event_id:#x}"), territory, opening, "  event request");
         let target = sess.actor_id as u64;
         // flags 0: the client only stores them (@0x6f0be0 → this+0x250); untested beyond that
         let mut out =
             vec![(opcode::EVENT_START, ipc::event_start(target, event_id, ipc::event::ENTER_TERRITORY, 0, territory))];
         if (event_id >> 16) as u16 == ipc::event::OPENING {
-            out.push((opcode::EVENT_PLAY, ipc::event_play(target, event_id, 0, 0, &[0])));
+            let scene = if opening == 0 { 0 } else { 40 };
+            out.push((opcode::EVENT_PLAY, ipc::event_play(target, event_id, scene, 0, &[opening as u32])));
         }
         out
+    }
+
+    /// A scene ended. An opening's scene 0 (its cutscenes) is followed by scene 1, the welcome:
+    /// the scripts' system lines 20-22 ("Welcome to Gridania...", "Follow the instructions...",
+    /// "When you are ready to proceed, speak to Bertennant."), the control mode question and the
+    /// movement tutorial; after it (and after scene 40, the re-entry) the event ends, freeing the
+    /// player. The cutscenes are recorded as seen (`OPENING_SEQ_1`) once scene 0 has ended, so
+    /// they play once.
+    async fn scene_result(&self, sess: &mut Session, body: &[u8]) -> Vec<(u16, Bytes)> {
+        let Some(r) = ipc::parse_scene_result(body) else { return vec![] };
+        info!(event = format_args!("{:#x}", r.event_id), scene = r.scene, values = ?r.values, byte_6 = r.byte_6, "  scene result");
+        let target = sess.actor_id as u64;
+        if (r.event_id >> 16) as u16 != ipc::event::OPENING {
+            return vec![];
+        }
+        match r.scene {
+            0 => {
+                if let Some(chara) = sess.chara.as_mut()
+                    && chara.opening == 0
+                {
+                    chara.opening = 1;
+                    if let Err(e) = self.db.characters.save_opening(chara.content_id, 1).await {
+                        warn!(character = %chara.name, "opening not saved: {e}");
+                    }
+                }
+                vec![(opcode::EVENT_PLAY, ipc::event_play(target, r.event_id, 1, 0, &[]))]
+            }
+            // the argument names the event as its start did (the territory): the client looks
+            // the running event up by event, kind and argument, and with no match writes through
+            // a null entry (@0x6fd010: an access violation at 0x6fd1bb)
+            1 | 40 => vec![(
+                opcode::EVENT_FINISH,
+                ipc::event_finish(r.event_id, ipc::event::ENTER_TERRITORY, 1, sess.position.zone_id),
+            )],
+            _ => vec![],
+        }
     }
 
     /// Takes the player out of its territory and has its client load `territory` at `pos`; it

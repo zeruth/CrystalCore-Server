@@ -16,6 +16,8 @@ pub struct Character {
     pub appearance: String,
     /// Where it stands; `None` until it first enters a zone.
     pub position: Option<Position>,
+    /// How far through its town's opening (`OPENING_SEQ_0`-`2`): 0 until its cutscenes played.
+    pub opening: u8,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -40,7 +42,8 @@ pub struct InventoryRow {
     pub stain: u8,
 }
 
-const COLUMNS: &str = "id, account_id, content_id, world_id, name, appearance, zone_id, pos_x, pos_y, pos_z, rotation";
+const COLUMNS: &str =
+    "id, account_id, content_id, world_id, name, appearance, zone_id, pos_x, pos_y, pos_z, rotation, opening";
 
 fn from_row(row: &sqlx::any::AnyRow) -> std::result::Result<Character, sqlx::Error> {
     let zone_id: Option<i32> = row.try_get(6)?;
@@ -62,6 +65,7 @@ fn from_row(row: &sqlx::any::AnyRow) -> std::result::Result<Character, sqlx::Err
         name: row.try_get(4)?,
         appearance: row.try_get(5)?,
         position,
+        opening: row.try_get::<i32, _>(11)? as u8,
     })
 }
 
@@ -167,6 +171,17 @@ impl Database {
         .execute(&self.pool)
         .await
         .map_err(|e| self.sql(e))?;
+        Ok(())
+    }
+
+    /// Records how far the character is through its opening.
+    pub async fn save_opening(&self, content_id: u64, opening: u8) -> Result<()> {
+        sqlx::query("UPDATE characters SET opening = $1 WHERE content_id = $2")
+            .bind(opening as i32)
+            .bind(content_id as i64)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| self.sql(e))?;
         Ok(())
     }
 

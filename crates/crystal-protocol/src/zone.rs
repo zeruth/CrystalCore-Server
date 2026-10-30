@@ -108,6 +108,12 @@ pub mod opcode {
     /// argument) until an [`EVENT_START`] that matches all of them (@0x6b9110). Seen after an
     /// opening territory loads: 0x130001 in 181.
     pub const EVENT_REQUEST: u16 = 0x1c6;
+    /// Up: a scene of an event has ended; see [`super::parse_scene_result`]. Sent by @0xa50640:
+    /// 0x1d7 with up to 2 values, 0x1d8 with 4, 0x1d9 with 8 (more through @0xa5d9c0..). Seen when
+    /// the Gridania opening's scene 0 had played to its end: (0x130002, scene 0, one value 3).
+    pub const SCENE_RESULT: u16 = 0x1d7;
+    pub const SCENE_RESULT_4: u16 = 0x1d8;
+    pub const SCENE_RESULT_8: u16 = 0x1d9;
     /// Down: an event starts; see [`super::event_start`] (case 0x65 → @0x6f0be0).
     pub const EVENT_START: u16 = 0x1cc;
     /// Down: a scene of an event plays; see [`super::event_play`] (case 0x64 → @0xa50d10 →
@@ -150,6 +156,10 @@ fn f32_at(b: &[u8], at: usize) -> Option<f32> {
 
 fn u32_at(b: &[u8], at: usize) -> Option<u32> {
     b.get(at..at + 4).map(|b| u32::from_le_bytes(b.try_into().unwrap()))
+}
+
+fn u16_at(b: &[u8], at: usize) -> Option<u16> {
+    b.get(at..at + 2).map(|b| u16::from_le_bytes(b.try_into().unwrap()))
 }
 
 /// Text up to its first zero.
@@ -936,6 +946,23 @@ pub fn parse_event_request(b: &[u8]) -> Option<u32> {
     u32_at(b, 0)
 }
 
+/// A scene's end, as [`opcode::SCENE_RESULT`] carries it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SceneResult {
+    pub event_id: u32,
+    pub scene: u16,
+    /// The byte @6 (@0xa50640's third argument): 0 so far; meaning unknown.
+    pub byte_6: u8,
+    /// The values the scene returned (count @7, u32 each from @8).
+    pub values: Vec<u32>,
+}
+
+pub fn parse_scene_result(b: &[u8]) -> Option<SceneResult> {
+    let count = *b.get(7)? as usize;
+    let values = (0..count).map(|i| u32_at(b, 8 + i * 4)).collect::<Option<Vec<_>>>()?;
+    Some(SceneResult { event_id: u32_at(b, 0)?, scene: u16_at(b, 4)?, byte_6: *b.get(6)?, values })
+}
+
 /// [`opcode::EVENT_PLAY`] with up to 2 parameters (the dispatcher passes @0, @4, @8, @0xc as
 /// u16, @0x10, @0x18 as the parameters' address, @0x14 as their count): the target u64 @0, the
 /// event id @8, the scene @0xc, flags @0x10, the parameter count @0x14, the parameters u32 @0x18.
@@ -970,7 +997,9 @@ pub fn event_start(target: u64, event_id: u32, kind: u8, flags: u8, arg: u32) ->
 }
 
 /// [`opcode::EVENT_FINISH`] (0x10 bytes; the dispatcher passes @0, @4, @8, @5): the event id @0,
-/// its kind @4, the result @5 (1 frees the player), an argument @8.
+/// its kind @4, the result @5 (1 frees the player), an argument @8. Event, kind and argument must
+/// be the start's: @0x6fd010 finds the running event by them (entry +8, +0x18, +0x1c) and writes
+/// the result to its +0x28, through a null entry when none matches (an access violation).
 pub fn event_finish(event_id: u32, kind: u8, result: u8, arg: u32) -> Bytes {
     let mut b = BytesMut::zeroed(0x10);
     b[0..4].copy_from_slice(&event_id.to_le_bytes());
@@ -1455,6 +1484,11 @@ mod tests {
         assert_eq!(u64::from_le_bytes(play[..8].try_into().unwrap()), 0x1000_0008);
         assert_eq!((&play[8..0xc], &play[0xc..0xe], play[0x14]), (&up[..4], &[0u8, 0][..], 1));
         assert_eq!(&play[0x18..0x1c], &7u32.to_le_bytes());
+        // the Gridania opening's scene 0 at its end, as the client sent it (the last 4 bytes are
+        // past the one value)
+        let up = hex::decode("0200130000000001030000007126ceca").unwrap();
+        let r = parse_scene_result(&up).unwrap();
+        assert_eq!(r, SceneResult { event_id: 0x0013_0002, scene: 0, byte_6: 0, values: vec![3] });
     }
 
     #[test]
