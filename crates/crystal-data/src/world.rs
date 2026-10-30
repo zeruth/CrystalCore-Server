@@ -582,6 +582,21 @@ impl WorldData {
         (v > 0).then_some(v as u32)
     }
 
+    /// The experience a quest rewards, as the β's reward window works it out (@0x6c0360): its
+    /// level `Quest` col 3 + col 4 (u16 @0xb84 + u8 @0xb91), that level's `ParamGrow` col 8 (u8
+    /// @0x20) × col 4 (u16 @0x1a), × the quest's exp factor col 1333 (u8 @0xb30), / 100. Coming
+    /// to Gridania: 2 × 50 × 50 / 100 = 50.
+    pub fn quest_exp(&self, quest_id: u32) -> Option<u32> {
+        let quest = self.sheet("Quest").ok()?;
+        let row = quest.row(quest_id)?;
+        let col = |r: &[crate::Value], i: usize| r.get(i).and_then(|v| v.as_u64());
+        let level = col(row, 3)? + col(row, 4).unwrap_or(0);
+        let factor = col(row, 1333)?;
+        let grow = self.sheet("ParamGrow").ok()?;
+        let g = grow.row(level as u32)?;
+        Some((col(g, 8)? * col(g, 4)? * factor / 100) as u32)
+    }
+
     /// Which of the 19 level slots (`PlayerStatus` @0x66) a class's level is kept in
     /// (`ClassJob` col 4: gladiator and paladin share 1, ...).
     pub fn class_level_slot(&self, class: u8) -> Option<usize> {

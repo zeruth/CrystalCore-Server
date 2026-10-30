@@ -456,6 +456,8 @@ fn body(script: &ScriptSrc, method: &str) -> Option<Vec<Stmt>> {
 struct Conv<'a> {
     s: &'a ScriptSrc,
     review: Vec<String>,
+    /// Locals holding a quest variable (`auto var_attuned = quest.getUI8AL();`): name → getter.
+    aliases: HashMap<String, String>,
 }
 
 impl Conv<'_> {
@@ -502,6 +504,11 @@ impl Conv<'_> {
                     _ => return None,
                 };
                 let v = self.value(b)?;
+                if let Expr::Ident(local) = &**a
+                    && let Some(getter) = self.aliases.get(local)
+                {
+                    return self.leaf(getter, &[], op, v);
+                }
                 let (m, args) = self.call(a)?;
                 self.leaf(m, args, op, v)
             }
@@ -618,6 +625,17 @@ impl Conv<'_> {
     }
 
     fn action(&mut self, e: &Expr) -> Vec<Action> {
+        // `auto name = quest.getUI8AL();`: remembered, for the conditions that test `name`
+        if let Expr::Other(s) = e
+            && let Some((name, getter)) = s
+                .strip_prefix("auto ")
+                .and_then(|rest| rest.split_once('='))
+                .and_then(|(name, rhs)| Some((name.trim(), rhs.trim().strip_prefix("quest.")?.strip_suffix("();")?)))
+            && getter.starts_with("getUI8")
+        {
+            self.aliases.insert(name.to_owned(), getter.to_owned());
+            return vec![];
+        }
         let Some((m, args)) = self.call(e) else {
             if !matches!(e, Expr::Other(s) if s.is_empty()) {
                 self.review.push(format!("statement `{}`", show(e)));
@@ -646,6 +664,13 @@ impl Conv<'_> {
             "playQuestScene" if args.get(1).and_then(|a| self.value(a)).is_some_and(|v| (0x130001..=0x130003).contains(&(v as u32))) => {
                 arg(2).map(|s| vec![Action::OpeningScene { scene: s as u16 }]).unwrap_or_default()
             }
+            // ( player, getId(), scene, flags ): one of the quest's own scenes, as `SceneN()`
+            "playQuestScene" if args.get(1).and_then(|a| self.call(a)).is_some_and(|(m, _)| m == "getId") => {
+                match arg(2) {
+                    Some(s) => vec![Action::Play { scene: s as u16 }],
+                    None => self.unsupported(e),
+                }
+            }
             "requestMoveTerritory" => {
                 let territory = args.get(2).and_then(|a| {
                     // teriMgr().getTerritoryByTypeId( 181 )->getGuId()
@@ -673,6 +698,12 @@ impl Conv<'_> {
                     _ => self.unsupported(e),
                 }
             }
+            // ( player, warp type, territory type ): the player keeps its position (Sapphire's
+            // WarpMgr::requestMoveTerritory without one passes player.getPos())
+            "requestMoveTerritoryType" if args.len() == 3 => match arg(2) {
+                Some(t) => vec![Action::MoveTerritory { territory: t as u16 }],
+                None => self.unsupported(e),
+            },
             m if m.starts_with("setUI8") => {
                 let var = Var::parse(&m[3..]);
                 // setUI8AL( quest.getUI8AL() + 1 ): an increment of the same variable
@@ -781,7 +812,7 @@ impl Conv<'_> {
 /// One script as a definition (`script` is the β's name for it, `Quest` col 1).
 fn convert(src: &str, script: &str) -> Option<QuestDef> {
     let s = read_script(src)?;
-    let mut c = Conv { s: &s, review: Vec::new() };
+    let mut c = Conv { s: &s, review: Vec::new(), aliases: HashMap::new() };
     let mut talks = Vec::new();
     if let Some(stmts) = body(&s, "onTalk") {
         c.talks(&stmts, None, vec![], &mut talks);

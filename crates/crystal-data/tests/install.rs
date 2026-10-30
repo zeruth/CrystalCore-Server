@@ -54,6 +54,14 @@ fn classes_start_in_their_towns() {
 }
 
 #[test]
+fn quest_exp_as_the_client_works_it_out() {
+    let Some(game) = game() else { return };
+    let world = WorldData::open(&game).unwrap();
+    // Coming to Gridania, level 1, factor 50: 2 x 50 x 50 / 100 (Garland Tools lists 50)
+    assert_eq!(world.quest_exp(0x10027), Some(50));
+}
+
+#[test]
 fn quest_scripts_read() {
     let Some(game) = game() else { return };
     let world = WorldData::open(&game).unwrap();

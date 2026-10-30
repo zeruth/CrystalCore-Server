@@ -119,6 +119,9 @@ impl Zone {
                     ended = true;
                 }
                 Action::Warp { territory, pos, rotation } => warp = Some((territory, pos, rotation)),
+                Action::MoveTerritory { territory } => {
+                    warp = Some((territory, sess.pos(), sess.position.rotation as f32));
+                }
             }
         }
         // an opening's first quest, accepted by a definition that does not say so: the opening
@@ -202,8 +205,9 @@ impl Zone {
     /// Completes an active quest: its slot emptied (down 0x1e1 with id 0: the client clears the
     /// slot and counts one quest fewer, @0xa50040), its completed flag set with the client's
     /// refresh (0x1e3), its gil paid (`Quest` col 1334, 103 for Coming to Gridania, as
-    /// Sapphire's script has it). Experience (col 1333, a factor) waits for the β's formula, the
-    /// item rewards (and so `choice`) for their columns.
+    /// Sapphire's script has it) and its experience (`WorldData::quest_exp`, the reward window's
+    /// own formula: 50 for Coming to Gridania). The item rewards (and so `choice`) wait for
+    /// their columns.
     async fn complete_quest(&self, sess: &mut Session, quest_id: u32, choice: Option<u32>) -> Vec<(u16, Bytes)> {
         let Some(i) = sess.quests.iter().position(|q| q.quest_id == quest_id) else { return vec![] };
         let slot = sess.quests.remove(i).slot;
@@ -213,7 +217,8 @@ impl Zone {
             .as_deref()
             .and_then(|d| d.sheet("Quest").ok()?.row(quest_id)?.get(1334)?.as_u64())
             .unwrap_or(0);
-        info!(quest = format_args!("{quest_id:#x}"), slot, gil, ?choice, "  quest completed");
+        let exp = self.data.as_deref().and_then(|d| d.quest_exp(quest_id)).unwrap_or(0);
+        info!(quest = format_args!("{quest_id:#x}"), slot, gil, exp, ?choice, "  quest completed");
         let mut out = vec![
             (opcode::QUEST, ipc::quest(&ipc::QuestSlot { slot, ..Default::default() })),
             (opcode::QUEST_COMPLETE_FLAG, ipc::quest_complete_flag(quest_id, true)),
@@ -222,6 +227,9 @@ impl Zone {
             out.push((opcode::UPDATE_ITEM, slot_update(&sess.inventory, container::CURRENCY, 0)));
             out.push((opcode::CHAT_DOWN, system_message(&format!("You obtain {gil} gil."))));
             self.save_inventory(sess).await;
+        }
+        if exp > 0 {
+            out.extend(self.change_progress(sess, None, Some(exp)).await);
         }
         if let Some(chara) = &sess.chara
             && let Err(e) = self.db.characters.complete_quest(chara.id, slot, quest_id).await

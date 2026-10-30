@@ -165,7 +165,6 @@
   "review": [
     "condition `currentCC + 1 >= 6` not expressible; its branch dropped",
     "condition `player.hasQuest(Quest0) || player.hasQuest(Quest1)` not expressible; its branch dropped",
-    "statement `auto currentCC=quest.getUI8BH();`",
     "statement `eventMgr().sendEventNotice(player, getId(), 1, 3, currentCC + 1, 6)`"
   ]
 }

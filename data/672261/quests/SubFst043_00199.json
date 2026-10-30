@@ -88,7 +88,6 @@
     ]
   },
   "review": [
-    "condition `credit + 1 >= 2` not expressible; its branch dropped",
-    "statement `auto credit=quest.getUI8AL();`"
+    "condition `credit + 1 >= 2` not expressible; its branch dropped"
   ]
 }

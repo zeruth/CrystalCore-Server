@@ -409,7 +409,12 @@ pub fn parse_blacklist_request(b: &[u8]) -> Option<(u8, u8)> {
 /// ```text
 /// 0x00  u64       content id
 /// 0x08  u32       actor id
-/// 0x0C  u8 x14    single bytes (race, tribe, sex, guardian, ... not yet told apart)
+/// 0x0C  u8 x14    single bytes (race, tribe, sex, guardian, ... not yet all told apart):
+///   0x0F  u8      the current class (@0xa7f520 → PlayerState +0x64, @0x14ab0d4)
+///   0x10  u8      the class the character began as (→ PlayerState +0xde, @0x14ab14e): the
+///                 quests' class condition compares it (@0x6d8b60: `Quest` col 16 = 3 needs col
+///                 17 to equal it; Close to Home's three variants, 4/5/6, for Gridania's
+///                 classes). Sapphire's PlayerStatus names the pair ClassJob, FirstClass.
 /// 0x1A  u8        the current class (a change refreshes the class UI)
 /// 0x34  char[64]  name
 /// 0x66  u16 x19   level per class slot (ClassJob col 4)
@@ -420,6 +425,8 @@ pub struct PlayerStatus {
     pub content_id: u64,
     pub actor_id: u32,
     pub class: u8,
+    /// The class the character was made with.
+    pub first_class: u8,
     pub name: String,
     pub levels: [u16; 19],
     pub exp: [u32; 19],
@@ -433,6 +440,7 @@ impl PlayerStatus {
         let mut b = BytesMut::zeroed(Self::SIZE);
         b[0..8].copy_from_slice(&self.content_id.to_le_bytes());
         b[8..0xc].copy_from_slice(&self.actor_id.to_le_bytes());
+        (b[0xf], b[0x10]) = (self.class, self.first_class);
         b[0x1a] = self.class;
         let n = self.name.len().min(0x3f);
         b[0x34..0x34 + n].copy_from_slice(&self.name.as_bytes()[..n]);
@@ -1523,11 +1531,13 @@ mod tests {
             content_id: 0x0040_0000_0000_0001,
             actor_id: 0x1000_0001,
             class: 1,
+            first_class: 5,
             name: "Null Crystal".into(),
             levels,
             ..Default::default()
         }
         .to_bytes();
+        assert_eq!((s[0xf], s[0x10]), (1, 5));
         assert_eq!(s.len(), PlayerStatus::SIZE);
         assert_eq!(&s[8..0xc], &0x1000_0001u32.to_le_bytes());
         assert_eq!(s[0x1a], 1);

@@ -78,6 +78,16 @@
         ]
       }
     ],
+    "4": [
+      {
+        "then": [
+          {
+            "do": "play",
+            "scene": 4
+          }
+        ]
+      }
+    ],
     "5": [
       {
         "when": [
@@ -110,6 +120,10 @@
               "part": "high"
             },
             "value": 1
+          },
+          {
+            "do": "move_territory",
+            "territory": 132
           }
         ]
       }
@@ -136,12 +150,6 @@
     ]
   },
   "review": [
-    "condition `QUEST_VAR_ATTUNE == 1 && QUEST_VAR_CLASS == 1 && QUEST_VAR_TRADE == 1` not expressible; its branch dropped",
-    "condition `varIdx == 3` not expressible; its branch dropped",
-    "statement `auto QUEST_VAR_ATTUNE=quest.getUI8AL();`",
-    "statement `auto QUEST_VAR_CLASS=quest.getUI8BH();`",
-    "statement `auto QUEST_VAR_TRADE=quest.getUI8BL();`",
-    "statement `eventMgr().playQuestScene(player, getId(), 4, 0)`",
-    "statement `warpMgr().requestMoveTerritoryType(player, Common.WarpType.WARP_TYPE_NORMAL, Territorytype0)`"
+    "condition `varIdx == 3` not expressible; its branch dropped"
   ]
 }

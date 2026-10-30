@@ -56,6 +56,60 @@
     ],
     "2": [
       {
+        "when": [
+          {
+            "if": "var",
+            "var": {
+              "byte": 0,
+              "part": "low"
+            },
+            "op": "eq",
+            "value": 1
+          },
+          {
+            "if": "var",
+            "var": {
+              "byte": 1,
+              "part": "high"
+            },
+            "op": "eq",
+            "value": 1
+          },
+          {
+            "if": "var",
+            "var": {
+              "byte": 1,
+              "part": "low"
+            },
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 1,
+              "part": "low"
+            },
+            "value": 1
+          },
+          {
+            "do": "notice",
+            "index": 0,
+            "values": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "do": "set_seq",
+            "seq": 255
+          }
+        ]
+      },
+      {
         "then": [
           {
             "do": "set_var",
@@ -78,6 +132,60 @@
       }
     ],
     "3": [
+      {
+        "when": [
+          {
+            "if": "var",
+            "var": {
+              "byte": 0,
+              "part": "low"
+            },
+            "op": "eq",
+            "value": 1
+          },
+          {
+            "if": "var",
+            "var": {
+              "byte": 1,
+              "part": "high"
+            },
+            "op": "eq",
+            "value": 1
+          },
+          {
+            "if": "var",
+            "var": {
+              "byte": 1,
+              "part": "low"
+            },
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 0,
+              "part": "low"
+            },
+            "value": 1
+          },
+          {
+            "do": "notice",
+            "index": 1,
+            "values": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "do": "set_seq",
+            "seq": 255
+          }
+        ]
+      },
       {
         "then": [
           {
@@ -127,6 +235,60 @@
       }
     ],
     "5": [
+      {
+        "when": [
+          {
+            "if": "var",
+            "var": {
+              "byte": 0,
+              "part": "low"
+            },
+            "op": "eq",
+            "value": 1
+          },
+          {
+            "if": "var",
+            "var": {
+              "byte": 1,
+              "part": "high"
+            },
+            "op": "eq",
+            "value": 1
+          },
+          {
+            "if": "var",
+            "var": {
+              "byte": 1,
+              "part": "low"
+            },
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 1,
+              "part": "high"
+            },
+            "value": 1
+          },
+          {
+            "do": "notice",
+            "index": 2,
+            "values": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "do": "set_seq",
+            "seq": 255
+          }
+        ]
+      },
       {
         "then": [
           {
@@ -181,16 +343,13 @@
               "part": "high"
             },
             "value": 1
+          },
+          {
+            "do": "move_territory",
+            "territory": 130
           }
         ]
       }
     ]
-  },
-  "review": [
-    "condition `var_Attune == 1 && var_Class == 1 && var_Trade == 1` not expressible; its branch dropped",
-    "statement `auto var_Attune=quest.getUI8AL();`",
-    "statement `auto var_Class=quest.getUI8BH();`",
-    "statement `auto var_Trade=quest.getUI8BL();`",
-    "statement `warpMgr().requestMoveTerritoryType(player, Common.WarpType.WARP_TYPE_NORMAL, Territorytype0)`"
-  ]
+  }
 }

@@ -854,10 +854,14 @@ impl Zone {
         for (i, p) in sess.progress.iter().enumerate() {
             (levels[i], exp[i]) = (p.level as u16, p.exp);
         }
+        // the class chosen when the character was made
+        let first_class =
+            sess.chara.as_ref().and_then(|c| CharaMake::parse(&c.appearance)).map_or(look.class, |m| m.class);
         ipc::PlayerStatus {
             content_id: look.content_id,
             actor_id: sess.actor_id,
             class: look.class,
+            first_class,
             name: look.name.clone(),
             levels,
             exp,

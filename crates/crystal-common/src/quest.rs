@@ -187,6 +187,10 @@ pub enum Action {
     Finish,
     /// Move the character (after the event ends).
     Warp { territory: u16, pos: [f32; 3], rotation: f32 },
+    /// Move the character to another territory where it stands (after the event ends): from a
+    /// town's opening copy to the town (183 `f1t1_opening` → 132 `f1t1`, the same map), as
+    /// Sapphire's `requestMoveTerritoryType` without a position keeps the player's.
+    MoveTerritory { territory: u16 },
 }
 
 /// Every definition in `dir` (`*.json`), by quest id; a file that does not read is an error

@@ -353,7 +353,6 @@
   "review": [
     "hook onBNpcKill not run by the engine yet",
     "hook onEventItem not run by the engine yet",
-    "statement `auto currentEggCount=quest.getUI8BH();`",
     "statement `eventMgr().sendEventNotice(player, getId(), 0, 2, currentEggCount + 1, 4)`",
     "statement `quest.setBitFlag8(eggId, true)`",
     "statement `quest.setUI8BH(currentEggCount + 1)`",
