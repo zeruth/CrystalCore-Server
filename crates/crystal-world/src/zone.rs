@@ -81,6 +81,12 @@ struct Status {
     param: u16,
     until: Instant,
     source: ActorId,
+    /// What it does each server tick: damage, or healing when `tick_heal` (its potency through the
+    /// source's damage or healing formula when it went on).
+    tick: u32,
+    tick_heal: bool,
+    /// Its bearer's damage bonus, percent (Sapphire's DamageDealtPercent: Raging Strikes' 20).
+    damage_percent: i16,
 }
 
 /// A battle NPC in a fight: where it came from, who it is after (the top of its hate list),
@@ -101,7 +107,7 @@ struct ActionResultKey {
 }
 
 impl ActionResultKey {
-    /// The β's `Action` row 7, Attack: a melee auto-attack.
+    /// The Î²'s `Action` row 7, Attack: a melee auto-attack.
     const AUTO_ATTACK: Self = Self { action: 7, sequence: 0 };
     /// Row 8, Shot ("Delivers a ranged attack"): a ranged class's auto-attack, with its own
     /// animation (col 7: 1876 against Attack's 1875).
@@ -185,6 +191,10 @@ pub struct ZoneState {
     nav: Option<Arc<crate::nav::NavGrid>>,
     /// Battle NPCs' ways to where they are going.
     routes: HashMap<ActorId, Route>,
+    /// Whether hits and heals roll for criticals and variance (off in tests, to check amounts).
+    rolls: bool,
+    /// Each player's last action that kept a combo going, and when it landed.
+    combos: HashMap<ActorId, (u16, Instant)>,
 }
 
 /// One step of at most `step` yalms from `from` toward `to`, stopping `short` of it: the new
@@ -290,6 +300,8 @@ impl ZoneState {
             rng: 0x9e37_79b9_7f4a_7c15 ^ territory as u64,
             nav: None,
             routes: HashMap::new(),
+            rolls: !cfg!(test),
+            combos: HashMap::new(),
         }
     }
 
@@ -374,6 +386,16 @@ impl ZoneState {
         }
     }
 
+    /// A hit's or heal's amount after its critical and variance rolls ([`combat::roll`]); as
+    /// it is when rolls are off (tests).
+    fn roll(&mut self, base: u32) -> u32 {
+        if !self.rolls {
+            return base;
+        }
+        let (crit, variance) = (self.random() * 100.0, self.random() * 100.0);
+        combat::roll(base, crit, variance).0
+    }
+
     /// The next of the territory's random numbers, 0..1 (xorshift64*).
     fn random(&mut self) -> f32 {
         self.rng ^= self.rng >> 12;
@@ -423,7 +445,8 @@ impl ZoneState {
         let same = |s: &Status| s.id == id && (source == 0 || s.source == source);
         let changed = match duration {
             Some(d) => {
-                let status = Status { id, param, until: now + d, source };
+                let status =
+                    Status { id, param, until: now + d, source, tick: 0, tick_heal: false, damage_percent: 0 };
                 if let Some(s) = list.iter_mut().find(|s| same(s)) {
                     *s = status;
                     true
@@ -448,7 +471,7 @@ impl ZoneState {
     }
 
     /// Sprint (action 3): all the player's TP for status 50 ("Sprint", "Movement speed is
-    /// increased." in the β's Status sheet), param 30, a second for every 50 TP spent. The β's
+    /// increased." in the Î²'s Status sheet), param 30, a second for every 50 TP spent. The Î²'s
     /// Action row has no status for it (its cost type 6, cost 0): the status, param and duration
     /// are Sapphire's (`ActionSprint.cpp`). False when there is no TP to spend.
     pub fn sprint(&mut self, id: ActorId, now: Instant) -> bool {
@@ -470,6 +493,49 @@ impl ZoneState {
     }
 
     /// Takes off the statuses that wore off by `now`.
+    /// Puts a status on a live `target` (an action's): its source's earlier one of the same id is
+    /// refreshed, a full list takes no more; the target and whoever sees it are told.
+    fn put_status(&mut self, target: ActorId, status: Status, now: Instant) {
+        if self.health.get(&target).is_none_or(|(hp, _)| *hp == 0) {
+            return;
+        }
+        let list = self.statuses.entry(target).or_default();
+        if let Some(s) = list.iter_mut().find(|s| s.id == status.id && s.source == status.source) {
+            *s = status;
+        } else if list.len() < STATUS_SLOTS {
+            list.push(status);
+        } else {
+            return;
+        }
+        self.tell_hp(target, now);
+    }
+
+    /// The server tick's damage and healing over time (Sapphire's `Chara::onTick`, each tick
+    /// the amount its source's formula gave when it went on): damage on battle NPCs as their
+    /// source's, healing on players.
+    fn tick_statuses(&mut self, now: Instant) {
+        let ticks: Vec<(ActorId, ActorId, u32, bool)> = self
+            .statuses
+            .iter()
+            .flat_map(|(&target, list)| {
+                list.iter().filter(|s| s.tick > 0 && s.until > now).map(move |s| (target, s.source, s.tick, s.tick_heal))
+            })
+            .collect();
+        for (target, source, amount, heal) in ticks {
+            if heal {
+                if let Some(&(hp, hp_max)) = self.health.get(&target)
+                    && hp > 0
+                    && hp < hp_max
+                {
+                    self.health.insert(target, ((hp + amount).min(hp_max), hp_max));
+                    self.tell_hp(target, now);
+                }
+            } else if self.health.get(&target).is_some_and(|(hp, _)| *hp > 0) {
+                self.hurt(source, target, amount, None, now);
+            }
+        }
+    }
+
     fn expire_statuses(&mut self, now: Instant) {
         let mut ended = Vec::new();
         for (&id, list) in &mut self.statuses {
@@ -573,6 +639,7 @@ impl ZoneState {
         self.mob_tick(now, dt.as_secs_f32());
         if self.next_server_tick.is_none_or(|t| t <= now) {
             self.next_server_tick = Some(now + combat::SERVER_TICK);
+            self.tick_statuses(now);
             self.regenerate();
             self.rest_returning(now);
         }
@@ -956,9 +1023,12 @@ impl ZoneState {
             _ => combat::MELEE_RANGE,
         };
         let Some(look) = self.can_hit(attacker, target, reach) else { return };
-        let amount = combat::auto_attack_damage(look.level, look.attributes[0]);
+        let amount = self.roll(combat::auto_attack_damage(&look));
+        // the weapon's delay between swings (Sapphire's player auto-attack)
+        let delay =
+            if look.weapon.delay_ms > 0 { Duration::from_millis(look.weapon.delay_ms as u64) } else { combat::SWING };
         if let Some(f) = self.fighters.get_mut(&attacker) {
-            f.next_swing = Some(now + combat::SWING);
+            f.next_swing = Some(now + delay);
         }
         self.strike(attacker, target, amount, ActionResultKey::auto_attack(look.class), now);
     }
@@ -985,8 +1055,10 @@ impl ZoneState {
             debug!(player = format_args!("{id:#x}"), action = action.action, "action refused: casting");
             return false;
         }
-        let target = if action.heal { self.heal_target(id, target) } else { target };
-        let ready = if action.heal { self.can_heal(id, target, action.range) } else { self.can_hit(id, target, action.range) };
+        // a buff (no potency, not a heal) goes on the user, as a heal would
+        let friendly = action.heal || action.potency == 0;
+        let target = if friendly { self.heal_target(id, target) } else { target };
+        let ready = if friendly { self.can_heal(id, target, action.range) } else { self.can_hit(id, target, action.range) };
         if ready.is_none() {
             debug!(player = format_args!("{id:#x}"), action = action.action, "action refused: no target in range");
             return false;
@@ -1019,7 +1091,8 @@ impl ZoneState {
     /// the heal.
     fn land(&mut self, id: ActorId, target: ActorId, action: ActionUse, now: Instant) -> bool {
         let key = ActionResultKey { action: action.action, sequence: action.sequence };
-        let look = if action.heal { self.can_heal(id, target, action.range) } else { self.can_hit(id, target, action.range) };
+        let friendly = action.heal || action.potency == 0;
+        let look = if friendly { self.can_heal(id, target, action.range) } else { self.can_hit(id, target, action.range) };
         let Some(look) = look else {
             debug!(player = format_args!("{id:#x}"), action = action.action, "action lost: its target is gone");
             return false;
@@ -1030,12 +1103,51 @@ impl ZoneState {
             return false;
         }
         if action.heal {
-            let amount = combat::heal_amount(look.level, look.attributes[4], action.potency);
+            let amount = self.roll(combat::heal_amount(&look, action.potency));
             self.restore(id, target, amount, key, now);
-        }
-        else {
-            let amount = combat::action_damage(look.level, look.attributes[0], action.potency);
+        } else if friendly {
+            // a buff: the action played and answered, its statuses (below) the rest
+            let failed = &mut self.failed;
+            for (&vid, viewer) in &self.viewers {
+                if vid == id || viewer.visible.contains_key(&id) {
+                    // the request's sequence is the user's alone
+                    let sequence = if vid == id { action.sequence } else { 0 };
+                    send(vid, viewer, Event::ActionDone { source: id, target, action: action.action, sequence }, failed);
+                }
+            }
+        } else {
+            // a combo (Sapphire's isCorrectCombo): the action it follows landed within the
+            // window; the chain goes on with any action that is not a broken combo
+            let combo = action.combo_from != 0
+                && self.combos.get(&id).is_some_and(|(a, t)| {
+                    *a == action.combo_from && now.saturating_duration_since(*t) <= combat::COMBO_WINDOW
+                });
+            if action.combo_from == 0 || combo {
+                self.combos.insert(id, (action.action, now));
+            } else {
+                self.combos.remove(&id);
+            }
+            let potency = if combo { action.combo_potency } else { action.potency };
+            let amount = self.roll(combat::action_damage(&look, potency));
             self.strike(id, target, amount, key, now);
+        }
+        for effect in action.effects.into_iter().flatten() {
+            let on = if effect.on_self { id } else { target };
+            let tick = match (effect.tick_potency, effect.tick_heal) {
+                (0, _) => 0,
+                (p, true) => combat::heal_amount(&look, p),
+                (p, false) => combat::action_damage(&look, p),
+            };
+            let status = Status {
+                id: effect.id,
+                param: 0,
+                until: now + effect.duration,
+                source: id,
+                tick,
+                tick_heal: effect.tick_heal,
+                damage_percent: effect.damage_percent,
+            };
+            self.put_status(on, status, now);
         }
         // the user's own MP and TP, where the result did not carry them (another's HP update)
         if (action.mp_cost > 0 || action.tp_cost > 0) && target != id {
@@ -1122,9 +1234,18 @@ impl ZoneState {
     /// A player's hit on a battle NPC (checked by [`Self::can_hit`]): its HP and the hit go out,
     /// and it fights back or dies.
     fn strike(&mut self, attacker: ActorId, target: ActorId, amount: u32, key: ActionResultKey, now: Instant) {
+        self.hurt(attacker, target, amount, Some(key), now);
+    }
+
+    /// Damage to a battle NPC from `attacker`: by an action (`key`, its hit shown) or by a
+    /// status's tick (`None`: its HP update alone). Its statuses' damage bonuses of the attacker
+    /// apply (Sapphire's DamageDealtPercent); it hates the attacker, or dies.
+    fn hurt(&mut self, attacker: ActorId, target: ActorId, amount: u32, key: Option<ActionResultKey>, now: Instant) {
         let Some((hp, hp_max)) = self.health.get(&target).copied() else { return };
         let Some(t) = self.actors.get(&target) else { return };
         let ActorKind::BattleNpc { level: target_level, .. } = t.kind else { return };
+        let bonus: i32 = self.statuses.get(&attacker).map_or(0, |l| l.iter().map(|s| s.damage_percent as i32).sum());
+        let amount = (amount as i64 * (100 + bonus as i64) / 100).max(0) as u32;
         // one running home takes no damage (Sapphire's retreat: InvincibilityIgnoreDamage)
         let amount = if self.returning.contains(&target) { 0 } else { amount.min(hp) };
         let hp = hp - amount;
@@ -1134,7 +1255,6 @@ impl ZoneState {
         }
         let statuses = self.statuses(target, now);
         let mana = self.mana_of(target);
-        let ActionResultKey { action, sequence } = key;
         // the experience: everyone it hated, and the killer
         let credit: Arc<[ActorId]> = if hp == 0 {
             let mut who: Vec<ActorId> =
@@ -1149,20 +1269,30 @@ impl ZoneState {
         let failed = &mut self.failed;
         for (&vid, viewer) in &self.viewers {
             if vid == attacker || viewer.visible.contains_key(&target) {
-                // the request's sequence is the user's alone
-                let sequence = if vid == attacker { sequence } else { 0 };
-                let event = Event::Damage {
-                    source: attacker,
-                    target,
-                    action,
-                    sequence,
-                    amount,
-                    hp,
-                    hp_max,
-                    level: target_level,
-                    class: 0,
-                    statuses: statuses.clone(),
-                    mana,
+                let event = match key {
+                    Some(ActionResultKey { action, sequence }) => Event::Damage {
+                        source: attacker,
+                        target,
+                        action,
+                        // the request's sequence is the user's alone
+                        sequence: if vid == attacker { sequence } else { 0 },
+                        amount,
+                        hp,
+                        hp_max,
+                        level: target_level,
+                        class: 0,
+                        statuses: statuses.clone(),
+                        mana,
+                    },
+                    None => Event::Hp {
+                        actor: target,
+                        hp,
+                        hp_max,
+                        level: target_level,
+                        class: 0,
+                        statuses: statuses.clone(),
+                        mana,
+                    },
                 };
                 send(vid, viewer, event, failed);
                 if hp == 0 {
@@ -1612,7 +1742,14 @@ mod tests {
     }
 
     fn fighter(name: &str) -> Arc<PlayerLook> {
-        Arc::new(PlayerLook { level: 1, attributes: [20, 20, 20, 20, 20, 20], ..(*look(name)).clone() })
+        Arc::new(PlayerLook {
+            level: 1,
+            attributes: [20, 20, 20, 20, 20, 20],
+            job_mods: [100; 6],
+            // a starter weapon's damage, swinging every 3 s (the server's own swing time)
+            weapon: crate::Weapon { physical: 8, magic: 8, delay_ms: combat::SWING.as_millis() as u32 },
+            ..(*look(name)).clone()
+        })
     }
 
     #[test]
@@ -1635,7 +1772,7 @@ mod tests {
         zone.enter(B, 2, look("Beta"), [4.0, 0.0, 0.0], 0.0, tx_b);
         drain(&mut a);
         drain(&mut b);
-        let (hp_max, damage) = (combat::bnpc_hp(1), combat::auto_attack_damage(1, 20));
+        let (hp_max, damage) = (combat::bnpc_hp(1), combat::auto_attack_damage(&tough("Alpha")));
         assert_eq!(zone.health(rat_id), Some((hp_max, hp_max)));
 
         let t0 = Instant::now();
@@ -1812,6 +1949,78 @@ mod tests {
         assert_eq!(zone.health(rat_id).unwrap().0, (hurt + hp_max / 10 + 1).min(hp_max));
     }
 
+    fn weaponskill(action: u16, sequence: u32, potency: u32) -> ActionUse {
+        ActionUse {
+            action,
+            sequence,
+            potency,
+            range: combat::MELEE_RANGE,
+            recast: Duration::ZERO,
+            gcd: false,
+            cast: Duration::ZERO,
+            heal: false,
+            mp_cost: 0,
+            tp_cost: 0,
+            combo_from: 0,
+            combo_potency: 0,
+            effects: [None; 2],
+        }
+    }
+
+    fn damage_to(events: &[Event], target: ActorId) -> Option<u32> {
+        events.iter().find_map(|e| match e {
+            Event::Damage { target: t, amount, .. } if *t == target => Some(*amount),
+            _ => None,
+        })
+    }
+
+    #[test]
+    fn combos_hit_harder_after_the_action_they_follow_and_not_after_too_long() {
+        let (mut zone, mut a, rat_id, t0) = in_a_fight(tough("Alpha"));
+        zone.health.insert(rat_id, (100_000, 100_000));
+        let look = tough("Alpha");
+        let savage = ActionUse { combo_from: 9, combo_potency: 200, ..weaponskill(11, 2, 100) };
+        // alone: its own potency
+        assert!(zone.use_action(A, rat_id, savage, t0));
+        assert_eq!(damage_to(&drain(&mut a), rat_id), Some(combat::action_damage(&look, 100)));
+        // after Fast Blade: the combo's
+        assert!(zone.use_action(A, rat_id, weaponskill(9, 3, 150), t0));
+        drain(&mut a);
+        assert!(zone.use_action(A, rat_id, ActionUse { sequence: 4, ..savage }, t0 + Duration::from_secs(3)));
+        assert_eq!(damage_to(&drain(&mut a), rat_id), Some(combat::action_damage(&look, 200)));
+        // past the window: its own again
+        assert!(zone.use_action(A, rat_id, weaponskill(9, 5, 150), t0 + Duration::from_secs(4)));
+        drain(&mut a);
+        let late = t0 + Duration::from_secs(4) + combat::COMBO_WINDOW + Duration::from_secs(1);
+        assert!(zone.use_action(A, rat_id, ActionUse { sequence: 6, ..savage }, late));
+        assert_eq!(damage_to(&drain(&mut a), rat_id), Some(combat::action_damage(&look, 100)));
+    }
+
+    #[test]
+    fn damage_over_time_ticks_on_the_server_tick_and_buffs_add_damage() {
+        let (mut zone, mut a, rat_id, t0) = in_a_fight(tough("Alpha"));
+        zone.health.insert(rat_id, (100_000, 100_000));
+        let look = tough("Alpha");
+        let dot = crate::ActionEffect { id: 143, duration: Duration::from_secs(18), tick_potency: 25, ..Default::default() };
+        let aero = ActionUse { effects: [Some(dot), None], ..weaponskill(121, 7, 50) };
+        assert!(zone.use_action(A, rat_id, aero, t0));
+        assert!(zone.statuses(rat_id, t0).iter().any(|s| s.id == 143));
+        drain(&mut a);
+        let before = zone.health(rat_id).unwrap().0;
+        zone.combat_tick(t0 + combat::SERVER_TICK);
+        assert_eq!(zone.health(rat_id).unwrap().0, before - combat::action_damage(&look, 25), "one tick");
+        // no hit is shown for a tick: an HP update
+        assert!(damage_to(&drain(&mut a), rat_id).is_none());
+        // Raging Strikes: 20% more from its bearer
+        let raging = crate::ActionEffect { id: 125, duration: Duration::from_secs(20), on_self: true, damage_percent: 20, ..Default::default() };
+        let buff = ActionUse { potency: 0, range: 30.0, effects: [Some(raging), None], ..weaponskill(101, 8, 0) };
+        assert!(zone.use_action(A, rat_id, buff, t0 + Duration::from_secs(4)));
+        assert!(zone.statuses(A, t0 + Duration::from_secs(4)).iter().any(|s| s.id == 125));
+        assert!(drain(&mut a).iter().any(|e| matches!(e, Event::ActionDone { source: A, action: 101, sequence: 8, .. })));
+        assert!(zone.use_action(A, rat_id, weaponskill(9, 9, 150), t0 + Duration::from_secs(5)));
+        assert_eq!(damage_to(&drain(&mut a), rat_id), Some(combat::action_damage(&look, 150) * 120 / 100));
+    }
+
     #[test]
     fn chasers_go_around_walls() {
         // a floor 30 yalms square, a wall across it at x = 15 with a gap past z = 25
@@ -1901,10 +2110,13 @@ mod tests {
             heal: false,
             mp_cost: 0,
             tp_cost: 70,
+            combo_from: 0,
+            combo_potency: 0,
+            effects: [None; 2],
         };
         let look = tough("Alpha");
-        let damage = combat::action_damage(look.level, look.attributes[0], 150);
-        assert!(damage > combat::auto_attack_damage(look.level, look.attributes[0]));
+        let damage = combat::action_damage(&look, 150);
+        assert!(damage > combat::auto_attack_damage(&look));
         let before = zone.health(rat_id).unwrap().0;
         assert!(zone.use_action(A, rat_id, fast_blade(41), t0));
         // the result names the action and echoes the request
@@ -2019,6 +2231,9 @@ mod tests {
             heal: true,
             mp_cost: 0,
             tp_cost: 0,
+            combo_from: 0,
+            combo_potency: 0,
+            effects: [None; 2],
         }
     }
 
@@ -2069,7 +2284,7 @@ mod tests {
         assert!(!drain(&mut a).iter().any(|e| matches!(e, Event::Heal { .. })));
         zone.combat_tick(t1 + Duration::from_secs(2));
         let look = tough("Alpha");
-        let heal = combat::heal_amount(look.level, look.attributes[4], 400).min(look.hp_max - hurt);
+        let heal = combat::heal_amount(&look, 400).min(look.hp_max - hurt);
         assert!(drain(&mut a).iter().any(|e| matches!(e,
             Event::Heal { source: A, target: A, action: 120, sequence: 51, amount, hp, .. }
                 if *amount == heal && *hp == hurt + heal)));

@@ -62,6 +62,18 @@ pub struct PlayerLook {
     pub mp_max: u32,
     /// Base attributes: strength, dexterity, vitality, intelligence, mind, piety.
     pub attributes: [u32; 6],
+    /// The class's modifiers of those, percent (`ClassJob`; 100 when unknown).
+    pub job_mods: [u32; 6],
+    /// The main hand's damage and delay.
+    pub weapon: Weapon,
+}
+
+/// A weapon's damage and delay (`Item` cols 61-63).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct Weapon {
+    pub physical: u32,
+    pub magic: u32,
+    pub delay_ms: u32,
 }
 
 /// An event NPC the game data places in a territory.
@@ -240,6 +252,14 @@ pub enum Event {
         kind: u16,
         text: Arc<str>,
     },
+    /// `source` used `action` on `target` with nothing to show but its statuses (a buff): the
+    /// action played, the player's request answered.
+    ActionDone {
+        source: ActorId,
+        target: ActorId,
+        action: u16,
+        sequence: u32,
+    },
     /// An order about `actor` (the client's Order, Sapphire's ActorControl): its category and
     /// arguments, as [`order`] names them.
     Order {
@@ -293,6 +313,27 @@ pub struct ActionUse {
     /// What it costs, paid when it lands (checked when it starts too).
     pub mp_cost: u32,
     pub tp_cost: u32,
+    /// The action it follows in a combo (0: none), and its potency when it does.
+    pub combo_from: u16,
+    pub combo_potency: u32,
+    /// The statuses it puts on when it lands.
+    pub effects: [Option<ActionEffect>; 2],
+}
+
+/// A status an action puts on (`data/<build>/actions.json`: the β's descriptions, Sapphire's
+/// status ids and modifiers).
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct ActionEffect {
+    /// `Status` row.
+    pub id: u16,
+    pub duration: std::time::Duration,
+    /// On the user rather than its target.
+    pub on_self: bool,
+    /// Damage (or healing, `tick_heal`) over time: the potency each server tick.
+    pub tick_potency: u32,
+    pub tick_heal: bool,
+    /// A damage bonus to its bearer, percent.
+    pub damage_percent: i16,
 }
 
 /// A character's MP and TP, as its HP update carries them (zero for battle NPCs).

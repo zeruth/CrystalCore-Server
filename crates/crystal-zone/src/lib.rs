@@ -75,6 +75,8 @@ pub struct Zone {
     quests: Arc<HashMap<u32, QuestDef>>,
     /// Where gathering points stand (`data/<build>/gathering.json`), by territory.
     gathering: Arc<HashMap<u16, Vec<Placement>>>,
+    /// Player actions' combos and statuses, by Action row.
+    actions: Arc<HashMap<u32, crystal_common::actions::ActionExtra>>,
 }
 
 /// How often a moving player's position is written to the database (and once more when the zone
@@ -221,7 +223,23 @@ impl Zone {
         commands: Commands,
         capture_dir: Option<PathBuf>,
     ) -> Self {
-        Self { db, state, data, world, commands, capture_dir, quests: Arc::default(), gathering: Arc::default() }
+        Self {
+            db,
+            state,
+            data,
+            world,
+            commands,
+            capture_dir,
+            quests: Arc::default(),
+            gathering: Arc::default(),
+            actions: Arc::default(),
+        }
+    }
+
+    /// What player actions do beyond their sheet: combos and statuses.
+    pub fn with_actions(mut self, actions: HashMap<u32, crystal_common::actions::ActionExtra>) -> Self {
+        self.actions = Arc::new(actions);
+        self
     }
 
     /// Where the gathering points the zone shows stand.
@@ -802,11 +820,14 @@ impl Zone {
             entry.zone.sprint(sess.actor_id);
             return;
         }
-        // (a friendly one with a potency heals: Cure; the others, buffs and the like, wait for
-        // their statuses)
+        // combos and statuses beyond the sheet
+        let extra = self.actions.get(&req.action);
+        let effects = action_effects(extra);
+        // (a friendly one with a potency heals: Cure; one without, a buff, needs a status to put on)
         let heal = !row.hostile && row.potency > 0;
-        if !row.hostile && !heal {
-            debug!(action = req.action, "  action: only hostile ones and heals are carried out yet");
+        let buff = !row.hostile && !heal;
+        if buff && effects[0].is_none() {
+            debug!(action = req.action, "  action: no effect known for this one yet");
             return;
         }
         let gcd = matches!(row.category, 2 | 3);
@@ -834,7 +855,8 @@ impl Zone {
         let action = ActionUse {
             action: req.action as u16,
             sequence: req.sequence,
-            potency: row.potency.max(100),
+            // a buff's none: it only puts its statuses on
+            potency: if buff { 0 } else { row.potency.max(100) },
             range,
             recast,
             gcd,
@@ -849,7 +871,12 @@ impl Zone {
                 _ => 0,
             },
             tp_cost: if row.cost_type == 5 { row.cost as u32 } else { 0 },
+            combo_from: extra.and_then(|e| e.combo_from).unwrap_or(0),
+            combo_potency: extra.map_or(0, |e| e.combo_potency),
+            effects,
         };
+        // a buff goes on the user
+        let target = if buff { sess.actor_id } else { target };
         entry.zone.use_action(sess.actor_id, target, action);
     }
 
@@ -1256,16 +1283,30 @@ fn look_of(chara: Option<&Character>, inventory: &Inventory, level: u8, data: Op
     };
     // base stats from the class, the tribe (customize[4]) and the level
     let tribe = make.as_ref().map_or(1, |m| m.customize[4]);
+    // (without game data: every attribute at the level's main base)
+    let base = crystal_world::combat::main_base(level);
     let stats = data.and_then(|d| d.base_stats(class, tribe, level)).unwrap_or(crystal_data::Stats {
-        strength: 20,
-        dexterity: 20,
-        vitality: 20,
-        intelligence: 20,
-        mind: 20,
-        piety: 20,
+        strength: base,
+        dexterity: base,
+        vitality: base,
+        intelligence: base,
+        mind: base,
+        piety: base,
         hp: 100,
         mp: 100,
+        modifiers: [100; 6],
     });
+    // the main hand (equipped slot 0): its damage and delay for the damage formulas
+    let weapon = equipped
+        .iter()
+        .find(|(slot, _)| *slot == 0)
+        .and_then(|(_, item)| data.and_then(|d| d.item(*item)))
+        .map(|i| crystal_world::Weapon {
+            physical: i.damage_physical,
+            magic: i.damage_magic,
+            delay_ms: i.delay_ms,
+        })
+        .unwrap_or_default();
     PlayerLook {
         name: chara.map_or_else(|| "Crystal".into(), |c| c.name.clone()),
         content_id: chara.map_or(0, |c| c.content_id),
@@ -1278,6 +1319,8 @@ fn look_of(chara: Option<&Character>, inventory: &Inventory, level: u8, data: Op
         hp_max: stats.hp,
         mp_max: stats.mp,
         attributes: [stats.strength, stats.dexterity, stats.vitality, stats.intelligence, stats.mind, stats.piety],
+        job_mods: stats.modifiers,
+        weapon,
     }
 }
 
@@ -1436,6 +1479,22 @@ fn hp_segments(
     out
 }
 
+/// The statuses an action puts on (its first two), as the territory takes them.
+fn action_effects(extra: Option<&crystal_common::actions::ActionExtra>) -> [Option<crystal_world::ActionEffect>; 2] {
+    let mut out = [None; 2];
+    for (slot, s) in out.iter_mut().zip(extra.map(|e| e.statuses.as_slice()).unwrap_or_default()) {
+        *slot = Some(crystal_world::ActionEffect {
+            id: s.id,
+            duration: Duration::from_millis(s.duration_ms as u64),
+            on_self: s.on == "self",
+            tick_potency: if s.tick.is_some() { s.potency } else { 0 },
+            tick_heal: s.tick.as_deref() == Some("heal"),
+            damage_percent: s.modifiers.get("DamageDealtPercent").copied().unwrap_or(0) as i16,
+        });
+    }
+    out
+}
+
 /// A world event as the packet the client gets, sent as the actor it is about.
 fn event_segment(sess: &Session, event: Event, data: Option<&WorldData>) -> Vec<Segment> {
     vec![match event {
@@ -1507,6 +1566,10 @@ fn event_segment(sess: &Session, event: Event, data: Option<&WorldData>) -> Vec<
             sess.segment(actor, opcode::CHAT_DOWN, &body.to_bytes())
         }
         Event::Order { actor, kind, args } => sess.segment(actor, opcode::ORDER, &ipc::order(kind, args)),
+        Event::ActionDone { source, target, action, sequence } => {
+            let done = ipc::ActionResult { action, kind: 1, sequence, lock: 0.6, target, ..Default::default() };
+            sess.segment(source, opcode::ACTION_RESULT1, &done.to_bytes())
+        }
     }]
 }
 

@@ -184,6 +184,13 @@ impl Server {
                         _ => HashMap::new(),
                     };
                     info!(quests = quests.len(), "quest definitions");
+                    // what player actions do beyond their sheet: combos and statuses
+                    let actions = match config.data.seed.as_ref().map(|s| s.join(SEED_BUILD).join("actions.json")) {
+                        Some(file) if file.exists() => crystal_common::actions::load(&file)
+                            .map_err(anyhow::Error::msg)
+                            .context("actions")?,
+                        _ => HashMap::new(),
+                    };
                     // where gathering points stand (server data: the β's layouts have none)
                     let gathering = match config.data.seed.as_ref().map(|s| s.join(SEED_BUILD).join("gathering.json")) {
                         Some(file) if file.exists() => crystal_common::gathering::Placements::load(&file)
@@ -203,7 +210,8 @@ impl Server {
                             config.zone.capture_dir.clone(),
                         )
                         .with_quests(quests)
-                        .with_gathering(gathering),
+                        .with_gathering(gathering)
+                        .with_actions(actions),
                     );
                     worlds.push(territories);
                     tasks.spawn(crystal_net::serve(listener, shutdown.clone(), move |stream, peer, stop| {

@@ -1,5 +1,6 @@
 //! Configuration, logging and shared types.
 
+pub mod actions;
 pub mod chara;
 pub mod config;
 pub mod gathering;

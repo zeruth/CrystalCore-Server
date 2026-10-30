@@ -1,0 +1,465 @@
+{
+ "101": {
+  "name": "Raging Strikes",
+  "statuses": [
+   {
+    "duration_ms": 20000,
+    "id": 125,
+    "modifiers": {
+     "DamageDealtPercent": 20
+    },
+    "on": "self"
+   }
+  ]
+ },
+ "102": {
+  "name": "Flaming Arrow",
+  "statuses": [
+   {
+    "duration_ms": 30000,
+    "id": 249,
+    "modifiers": {},
+    "on": "self"
+   }
+  ]
+ },
+ "104": {
+  "name": "Quelling Strikes",
+  "statuses": [
+   {
+    "duration_ms": 15000,
+    "id": 127,
+    "modifiers": {
+     "EnmityReduction": 50
+    },
+    "on": "self"
+   }
+  ]
+ },
+ "109": {
+  "name": "Blunt Arrow",
+  "statuses": [
+   {
+    "duration_ms": 1000,
+    "id": 7,
+    "modifiers": {},
+    "on": "target"
+   }
+  ]
+ },
+ "11": {
+  "combo_from": 9,
+  "combo_potency": 200,
+  "name": "Savage Blade"
+ },
+ "113": {
+  "name": "Windbite",
+  "statuses": [
+   {
+    "duration_ms": 18000,
+    "id": 129,
+    "on": "target",
+    "potency": 45,
+    "tick": "damage"
+   }
+  ]
+ },
+ "117": {
+  "name": "Rain of Death",
+  "statuses": [
+   {
+    "duration_ms": 20000,
+    "id": 247,
+    "modifiers": {
+     "EvasionPercent": -10
+    },
+    "on": "target"
+   }
+  ]
+ },
+ "118": {
+  "name": "Battle Voice",
+  "statuses": [
+   {
+    "duration_ms": 30000,
+    "id": 141,
+    "modifiers": {},
+    "on": "self"
+   }
+  ]
+ },
+ "121": {
+  "name": "Aero",
+  "statuses": [
+   {
+    "duration_ms": 18000,
+    "id": 143,
+    "on": "target",
+    "potency": 25,
+    "tick": "damage"
+   }
+  ]
+ },
+ "132": {
+  "name": "Aero II",
+  "statuses": [
+   {
+    "duration_ms": 12000,
+    "id": 144,
+    "on": "target",
+    "potency": 40,
+    "tick": "damage"
+   }
+  ]
+ },
+ "133": {
+  "name": "Medica II",
+  "statuses": [
+   {
+    "duration_ms": 15000,
+    "id": 150,
+    "on": "target",
+    "potency": 100,
+    "tick": "heal"
+   }
+  ]
+ },
+ "137": {
+  "name": "Regen",
+  "statuses": [
+   {
+    "duration_ms": 21000,
+    "id": 158,
+    "modifiers": {},
+    "on": "target",
+    "potency": 150,
+    "tick": "heal"
+   }
+  ]
+ },
+ "144": {
+  "name": "Thunder",
+  "statuses": [
+   {
+    "duration_ms": 18000,
+    "id": 161,
+    "on": "target",
+    "potency": 35,
+    "tick": "damage"
+   }
+  ]
+ },
+ "148": {
+  "name": "Thunder II",
+  "statuses": [
+   {
+    "duration_ms": 21000,
+    "id": 162,
+    "on": "target",
+    "potency": 35,
+    "tick": "damage"
+   }
+  ]
+ },
+ "15": {
+  "combo_from": 9,
+  "combo_potency": 230,
+  "name": "Riot Blade"
+ },
+ "153": {
+  "name": "Thunder III",
+  "statuses": [
+   {
+    "duration_ms": 24000,
+    "id": 163,
+    "on": "target",
+    "potency": 35,
+    "tick": "damage"
+   }
+  ]
+ },
+ "168": {
+  "name": "Miasma",
+  "statuses": [
+   {
+    "duration_ms": 24000,
+    "id": 180,
+    "on": "target",
+    "potency": 35,
+    "tick": "damage"
+   },
+   {
+    "duration_ms": 24000,
+    "id": 191,
+    "modifiers": {
+     "HealingRecoveryPercent": -20
+    },
+    "on": "target"
+   },
+   {
+    "duration_ms": 24000,
+    "id": 240,
+    "modifiers": {
+     "HeavyPercent": 40
+    },
+    "on": "target"
+   }
+  ]
+ },
+ "177": {
+  "name": "Miasma II",
+  "statuses": [
+   {
+    "duration_ms": 15000,
+    "id": 188,
+    "on": "target",
+    "potency": 10,
+    "tick": "damage"
+   }
+  ]
+ },
+ "21": {
+  "combo_from": 11,
+  "combo_potency": 260,
+  "name": "Rage of Halone"
+ },
+ "23": {
+  "name": "Circle of Scorn",
+  "statuses": [
+   {
+    "duration_ms": 15000,
+    "id": 248,
+    "on": "target",
+    "potency": 30,
+    "tick": "damage"
+   }
+  ]
+ },
+ "32": {
+  "name": "Foresight",
+  "statuses": [
+   {
+    "duration_ms": 20000,
+    "id": 83,
+    "modifiers": {
+     "DefensePercent": 20
+    },
+    "on": "self"
+   }
+  ]
+ },
+ "33": {
+  "name": "Fracture",
+  "statuses": [
+   {
+    "duration_ms": 30000,
+    "id": 244,
+    "on": "target",
+    "potency": 20,
+    "tick": "damage"
+   }
+  ]
+ },
+ "35": {
+  "combo_from": 31,
+  "combo_potency": 200,
+  "name": "Skull Sunder"
+ },
+ "37": {
+  "combo_from": 31,
+  "combo_potency": 190,
+  "name": "Maim",
+  "statuses": [
+   {
+    "duration_ms": 24000,
+    "id": 85,
+    "modifiers": {
+     "DamageDealtPercent": 20
+    },
+    "on": "self"
+   }
+  ]
+ },
+ "38": {
+  "name": "Berserk",
+  "statuses": [
+   {
+    "duration_ms": 20000,
+    "id": 86,
+    "modifiers": {
+     "AttackPowerPercent": 50
+    },
+    "on": "self"
+   }
+  ]
+ },
+ "40": {
+  "name": "Thrill of Battle",
+  "statuses": [
+   {
+    "duration_ms": 20000,
+    "id": 87,
+    "modifiers": {
+     "HPPercent": 20
+    },
+    "on": "self"
+   }
+  ]
+ },
+ "42": {
+  "combo_from": 37,
+  "combo_potency": 250,
+  "name": "Storm's Path"
+ },
+ "44": {
+  "name": "Vengeance",
+  "statuses": [
+   {
+    "duration_ms": 20000,
+    "id": 89,
+    "modifiers": {
+     "ReflectPhysical": 50
+    },
+    "on": "self"
+   }
+  ]
+ },
+ "45": {
+  "combo_from": 37,
+  "combo_potency": 270,
+  "name": "Storm's Eye"
+ },
+ "47": {
+  "combo_from": 35,
+  "combo_potency": 280,
+  "name": "Butcher's Block"
+ },
+ "48": {
+  "name": "Defiance",
+  "statuses": [
+   {
+    "duration_ms": 0,
+    "id": 91,
+    "modifiers": {
+     "AccuracyPercent": 5,
+     "DamageDealtPercent": -25,
+     "EnmityPercent": 20,
+     "HPPercent": 25,
+     "HealingMagicRecoveryPercent": 20
+    },
+    "on": "self"
+   }
+  ]
+ },
+ "52": {
+  "name": "Infuriate",
+  "statuses": [
+   {
+    "duration_ms": 30000,
+    "id": 97,
+    "modifiers": {},
+    "on": "self"
+   }
+  ]
+ },
+ "68": {
+  "name": "Touch of Death",
+  "statuses": [
+   {
+    "duration_ms": 30000,
+    "id": 106,
+    "on": "target",
+    "potency": 25,
+    "tick": "damage"
+   }
+  ]
+ },
+ "78": {
+  "combo_from": 75,
+  "combo_potency": 200,
+  "name": "Vorpal Thrust"
+ },
+ "801": {
+  "name": "Inferno",
+  "statuses": [
+   {
+    "duration_ms": 15000,
+    "id": 314,
+    "on": "target",
+    "potency": 20,
+    "tick": "damage"
+   }
+  ]
+ },
+ "823": {
+  "name": "Choco Beak",
+  "statuses": [
+   {
+    "duration_ms": 18000,
+    "id": 236,
+    "on": "target",
+    "potency": 20,
+    "tick": "damage"
+   }
+  ]
+ },
+ "83": {
+  "name": "Life Surge",
+  "statuses": [
+   {
+    "duration_ms": 10000,
+    "id": 116,
+    "modifiers": {
+     "CriticalHitPercent": 100
+    },
+    "on": "self"
+   }
+  ]
+ },
+ "84": {
+  "combo_from": 78,
+  "combo_potency": 300,
+  "name": "Full Thrust"
+ },
+ "87": {
+  "combo_from": 81,
+  "combo_potency": 220,
+  "name": "Disembowel"
+ },
+ "88": {
+  "combo_from": 87,
+  "combo_potency": 160,
+  "name": "Chaos Thrust"
+ },
+ "89": {
+  "combo_from": 79,
+  "combo_potency": 150,
+  "name": "Ring of Thorns"
+ },
+ "91": {
+  "name": "Phlebotomize",
+  "statuses": [
+   {
+    "duration_ms": 18000,
+    "id": 119,
+    "on": "target",
+    "potency": 20,
+    "tick": "damage"
+   }
+  ]
+ },
+ "99": {
+  "name": "Hawk's Eye",
+  "statuses": [
+   {
+    "duration_ms": 20000,
+    "id": 123,
+    "modifiers": {
+     "Accuracy": 10000,
+     "DexterityPercent": 15
+    },
+    "on": "self"
+   }
+  ]
+ }
+}

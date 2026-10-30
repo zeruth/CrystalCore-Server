@@ -42,6 +42,8 @@ pub struct Stats {
     pub piety: u32,
     pub hp: u32,
     pub mp: u32,
+    /// The class's attribute modifiers, percent (`ClassJob`): STR, DEX, VIT, INT, MND, PIE.
+    pub modifiers: [u32; 6],
 }
 
 /// What the server reads of an `Action` row.
@@ -88,6 +90,11 @@ pub struct ItemRow {
     pub slot_category: u8,
     pub model_main: u64,
     pub model_sub: u64,
+    /// A weapon's physical and magic damage and its delay, ms (cols 61, 62, 63: the β's
+    /// Weathered Shortbow 4 / 4 / 2800, Weathered Cane 5 / 8 / 3200).
+    pub damage_physical: u32,
+    pub damage_magic: u32,
+    pub delay_ms: u32,
 }
 
 /// How an NPC looks, as a spawn carries it.
@@ -487,6 +494,9 @@ impl WorldData {
             slot_category: u(28) as u8,
             model_main: u(29),
             model_sub: u(30),
+            damage_physical: u(61) as u32,
+            damage_magic: u(62) as u32,
+            delay_ms: u(63) as u32,
         })
     }
 
@@ -594,6 +604,7 @@ impl WorldData {
             piety,
             hp: (g(5) * m(5) / 100).max(1) as u32,
             mp: mp.max(0) as u32,
+            modifiers: [m(7), m(9), m(8), m(10), m(11), m(12)].map(|v| v.max(0) as u32),
         })
     }
 

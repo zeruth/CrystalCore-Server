@@ -227,7 +227,7 @@ async fn players_see_each_other() {
 
     // Alpha fights it: target, auto-attack; each swing an auto-attack result and its HP, to 0
     let rat: u32 = u32::from_str_radix(placed.rsplit("actor 0x").next().unwrap().trim_end_matches('.'), 16).unwrap();
-    // strong enough for two swings
+    // strong enough to outlast the rat (no game data: attributes at the level's base)
     alpha.chat(chat::SAY, ".level 49").await.unwrap();
     alpha.trigger(ipc::trigger::TARGET, [rat, 1, 0, 0]).await.unwrap();
     alpha.trigger(ipc::trigger::AUTO_ATTACK, [1, rat, 0, 0]).await.unwrap();
