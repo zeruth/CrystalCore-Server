@@ -1371,6 +1371,8 @@ fn actor_spawn(slot: u8, actor: &ActorView, data: Option<&WorldData>) -> ipc::Sp
                 kind: ipc::kind::BATTLE_NPC,
                 // an enemy when its battalion fights players (Battalion), else a friendly NPC
                 sub_kind: if data.and_then(|d| d.bnpc_hostile(*base_id)).unwrap_or(true) { 5 } else { 0 },
+                // its side (BNpcBase col 1): what makes the client treat it as an enemy
+                battalion: data.and_then(|d| d.bnpc_battalion(*base_id)).unwrap_or(4),
                 rotation: actor.rotation,
                 pos: actor.pos,
                 level: (*level).min(255) as u8,

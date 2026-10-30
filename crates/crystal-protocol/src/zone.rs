@@ -293,6 +293,11 @@ pub struct Spawn {
     /// tests 1 with a parent's id (a part of another NPC) and 3 with the player as owner (a
     /// chocobo), as Sapphire's BattleNpcSubKind numbers them; 5 is its Enemy. 0: not hostile.
     pub sub_kind: u8,
+    /// Which side the character is on (@0x66 → the character's +0x194; Sapphire's spawn has
+    /// Battalion there, from `BNpcBase`'s): the client weighs it against the `Battalion` table to
+    /// tell enemies from friends. 0 is the players' side: a monster sent as 0 shows as friendly
+    /// and is no target.
+    pub battalion: u8,
     /// For kinds 2 and 3, where the name comes from (@0x38): a `BNpcName` / `ENpcResident` row,
     /// looked up by @0x463610 (`ReadSpawn` @0xaac200; the text @0x208 is used instead when the
     /// byte @0x31 is 3).
@@ -332,6 +337,7 @@ impl Spawn {
         let turn = ((self.rotation + std::f32::consts::PI) / std::f32::consts::TAU * 65535.0).round();
         b[0x60..0x62].copy_from_slice(&(turn.clamp(0.0, 65535.0) as u16).to_le_bytes());
         b[0x62..0x64].copy_from_slice(&self.model.to_le_bytes());
+        b[0x66] = self.battalion;
         b[0x6a] = self.level;
         b[0x6b] = self.class;
         b[0x6c..0x70].copy_from_slice(&self.hp.to_le_bytes());
@@ -368,6 +374,7 @@ impl Spawn {
             status: b[0x2c],
             kind: b[0x30],
             sub_kind: b[0x31],
+            battalion: b[0x66],
             name_id: u32_at(b, 0x38)?,
             main_weapon: u64_at(0x48),
             sub_weapon: u64_at(0x50),

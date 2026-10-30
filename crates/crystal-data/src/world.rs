@@ -657,8 +657,13 @@ impl WorldData {
     /// player-side NPCs are battalion 0 (Central Shroud's Wood Wailers, Gods' Quiver bows, Yda
     /// and Papalymo), monsters 4 and beast tribes like the Ixal 6, both hostile to 0.
     pub fn bnpc_hostile(&self, base_id: u32) -> Option<bool> {
-        let battalion = self.sheet("BNpcBase").ok()?.row(base_id)?.get(1)?.as_u64()? as u32;
-        Some(self.sheet("Battalion").ok()?.row(battalion)?.first()?.as_u64()? != 0)
+        let battalion = self.bnpc_battalion(base_id)?;
+        Some(self.sheet("Battalion").ok()?.row(battalion as u32)?.first()?.as_u64()? != 0)
+    }
+
+    /// A battle NPC's battalion (`BNpcBase` col 1), which its spawn carries @0x66.
+    pub fn bnpc_battalion(&self, base_id: u32) -> Option<u8> {
+        Some(self.sheet("BNpcBase").ok()?.row(base_id)?.get(1)?.as_u64()? as u8)
     }
 
     /// An `Aetheryte` row as the β has it: col 16 true for an aetheryte (teleport), false for an
