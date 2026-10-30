@@ -667,6 +667,7 @@ dependencies = [
  "crystal-data",
  "crystal-db",
  "crystal-protocol",
+ "crystal-world",
  "serde_json",
  "tokio",
  "tracing",

@@ -39,6 +39,27 @@ pub(crate) enum Request {
     Status { target: ActorId, id: u16, param: u16, duration: Option<Duration>, source: ActorId },
     ClearStatuses { target: ActorId },
     Sprint { id: ActorId },
+    /// The territory's walkable ground, built after it started.
+    Nav { grid: Arc<crate::nav::NavGrid> },
+}
+
+/// A battle NPC's way to where it is going: the goal it was planned for, the points left,
+/// whether they end at the goal, and when it was planned.
+#[derive(Debug, Clone)]
+struct Route {
+    goal: [f32; 3],
+    points: std::collections::VecDeque<[f32; 3]>,
+    reaches: bool,
+    planned: Instant,
+}
+
+/// Where a battle NPC's step left it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Moved {
+    There,
+    Going,
+    /// There is no walkable way there (it has gone as near as it can).
+    Stuck,
 }
 
 /// A player's cast: what lands on whom, when, and where it stood when it began.
@@ -149,6 +170,10 @@ pub struct ZoneState {
     returning: std::collections::HashSet<ActorId>,
     /// The territory's own random numbers (wander points and pauses).
     rng: u64,
+    /// Where battle NPCs can walk (none until built: then they move in straight lines).
+    nav: Option<Arc<crate::nav::NavGrid>>,
+    /// Battle NPCs' ways to where they are going.
+    routes: HashMap<ActorId, Route>,
 }
 
 /// One step of at most `step` yalms from `from` toward `to`, stopping `short` of it: the new
@@ -162,6 +187,18 @@ fn step_toward(from: [f32; 3], to: [f32; 3], step: f32, short: f32) -> Option<([
     let dir = [(to[0] - from[0]) / d, (to[1] - from[1]) / d, (to[2] - from[2]) / d];
     let pos = [from[0] + dir[0] * step, from[1] + dir[1] * step, from[2] + dir[2] * step];
     Some((pos, dir[0].atan2(dir[2])))
+}
+
+/// How soon a battle NPC plans its way again after its goal moved.
+const REPLAN: Duration = Duration::from_millis(500);
+/// How far a battle NPC's goal moves before its way is planned again.
+const REPLAN_MOVE: f32 = 2.0;
+/// How near a path's end must be to its goal to count as getting there (a cell and a half).
+const REACHED: f32 = crate::nav::CELL * 1.5;
+
+/// The distance over the ground (x and z).
+fn flat(a: [f32; 3], b: [f32; 3]) -> f32 {
+    ((a[0] - b[0]).powi(2) + (a[2] - b[2]).powi(2)).sqrt()
 }
 
 fn distance2(a: [f32; 3], b: [f32; 3]) -> f32 {
@@ -239,6 +276,89 @@ impl ZoneState {
             idle: HashMap::new(),
             returning: std::collections::HashSet::new(),
             rng: 0x9e37_79b9_7f4a_7c15 ^ territory as u64,
+            nav: None,
+            routes: HashMap::new(),
+        }
+    }
+
+    /// Gives the territory its walkable ground (as [`Request::Nav`] does).
+    pub fn set_nav(&mut self, grid: Arc<crate::nav::NavGrid>) {
+        self.nav = Some(grid);
+        self.routes.clear();
+    }
+
+    /// Moves battle NPC `id` toward `goal` by `step` yalms, stopping `short` of it: on the ground
+    /// along a walkable path when the territory's ground is known, in a straight line when not
+    /// (or when it stands nowhere walkable). `walking` plays it at a walk.
+    fn move_toward(&mut self, id: ActorId, goal: [f32; 3], step: f32, short: f32, walking: bool, now: Instant) -> Moved {
+        let Some(here) = self.actors.get(&id).map(|a| a.pos) else { return Moved::Stuck };
+        if flat(here, goal) <= short + 0.05 {
+            self.routes.remove(&id);
+            return Moved::There;
+        }
+        let straight = |zone: &mut Self| {
+            if let Some((pos, rotation)) = step_toward(here, goal, step, short) {
+                if walking { zone.place_walking(id, pos, rotation) } else { zone.place(id, pos, rotation) }
+            }
+            Moved::Going
+        };
+        let Some(nav) = self.nav.clone() else { return straight(self) };
+        let replan = self.routes.get(&id).is_none_or(|r| {
+            r.points.is_empty() || (flat(r.goal, goal) > REPLAN_MOVE && now.saturating_duration_since(r.planned) >= REPLAN)
+        });
+        if replan {
+            let Some(points) = nav.path(here, goal) else {
+                self.routes.remove(&id);
+                return straight(self);
+            };
+            // a path that ends short of the goal (it could not get there) is walked to its end
+            let reaches = points.last().is_some_and(|&p| flat(p, goal) <= REACHED);
+            if points.is_empty() || (!reaches && points.last().is_some_and(|&p| flat(p, here) < 0.5)) {
+                self.routes.remove(&id);
+                return Moved::Stuck;
+            }
+            self.routes.insert(id, Route { goal, points: points.into(), reaches, planned: now });
+        }
+        let route = self.routes.get_mut(&id).expect("planned");
+        let (mut pos, mut left, mut facing) = (here, step, self.actors[&id].rotation);
+        while left > 1e-4 {
+            let Some(&next) = route.points.front() else { break };
+            // a path that gets there aims its last leg at where the goal is now
+            let last = route.points.len() == 1 && route.reaches;
+            let (target, stop) = if last { (goal, short) } else { (next, 0.0) };
+            let d = flat(pos, target);
+            if d > 1e-4 {
+                facing = (target[0] - pos[0]).atan2(target[2] - pos[2]);
+            }
+            if d - stop <= left {
+                let t = if d > 0.0 { (d - stop).max(0.0) / d } else { 1.0 };
+                pos = [pos[0] + (target[0] - pos[0]) * t, target[1], pos[2] + (target[2] - pos[2]) * t];
+                left -= (d - stop).max(0.0);
+                route.points.pop_front();
+                if last {
+                    break;
+                }
+            } else {
+                let t = left / d;
+                pos = [pos[0] + (target[0] - pos[0]) * t, pos[1] + (target[1] - pos[1]) * t, pos[2] + (target[2] - pos[2]) * t];
+                left = 0.0;
+            }
+        }
+        let ended_short = route.points.is_empty() && !route.reaches;
+        if let Some(y) = nav.ground(pos, 3.0) {
+            pos[1] = y;
+        }
+        if pos != here {
+            if walking { self.place_walking(id, pos, facing) } else { self.place(id, pos, facing) }
+        }
+        if flat(pos, goal) <= short + 0.05 {
+            self.routes.remove(&id);
+            Moved::There
+        } else if ended_short {
+            self.routes.remove(&id);
+            Moved::Stuck
+        } else {
+            Moved::Going
         }
     }
 
@@ -530,19 +650,18 @@ impl ZoneState {
                 continue;
             }
             let (here, there) = (me.pos, them.pos);
-            let d = distance2(here, there).sqrt();
             let reach = combat::MELEE_RANGE * 0.8;
-            if d > reach {
-                // a step toward the target, stopping just inside reach
-                let step = (combat::CHASE_SPEED * dt).min(d - reach * 0.75);
-                let dir = [(there[0] - here[0]) / d, (there[1] - here[1]) / d, (there[2] - here[2]) / d];
-                let pos = [here[0] + dir[0] * step, here[1] + dir[1] * step, here[2] + dir[2] * step];
-                self.place(id, pos, dir[0].atan2(dir[2]));
+            if distance2(here, there) > reach.powi(2) {
+                // a step toward the target, stopping just inside reach; one it cannot get to
+                // it gives up on
+                if self.move_toward(id, there, combat::CHASE_SPEED * dt, reach * 0.75, false, now) == Moved::Stuck {
+                    self.go_home(id);
+                }
             } else if mob.next_swing.is_none_or(|t| t <= now) {
                 self.mob_swing(id, mob.target, now);
             }
         }
-        self.walk_home(dt);
+        self.walk_home(now, dt);
         self.wander(now, dt);
     }
 
@@ -578,6 +697,7 @@ impl ZoneState {
         for (id, here, target) in found {
             let home = self.spawn_points.get(&id).map_or(here, |s| s.0);
             self.idle.remove(&id);
+            self.routes.remove(&id);
             self.mobs.insert(id, Mob { home, target, next_swing: None });
         }
     }
@@ -612,26 +732,23 @@ impl ZoneState {
         if let Some(ActorKind::BattleNpc { level, .. }) = self.actors.get(&id).map(|a| a.kind.clone()) {
             self.health.insert(id, (combat::bnpc_hp(level), combat::bnpc_hp(level)));
             self.idle.remove(&id);
+            self.routes.remove(&id);
             self.returning.insert(id);
         }
     }
 
     /// Battle NPCs going home: a run's step toward their spawn point; there, they face as they
-    /// were placed and are idle again.
-    fn walk_home(&mut self, dt: f32) {
+    /// were placed and are idle again (one with no way home is put there).
+    fn walk_home(&mut self, now: Instant, dt: f32) {
         let ids: Vec<ActorId> = self.returning.iter().copied().collect();
         for id in ids {
-            let (Some(&(home, facing, _)), Some(here)) = (self.spawn_points.get(&id), self.actors.get(&id).map(|a| a.pos))
-            else {
+            let Some(&(home, facing, _)) = self.spawn_points.get(&id).filter(|_| self.actors.contains_key(&id)) else {
                 self.returning.remove(&id);
                 continue;
             };
-            match step_toward(here, home, combat::CHASE_SPEED * dt, 0.0) {
-                Some((pos, rotation)) => self.place(id, pos, rotation),
-                None => {
-                    self.returning.remove(&id);
-                    self.place(id, home, facing);
-                }
+            if self.move_toward(id, home, combat::CHASE_SPEED * dt, 0.0, false, now) != Moved::Going {
+                self.returning.remove(&id);
+                self.place(id, home, facing);
             }
         }
     }
@@ -671,13 +788,11 @@ impl ZoneState {
                 self.idle.insert(id, (None, next));
                 continue;
             };
-            let here = self.actors[&id].pos;
-            match step_toward(here, dest, combat::WALK_SPEED * dt, 0.0) {
-                Some((pos, rotation)) => {
-                    self.place_walking(id, pos, rotation);
+            match self.move_toward(id, dest, combat::WALK_SPEED * dt, 0.0, true, now) {
+                Moved::Going => {
                     self.idle.insert(id, (Some(dest), next));
                 }
-                None => {
+                Moved::There | Moved::Stuck => {
                     let pause = combat::WANDER_PAUSE_MIN
                         + self.random() * (combat::WANDER_PAUSE_MAX - combat::WANDER_PAUSE_MIN);
                     self.idle.insert(id, (None, now + Duration::from_secs_f32(pause)));
@@ -962,10 +1077,15 @@ impl ZoneState {
         }
         if hp > 0 {
             // it fights back (its first swing a swing's time after this one)
-            self.mobs.entry(target).or_insert(Mob { home, target: attacker, next_swing: Some(now + combat::SWING) });
+            if let std::collections::hash_map::Entry::Vacant(e) = self.mobs.entry(target) {
+                e.insert(Mob { home, target: attacker, next_swing: Some(now + combat::SWING) });
+                self.returning.remove(&target);
+                self.routes.remove(&target);
+            }
         }
         if hp == 0 {
             self.mobs.remove(&target);
+            self.routes.remove(&target);
             debug!(territory = self.territory, target = format_args!("{target:#x}"), "battle NPC died");
             for f in self.fighters.values_mut().filter(|f| f.target == Some(target)) {
                 f.auto_attack = false;
@@ -1013,6 +1133,10 @@ impl ZoneState {
             Request::ClearStatuses { target } => self.clear_statuses(target, self.now()),
             Request::Sprint { id } => {
                 self.sprint(id, self.now());
+            }
+            Request::Nav { grid } => {
+                self.nav = Some(grid);
+                self.routes.clear();
             }
             Request::AddBnpc { bnpc, reply } => {
                 let _ = reply.send(self.add_bnpc(bnpc));
@@ -1526,6 +1650,50 @@ mod tests {
         zone.set_auto_attack(A, true);
         zone.combat_tick(Instant::now());
         assert!(drain(&mut a).iter().any(|e| matches!(e, Event::Damage { target, .. } if *target == rat_id)), "20 yalms: in reach");
+    }
+
+    #[test]
+    fn chasers_go_around_walls() {
+        // a floor 30 yalms square, a wall across it at x = 15 with a gap past z = 25
+        let floor = |s: f32| vec![[[0.0, 0.0, 0.0], [s, 0.0, 0.0], [s, 0.0, s]], [[0.0, 0.0, 0.0], [s, 0.0, s], [0.0, 0.0, s]]];
+        let mut tris = floor(30.0);
+        tris.push([[15.0, 0.0, 0.0], [15.0, 5.0, 0.0], [15.0, 5.0, 25.0]]);
+        tris.push([[15.0, 0.0, 0.0], [15.0, 5.0, 25.0], [15.0, 0.0, 25.0]]);
+        let rat = BnpcPlacement {
+            base_id: 347,
+            name_id: 417,
+            level: 1,
+            pos: [5.0, 0.0, 5.0],
+            rotation: 0.0,
+            aggressive: false,
+            wander_range: 0.0,
+        };
+        let mut zone = ZoneState::new(129, &[], &[rat]);
+        zone.set_nav(Arc::new(crate::nav::NavGrid::build(&tris)));
+        let rat_id = BNPC_ACTOR_BASE + (129 << 14) + 1;
+        let (tx, mut a) = mpsc::channel(4096);
+        let archer = Arc::new(PlayerLook { class: 5, ..(*tough("Alpha")).clone() });
+        zone.enter(A, 1, archer, [25.0, 0.0, 5.0], 0.0, tx);
+        zone.set_target(A, Some(rat_id));
+        zone.set_auto_attack(A, true);
+        let mut t = Instant::now();
+        zone.combat_tick(t);
+        zone.set_auto_attack(A, false);
+        assert!(zone.mobs.contains_key(&rat_id), "it fights back");
+        let mut through_gap = false;
+        for _ in 0..200 {
+            t += Duration::from_millis(250);
+            zone.combat_tick(t);
+            drain(&mut a);
+            let p = zone.actors[&rat_id].pos;
+            through_gap |= p[2] > 24.0;
+            assert!(!(p[0] > 14.0 && p[0] < 16.0 && p[2] < 25.0), "through the wall at {p:?}");
+            if distance2(p, [25.0, 0.0, 5.0]) <= combat::MELEE_RANGE.powi(2) {
+                break;
+            }
+        }
+        assert!(through_gap, "it went round");
+        assert!(distance2(zone.actors[&rat_id].pos, [25.0, 0.0, 5.0]) <= combat::MELEE_RANGE.powi(2), "it got there");
     }
 
     #[test]

@@ -9,6 +9,7 @@
 
 pub mod combat;
 pub mod inventory;
+pub mod nav;
 pub mod progress;
 pub mod zone;
 
@@ -294,10 +295,17 @@ pub struct Presence {
 /// NPCs (the world database).
 pub type NpcSource = Box<dyn Fn(u16) -> TerritoryContent + Send + Sync>;
 
+/// Where a territory's battle NPCs can walk (built from its collision; `None`: nowhere known).
+/// Called on a blocking thread when the territory starts.
+pub type NavSource = std::sync::Arc<dyn Fn(u16) -> Option<nav::NavGrid> + Send + Sync>;
+
 /// The territories of one zone service. Each is started on first use and runs until shutdown.
 pub struct World {
     zones: Mutex<HashMap<u16, ZoneHandle>>,
     npcs: NpcSource,
+    nav: Option<NavSource>,
+    /// Grids built so far, kept for a territory that starts again.
+    grids: std::sync::Arc<Mutex<HashMap<u16, std::sync::Arc<nav::NavGrid>>>>,
     presence: Mutex<HashMap<ActorId, (u64, Presence)>>,
     entries: AtomicU64,
     shutdown: CancellationToken,
@@ -321,11 +329,19 @@ impl World {
         Self {
             zones: Mutex::new(HashMap::new()),
             npcs,
+            nav: None,
+            grids: Default::default(),
             presence: Mutex::new(HashMap::new()),
             entries: AtomicU64::new(1),
             shutdown,
             tasks: TaskTracker::new(),
         }
+    }
+
+    /// Where territories' battle NPCs can walk, built when each starts.
+    pub fn with_nav(mut self, source: NavSource) -> Self {
+        self.nav = Some(source);
+        self
     }
 
     /// The territory's task, started if it is not running. Must be called within a Tokio runtime.
@@ -340,6 +356,30 @@ impl World {
         let content = (self.npcs)(territory);
         let state = ZoneState::new(territory, &content.enpcs, &content.bnpcs);
         self.tasks.spawn(zone::run(state, rx, self.shutdown.clone()));
+        // its walkable ground, built aside and handed over when ready (until then its battle
+        // NPCs move in straight lines)
+        if let Some(source) = self.nav.clone() {
+            let (grids, tx) = (self.grids.clone(), tx.clone());
+            let cached = grids.lock().get(&territory).cloned();
+            self.tasks.spawn(async move {
+                let grid = match cached {
+                    Some(g) => Some(g),
+                    None => {
+                        let started = std::time::Instant::now();
+                        let built = tokio::task::spawn_blocking(move || source(territory)).await.ok().flatten();
+                        let built = built.map(std::sync::Arc::new);
+                        if let Some(g) = &built {
+                            tracing::info!(territory, took = ?started.elapsed(), "walkable ground built");
+                            grids.lock().insert(territory, g.clone());
+                        }
+                        built
+                    }
+                };
+                if let Some(grid) = grid {
+                    let _ = tx.send(Request::Nav { grid }).await;
+                }
+            });
+        }
         let handle = ZoneHandle { territory, tx };
         zones.insert(territory, handle.clone());
         handle

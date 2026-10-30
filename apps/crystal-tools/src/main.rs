@@ -99,6 +99,10 @@ enum Command {
         #[arg(long)]
         kind: Option<u32>,
     },
+    /// A territory's collision (terrain and background parts): triangles, bounds, time.
+    Collision {
+        territory: u16,
+    },
     /// Any of the client's scripts (`game_script/transport/Aetheryte.luab`): its functions, what
     /// each calls and the numbers it returns.
     Script {
@@ -326,6 +330,58 @@ async fn main() -> anyhow::Result<()> {
             let db = databases(&config).await?;
             let data = game_data(&config, Some(&db), false).await?;
             coverage::run(&data, &db, &out).await?;
+            db.close().await;
+        }
+        Command::Collision { territory } => {
+            let data = game_data(&config, None, true).await?;
+            let started = Instant::now();
+            let tris = data.collision(territory)?;
+            let mut lo = [f32::MAX; 3];
+            let mut hi = [f32::MIN; 3];
+            for v in tris.iter().flatten() {
+                for k in 0..3 {
+                    lo[k] = lo[k].min(v[k]);
+                    hi[k] = hi[k].max(v[k]);
+                }
+            }
+            println!("{} triangles in {:?}; bounds {lo:?} .. {hi:?}", tris.len(), started.elapsed());
+            let started = Instant::now();
+            let grid = crystal_world::nav::NavGrid::build(&tris);
+            println!("walkable grid built in {:?}", started.elapsed());
+            // the battle NPCs' recorded heights against the grid's ground under them
+            let db = databases(&config).await?;
+            let spawns = db.world.bnpc_spawns(crystal_db::BETA_PATCH, Some(territory)).await?;
+            let mut diffs: Vec<f32> = Vec::new();
+            let mut missing = 0;
+            for s in &spawns {
+                match grid.ground(s.pos, 6.0) {
+                    Some(y) => diffs.push((y - s.pos[1]).abs()),
+                    None => missing += 1,
+                }
+            }
+            diffs.sort_by(f32::total_cmp);
+            let pct = |p: f32| diffs.get(((diffs.len() as f32 - 1.0) * p) as usize).copied().unwrap_or(f32::NAN);
+            println!(
+                "{} spawns: ground within 6 yalms for {} (|dy| median {:.2}, 90% {:.2}, max {:.2}), none for {missing}",
+                spawns.len(),
+                diffs.len(),
+                pct(0.5),
+                pct(0.9),
+                pct(1.0)
+            );
+            // a path between the first two spawns that have ground
+            let walk: Vec<_> = spawns.iter().filter(|s| grid.ground(s.pos, 6.0).is_some()).take(40).collect();
+            if let (Some(a), Some(b)) = (walk.first(), walk.last()) {
+                let started = Instant::now();
+                let path = grid.path(a.pos, b.pos);
+                println!(
+                    "path {:?} -> {:?}: {:?} in {:?}",
+                    a.pos,
+                    b.pos,
+                    path.as_ref().map(|p| (p.len(), p.last().copied())),
+                    started.elapsed()
+                );
+            }
             db.close().await;
         }
         Command::Script { path } => {

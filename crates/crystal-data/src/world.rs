@@ -331,6 +331,53 @@ impl WorldData {
         Ok(files)
     }
 
+    /// Every collision triangle of `territory`, in the world's space: its terrain pieces
+    /// (`collision/list.pcb`'s `tr%04d.pcb`) and the collision of the background parts its
+    /// `bg.lgb` and `planmap.lgb` place, as Sapphire's `nav_export` gathers them (shared groups
+    /// are left out yet).
+    pub fn collision(&self, territory: u16) -> Result<Vec<crate::pcb::Triangle>> {
+        let folder = self
+            .territories
+            .get(&(territory as u32))
+            .ok_or_else(|| DataError::NotFound(format!("TerritoryType {territory}")))?;
+        // the level folder's parent holds the collision folder
+        let base = folder.trim_end_matches('/').trim_end_matches("/level");
+        let mut out = Vec::new();
+        let mut files: HashMap<String, Arc<Vec<crate::pcb::Triangle>>> = HashMap::new();
+        let mut read = |path: &str| -> Option<Arc<Vec<crate::pcb::Triangle>>> {
+            if let Some(t) = files.get(path) {
+                return Some(t.clone());
+            }
+            let t = match self.pack.read(path).and_then(|d| crate::pcb::triangles(path, &d)) {
+                Ok(t) => Arc::new(t),
+                Err(e) => {
+                    debug!(%path, "collision: {e}");
+                    Arc::new(Vec::new())
+                }
+            };
+            files.insert(path.to_owned(), t.clone());
+            Some(t)
+        };
+        if let Ok(list) = self.pack.read(&format!("{base}/collision/list.pcb")) {
+            for id in crate::pcb::terrain_pieces(&list) {
+                if let Some(t) = read(&format!("{base}/collision/tr{id:04}.pcb")) {
+                    out.extend(t.iter().copied());
+                }
+            }
+        }
+        for (file, layout) in self.layout_files(territory)? {
+            if file != "bg.lgb" && file != "planmap.lgb" {
+                continue;
+            }
+            for o in layout.objects().filter(|o| o.kind == crate::lgb::kind::BG && !o.collision.is_empty()) {
+                if let Some(t) = read(&o.collision) {
+                    out.extend(t.iter().map(|tri| tri.map(|v| crate::pcb::place(v, o.pos, o.rot, o.scale))));
+                }
+            }
+        }
+        Ok(out)
+    }
+
     /// The names of every layer in `territory`'s layout files (empty layers too: later patches
     /// fill layers the β already has, and add new ones).
     pub fn layer_names(&self, territory: u16) -> Result<Arc<HashSet<String>>> {

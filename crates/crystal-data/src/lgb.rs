@@ -11,6 +11,8 @@ use crate::{Result, format};
 
 /// Object types the server reads (the layout's type numbers).
 pub mod kind {
+    /// A background part (a model and its collision).
+    pub const BG: u32 = 1;
     pub const EVENT_NPC: u32 = 8;
     pub const AETHERYTE: u32 = 12;
     pub const POP_RANGE: u32 = 40;
@@ -26,6 +28,10 @@ pub struct Object {
     pub name: String,
     pub pos: [f32; 3],
     pub rot: [f32; 3],
+    pub scale: [f32; 3],
+    /// A background part's collision file (its data @4, an offset from the object's start:
+    /// Sapphire's BgPartsData `CollisionAssetPath`); empty when it has none.
+    pub collision: String,
     /// The type-specific bytes after the 0x30-byte header (to the end of the file; each type
     /// reads what it needs).
     data: Vec<u8>,
@@ -107,12 +113,21 @@ impl Layout {
                 let oo = (ot as i64 + i32_at(ot + 4 * j)? as i64) as usize;
                 let (kind, inst, oname) = (i32_at(oo)? as u32, i32_at(oo + 4)? as u32, i32_at(oo + 8)?);
                 let v = |k: usize| f32_at(oo + 12 + 4 * k);
+                let collision = match kind {
+                    kind::BG => match i32_at(oo + 0x34) {
+                        Ok(off) if off > 0 => name_at((oo as i64 + off as i64) as usize),
+                        _ => String::new(),
+                    },
+                    _ => String::new(),
+                };
                 objects.push(Object {
                     kind,
                     id: inst,
                     name: if oname != 0 { name_at((oo as i64 + oname as i64) as usize) } else { String::new() },
                     pos: [v(0)?, v(1)?, v(2)?],
                     rot: [v(3)?, v(4)?, v(5)?],
+                    scale: [v(6)?, v(7)?, v(8)?],
+                    collision,
                     data: d.get(oo + 0x30..(oo + 0x30 + 0x40).min(d.len())).unwrap_or_default().to_vec(),
                 });
             }

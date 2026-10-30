@@ -161,7 +161,19 @@ impl Server {
                         };
                         TerritoryContent { enpcs, bnpcs }
                     });
-                    let territories = Arc::new(World::new(npcs, shutdown.child_token()));
+                    let mut territories = World::new(npcs, shutdown.child_token());
+                    // where battle NPCs can walk: each territory's collision, from the game files
+                    if let Some(data) = world.clone() {
+                        territories = territories.with_nav(Arc::new(move |territory: u16| match data.collision(territory) {
+                            Ok(triangles) if !triangles.is_empty() => Some(crystal_world::nav::NavGrid::build(&triangles)),
+                            Ok(_) => None,
+                            Err(e) => {
+                                warn!(territory, "collision: {e}");
+                                None
+                            }
+                        }));
+                    }
+                    let territories = Arc::new(territories);
                     let mut commands = Commands::default();
                     mod_gm::register(&mut commands);
                     // the quest definitions the zone runs (the repository's, with the seed)
