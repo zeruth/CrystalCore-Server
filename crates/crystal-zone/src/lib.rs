@@ -577,10 +577,7 @@ impl Zone {
                 self.scene_result(sess, body).await
             }
             opcode::ITEM_OPERATION_REQUEST => self.item_operation(sess, body).await,
-            opcode::COMMAND => {
-                self.trigger(sess, body);
-                vec![]
-            }
+            opcode::COMMAND => self.trigger(sess, body).await,
             opcode::ACTION_REQUEST => {
                 self.action_request(sess, body);
                 vec![]
@@ -773,10 +770,14 @@ impl Zone {
         out
     }
 
-    /// A client command: targeting and auto-attack go to the territory; the rest is logged.
-    fn trigger(&self, sess: &mut Session, body: &[u8]) {
-        let Some((command, args)) = ipc::trigger::parse(body) else { return };
-        let Some(entry) = &sess.entry else { return };
+    /// A client command: targeting and auto-attack go to the territory, Teleport's choice is
+    /// carried out; the rest is logged.
+    async fn trigger(&self, sess: &mut Session, body: &[u8]) -> Vec<(u16, Bytes)> {
+        let Some((command, args)) = ipc::trigger::parse(body) else { return vec![] };
+        if command == ipc::trigger::TELEPO {
+            return self.teleport(sess, args[0]).await;
+        }
+        let Some(entry) = &sess.entry else { return vec![] };
         match command {
             ipc::trigger::TARGET => {
                 let target = (args[0] != ipc::trigger::NO_TARGET && args[0] != 0).then_some(args[0]);
@@ -798,6 +799,7 @@ impl Zone {
             }
             other => debug!(command = other, args = ?args, "  command not acted on yet"),
         }
+        vec![]
     }
 
     /// An action: read from the Action sheet, checked against the player's class and level, and

@@ -138,6 +138,8 @@ pub struct AetheryteInfo {
     pub territory: u16,
     /// Where travel to it puts the player (its pop range), when the layout has it.
     pub arrival: Option<Arrival>,
+    /// Where Teleport's cost is reckoned from (cols 20, 21; Sapphire's CostPosX/Y).
+    pub cost_pos: [i32; 2],
 }
 
 /// Where a zone exit puts the player.
@@ -737,7 +739,31 @@ impl WorldData {
             let o = l.find(pop)?;
             Some(Arrival { territory, pos: o.pos, rotation: o.rot[1] })
         });
-        Some(AetheryteInfo { id, main, territory, arrival })
+        let col = |i: usize| row.get(i).and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+        Some(AetheryteInfo { id, main, territory, arrival, cost_pos: [col(20), col(21)] })
+    }
+
+    /// Teleport's gil from one aetheryte to another (Sapphire's `teleportQuery`): half the
+    /// distance between their cost positions plus 100, at most 999.
+    pub fn teleport_cost(&self, from: u32, to: u32) -> Option<u32> {
+        let (a, b) = (self.aetheryte(from)?, self.aetheryte(to)?);
+        let d = (((a.cost_pos[0] - b.cost_pos[0]) as f64).powi(2) + ((a.cost_pos[1] - b.cost_pos[1]) as f64).powi(2)).sqrt();
+        Some(((d / 2.0) as u32 + 100).min(999))
+    }
+
+    /// A territory's own aetheryte, the one Teleport's cost is reckoned from (Sapphire's reads
+    /// `TerritoryType`'s Aetheryte field; the β's column for it is not named yet, so: the main
+    /// aetheryte whose territory it is).
+    pub fn territory_aetheryte(&self, territory: u16) -> Option<u32> {
+        let sheet = self.sheet("Aetheryte").ok()?;
+        sheet
+            .rows
+            .iter()
+            .find(|(_, r)| {
+                r.get(11).and_then(|v| v.as_u64()) == Some(territory as u64)
+                    && r.get(16).and_then(|v| v.as_u64()).unwrap_or(0) != 0
+            })
+            .map(|(id, _)| *id)
     }
 
     pub fn has_territory(&self, territory: u16) -> bool {

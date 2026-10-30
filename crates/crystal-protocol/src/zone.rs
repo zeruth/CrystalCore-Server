@@ -1054,6 +1054,9 @@ pub mod trigger {
     /// Get up after dying (`Client::Game::UI::Revive` @0xa6d8d0 sends it with arg 1 = 8 or 5:
     /// the dialog's choices, not yet told apart).
     pub const REVIVE: u32 = 0x0d;
+    /// Teleport's choice: the `Aetheryte` row in arg 1 (`Client::Game::UI::Telepo::vf1`
+    /// @0xa6acd0; Sapphire's TELEPO_INQUIRY).
+    pub const TELEPO: u32 = 0x10;
     /// The id the client uses for no target.
     pub const NO_TARGET: u32 = 0xe000_0000;
 

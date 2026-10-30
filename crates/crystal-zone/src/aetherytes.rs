@@ -21,7 +21,7 @@ use bytes::Bytes;
 use tracing::{info, warn};
 
 use crate::ipc::{self, opcode, order_kind};
-use crate::{Session, Zone, finish_event, play_scene};
+use crate::{Session, Zone, container, finish_event, play_scene, slot_update, system_message};
 
 /// Teleport's unlock (Sapphire's `UnlockEntry::Teleport`; the β client tests unlock byte 0's
 /// 0x10 bit).
@@ -88,6 +88,43 @@ impl Zone {
             }
         }
         out
+    }
+
+    /// Teleport to an attuned aetheryte (the Teleport window's choice, command 0x10): its gil
+    /// (Sapphire's `teleportQuery`: half the distance between the aetherytes' cost positions plus
+    /// 100, at most 999) paid, then the departure as the aethernet's, with Teleport's effect
+    /// (warp type 4), and the move a second later. (Sapphire answers the choice with
+    /// ActorControlSelf OnExecuteTelepo and the client casts Teleport; the β's id for that answer
+    /// is not known, so the server goes at once.)
+    pub(crate) async fn teleport(&self, sess: &mut Session, to: u32) -> Vec<(u16, Bytes)> {
+        let Some(data) = self.data.as_deref() else { return vec![] };
+        let Some(dest) = data.aetheryte(to).filter(|a| a.main) else {
+            warn!(to, "  teleport: not an aetheryte");
+            return vec![];
+        };
+        if !sess.aetherytes.contains(&to) {
+            warn!(to, "  teleport: not attuned to it");
+            return vec![];
+        }
+        let Some(arrival) = dest.arrival else {
+            warn!(to, "  teleport: no arrival for it");
+            return vec![];
+        };
+        let territory = sess.entry.as_ref().map_or(0, |e| e.zone.territory);
+        let cost = data.territory_aetheryte(territory).and_then(|from| data.teleport_cost(from, to)).unwrap_or(100);
+        if sess.inventory.add_gil(-(cost as i64)).is_err() {
+            return vec![(opcode::CHAT_DOWN, system_message(&format!("You do not have the {cost} gil to teleport.")))];
+        }
+        self.save_inventory(sess).await;
+        info!(to, territory = arrival.territory, cost, "  teleport");
+        let warp = [ipc::warp_type::TELEPORT, sess.actor_id, 0, arrival.territory as u32];
+        let at = tokio::time::Instant::now() + std::time::Duration::from_millis(1000);
+        sess.pending_move = Some((at, arrival.territory, arrival.pos, arrival.rotation));
+        vec![
+            (opcode::UPDATE_ITEM, slot_update(&sess.inventory, container::CURRENCY, 0)),
+            (opcode::CHAT_DOWN, system_message(&format!("You spend {cost} gil."))),
+            (opcode::ORDER, ipc::order(order_kind::WARP_START, warp)),
+        ]
     }
 
     /// Attunes the character to an aetheryte: kept, saved and told to the client (order 0x1fd).

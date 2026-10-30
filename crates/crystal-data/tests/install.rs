@@ -63,6 +63,18 @@ fn battalions() {
 }
 
 #[test]
+fn teleport_costs_and_weapons() {
+    let Some(game) = game() else { return };
+    let world = WorldData::open(&game).unwrap();
+    // aetherytes 2 (1560, 720) and 3 (1540, 820): ⌊√(20² + 100²) / 2⌋ + 100
+    assert_eq!(world.teleport_cost(2, 3), Some(150));
+    assert_eq!(world.teleport_cost(2, 2), Some(100));
+    // the Weathered Shortbow: 4 physical, 4 magic, 2.8 s
+    let bow = world.item(1889).unwrap();
+    assert_eq!((bow.damage_physical, bow.damage_magic, bow.delay_ms), (4, 4, 2800));
+}
+
+#[test]
 fn map_discovery() {
     let Some(game) = game() else { return };
     let world = WorldData::open(&game).unwrap();
