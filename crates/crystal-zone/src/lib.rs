@@ -814,7 +814,18 @@ impl Zone {
             0 if gcd => crystal_world::combat::GCD,
             r => Duration::from_millis(r as u64 * 100),
         };
-        let range = if row.range <= 0 { crystal_world::combat::MELEE_RANGE } else { row.range as f32 + 1.0 };
+        // -1 (or 0): the class's reach (Sapphire's rule: archer and bard 25, the rest melee),
+        // by the action's class, else the player's
+        let range = if row.range <= 0 {
+            let class = if row.class > 0 { row.class as u8 } else { sess.look.class };
+            if crystal_world::combat::is_ranged_class(class) {
+                crystal_world::combat::RANGED_RANGE + 1.0
+            } else {
+                crystal_world::combat::MELEE_RANGE
+            }
+        } else {
+            row.range as f32 + 1.0
+        };
         let target = if req.target == 0 || req.target as u32 == ipc::trigger::NO_TARGET {
             sess.target.unwrap_or(0)
         } else {

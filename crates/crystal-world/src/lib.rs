@@ -86,6 +86,8 @@ pub struct BnpcPlacement {
     pub rotation: f32,
     /// Attacks players who come near.
     pub aggressive: bool,
+    /// How far from its spawn point it wanders while idle, yalms (0: it stays).
+    pub wander_range: f32,
 }
 
 /// What the game data and the world database put in a territory.
@@ -118,6 +120,12 @@ pub struct Motion {
     pub rotation_before_slip: f32,
     pub flags: u8,
     pub collision: u8,
+}
+
+impl Motion {
+    /// [`Self::flags`]: walking (the client's PositionUpdate flag 2; a move with it plays at
+    /// walking speed).
+    pub const WALKING: u8 = 2;
 }
 
 /// Who hears a chat message.

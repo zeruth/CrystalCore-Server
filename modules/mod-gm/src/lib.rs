@@ -247,7 +247,7 @@ impl Command for Bnpc {
                         return;
                     }
                     let placement =
-                        BnpcPlacement { base_id, name_id, level, pos: p.pos, rotation: p.rotation, aggressive: false };
+                        BnpcPlacement { base_id, name_id, level, pos: p.pos, rotation: p.rotation, aggressive: false, wander_range: 0.0 };
                     let actor = cx.world.zone(p.territory).add_bnpc(placement).await;
                     let name = bnpc_name(cx, name_id);
                     cx.reply(format!(

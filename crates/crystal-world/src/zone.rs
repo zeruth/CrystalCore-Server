@@ -140,6 +140,28 @@ pub struct ZoneState {
     casts: HashMap<ActorId, Cast>,
     /// Players' MP and TP.
     mana: HashMap<ActorId, Mana>,
+    /// Battle NPCs' spawn points: where they stand, face, and wander around (yalms).
+    spawn_points: HashMap<ActorId, ([f32; 3], f32, f32)>,
+    /// Battle NPCs out of a fight wandering: where each walks to (`None`: resting) and when it
+    /// next sets off.
+    idle: HashMap<ActorId, (Option<[f32; 3]>, Instant)>,
+    /// Battle NPCs that gave up a fight, running back to their spawn point.
+    returning: std::collections::HashSet<ActorId>,
+    /// The territory's own random numbers (wander points and pauses).
+    rng: u64,
+}
+
+/// One step of at most `step` yalms from `from` toward `to`, stopping `short` of it: the new
+/// position and the facing; `None` when already there.
+fn step_toward(from: [f32; 3], to: [f32; 3], step: f32, short: f32) -> Option<([f32; 3], f32)> {
+    let d = distance2(from, to).sqrt();
+    if d <= short + 0.05 {
+        return None;
+    }
+    let step = step.min(d - short);
+    let dir = [(to[0] - from[0]) / d, (to[1] - from[1]) / d, (to[2] - from[2]) / d];
+    let pos = [from[0] + dir[0] * step, from[1] + dir[1] * step, from[2] + dir[2] * step];
+    Some((pos, dir[0].atan2(dir[2])))
 }
 
 fn distance2(a: [f32; 3], b: [f32; 3]) -> f32 {
@@ -154,6 +176,7 @@ fn send(id: ActorId, viewer: &Viewer, event: Event, failed: &mut Vec<ActorId>) {
 
 impl ZoneState {
     pub fn new(territory: u16, npcs: &[NpcPlacement], bnpcs: &[BnpcPlacement]) -> Self {
+        let bnpcs_in = bnpcs;
         if npcs.len() > MAX_NPCS {
             warn!(territory, count = npcs.len(), "more event NPCs than a territory takes; the rest are left out");
         }
@@ -177,6 +200,15 @@ impl ZoneState {
             let kind = ActorKind::BattleNpc { base_id: b.base_id, name_id: b.name_id, level: b.level };
             (id, ActorView { id, kind, pos: b.pos, rotation: b.rotation })
         });
+        let spawn_points = bnpcs_in
+            .iter()
+            .take(MAX_BNPCS)
+            .enumerate()
+            .map(|(i, b)| {
+                let id = BNPC_ACTOR_BASE + ((territory as u32) << 14) + i as u32 + 1;
+                (id, (b.pos, b.rotation, b.wander_range))
+            })
+            .collect();
         let actors: HashMap<ActorId, ActorView> = enpcs.chain(bnpcs).collect();
         let health = actors
             .values()
@@ -203,7 +235,19 @@ impl ZoneState {
             statuses: HashMap::new(),
             casts: HashMap::new(),
             mana: HashMap::new(),
+            spawn_points,
+            idle: HashMap::new(),
+            returning: std::collections::HashSet::new(),
+            rng: 0x9e37_79b9_7f4a_7c15 ^ territory as u64,
         }
+    }
+
+    /// The next of the territory's random numbers, 0..1 (xorshift64*).
+    fn random(&mut self) -> f32 {
+        self.rng ^= self.rng >> 12;
+        self.rng ^= self.rng << 25;
+        self.rng ^= self.rng >> 27;
+        (self.rng.wrapping_mul(0x2545_f491_4f6c_dd1d) >> 40) as f32 / (1u64 << 24) as f32
     }
 
     /// The territory's clock: the last tick's time (statuses count down from it).
@@ -332,6 +376,7 @@ impl ZoneState {
         let id = BNPC_ACTOR_BASE + ((self.territory as u32) << 14) + self.bnpcs;
         let kind = ActorKind::BattleNpc { base_id: b.base_id, name_id: b.name_id, level: b.level };
         self.actors.insert(id, ActorView { id, kind, pos: b.pos, rotation: b.rotation });
+        self.spawn_points.insert(id, (b.pos, b.rotation, b.wander_range));
         self.health.insert(id, (combat::bnpc_hp(b.level), combat::bnpc_hp(b.level)));
         if b.aggressive {
             self.aggressive.insert(id);
@@ -497,6 +542,8 @@ impl ZoneState {
                 self.mob_swing(id, mob.target, now);
             }
         }
+        self.walk_home(dt);
+        self.wander(now, dt);
     }
 
     /// Aggressive battle NPCs, alive and not fighting, go for the nearest live player in sight.
@@ -512,7 +559,10 @@ impl ZoneState {
         }
         let mut found = Vec::new();
         for id in &self.aggressive {
-            if self.mobs.contains_key(id) || self.health.get(id).is_none_or(|(hp, _)| *hp == 0) {
+            if self.mobs.contains_key(id)
+                || self.returning.contains(id)
+                || self.health.get(id).is_none_or(|(hp, _)| *hp == 0)
+            {
                 continue;
             }
             let Some(me) = self.actors.get(id) else { continue };
@@ -525,30 +575,114 @@ impl ZoneState {
                 found.push((*id, me.pos, target));
             }
         }
-        for (id, home, target) in found {
+        for (id, here, target) in found {
+            let home = self.spawn_points.get(&id).map_or(here, |s| s.0);
+            self.idle.remove(&id);
             self.mobs.insert(id, Mob { home, target, next_swing: None });
         }
     }
 
-    /// Moves an actor and tells whoever sees it.
+    /// Moves an actor (running) and tells whoever sees it.
     fn place(&mut self, id: ActorId, pos: [f32; 3], rotation: f32) {
+        self.place_with(id, pos, rotation, Motion::default());
+    }
+
+    /// Moves an actor at a walk (the move's walking flag: the client plays it at walking speed).
+    fn place_walking(&mut self, id: ActorId, pos: [f32; 3], rotation: f32) {
+        self.place_with(id, pos, rotation, Motion { flags: Motion::WALKING, ..Motion::default() });
+    }
+
+    fn place_with(&mut self, id: ActorId, pos: [f32; 3], rotation: f32, motion: Motion) {
         let Some(actor) = self.actors.get_mut(&id) else { return };
         (actor.pos, actor.rotation) = (pos, rotation);
         let failed = &mut self.failed;
         for (&vid, viewer) in &self.viewers {
             if viewer.visible.contains_key(&id) {
-                send(vid, viewer, Event::Move { actor: id, pos, rotation, motion: Motion::default() }, failed);
+                send(vid, viewer, Event::Move { actor: id, pos, rotation, motion }, failed);
             }
         }
     }
 
-    /// A battle NPC gives up: back where it stood, whole again.
+    /// A battle NPC gives up: whole again, it runs back to its spawn point (and fights no one
+    /// on the way).
     fn go_home(&mut self, id: ActorId) {
-        let Some(mob) = self.mobs.remove(&id) else { return };
+        if self.mobs.remove(&id).is_none() {
+            return;
+        }
         if let Some(ActorKind::BattleNpc { level, .. }) = self.actors.get(&id).map(|a| a.kind.clone()) {
             self.health.insert(id, (combat::bnpc_hp(level), combat::bnpc_hp(level)));
-            let rotation = self.actors[&id].rotation;
-            self.place(id, mob.home, rotation);
+            self.idle.remove(&id);
+            self.returning.insert(id);
+        }
+    }
+
+    /// Battle NPCs going home: a run's step toward their spawn point; there, they face as they
+    /// were placed and are idle again.
+    fn walk_home(&mut self, dt: f32) {
+        let ids: Vec<ActorId> = self.returning.iter().copied().collect();
+        for id in ids {
+            let (Some(&(home, facing, _)), Some(here)) = (self.spawn_points.get(&id), self.actors.get(&id).map(|a| a.pos))
+            else {
+                self.returning.remove(&id);
+                continue;
+            };
+            match step_toward(here, home, combat::CHASE_SPEED * dt, 0.0) {
+                Some((pos, rotation)) => self.place(id, pos, rotation),
+                None => {
+                    self.returning.remove(&id);
+                    self.place(id, home, facing);
+                }
+            }
+        }
+    }
+
+    /// Battle NPCs out of a fight that someone sees: a while at rest, then a walk to a point
+    /// within their wander range of the spawn point (the spawn's `wander_range`), and so on.
+    fn wander(&mut self, now: Instant, dt: f32) {
+        let seen: std::collections::HashSet<ActorId> =
+            self.viewers.values().flat_map(|v| v.visible.keys().copied()).collect();
+        let ids: Vec<ActorId> = self
+            .spawn_points
+            .iter()
+            .filter(|(id, s)| s.2 > 0.0 && seen.contains(id) && !self.mobs.contains_key(id) && !self.returning.contains(id))
+            .filter(|(id, _)| self.health.get(id).is_some_and(|(hp, _)| *hp > 0))
+            .map(|(id, _)| *id)
+            .collect();
+        for id in ids {
+            let (home, _, range) = self.spawn_points[&id];
+            let (dest, next) = match self.idle.get(&id).copied() {
+                Some(state) => state,
+                None => {
+                    // a first rest of up to the longest pause, so they do not all set off at once
+                    let rest = Duration::from_secs_f32(self.random() * combat::WANDER_PAUSE_MAX);
+                    (None, now + rest)
+                }
+            };
+            let dest = match dest {
+                Some(d) => Some(d),
+                None if now >= next => {
+                    let angle = self.random() * std::f32::consts::TAU;
+                    let r = range * self.random().sqrt();
+                    Some([home[0] + r * angle.cos(), home[1], home[2] + r * angle.sin()])
+                }
+                None => None,
+            };
+            let Some(dest) = dest else {
+                self.idle.insert(id, (None, next));
+                continue;
+            };
+            let here = self.actors[&id].pos;
+            match step_toward(here, dest, combat::WALK_SPEED * dt, 0.0) {
+                Some((pos, rotation)) => {
+                    self.place_walking(id, pos, rotation);
+                    self.idle.insert(id, (Some(dest), next));
+                }
+                None => {
+                    let pause = combat::WANDER_PAUSE_MIN
+                        + self.random() * (combat::WANDER_PAUSE_MAX - combat::WANDER_PAUSE_MIN);
+                    self.idle.insert(id, (None, now + Duration::from_secs_f32(pause)));
+                }
+            }
         }
     }
 
@@ -613,7 +747,11 @@ impl ZoneState {
             }
             return;
         }
-        let Some(look) = self.can_hit(attacker, target, combat::MELEE_RANGE) else { return };
+        let reach = match self.actors.get(&attacker).map(|a| &a.kind) {
+            Some(ActorKind::Player(look)) => combat::auto_attack_range(look.class),
+            _ => combat::MELEE_RANGE,
+        };
+        let Some(look) = self.can_hit(attacker, target, reach) else { return };
         let amount = combat::auto_attack_damage(look.level, look.attributes[0]);
         if let Some(f) = self.fighters.get_mut(&attacker) {
             f.next_swing = Some(now + combat::SWING);
@@ -783,7 +921,7 @@ impl ZoneState {
         let Some((hp, hp_max)) = self.health.get(&target).copied() else { return };
         let Some(t) = self.actors.get(&target) else { return };
         let ActorKind::BattleNpc { level: target_level, .. } = t.kind else { return };
-        let home = t.pos;
+        let home = self.spawn_points.get(&target).map_or(t.pos, |s| s.0);
         let amount = amount.min(hp);
         let hp = hp - amount;
         self.health.insert(target, (hp, hp_max));
@@ -834,7 +972,14 @@ impl ZoneState {
             }
             self.corpses.push((now + combat::CORPSE, target));
             if let Some(view) = self.actors.get(&target) {
-                self.respawns.push((now + combat::RESPAWN, view.clone()));
+                // back where it was placed, not where it fell
+                let mut view = view.clone();
+                if let Some(&(pos, rotation, _)) = self.spawn_points.get(&target) {
+                    (view.pos, view.rotation) = (pos, rotation);
+                }
+                self.idle.remove(&target);
+                self.returning.remove(&target);
+                self.respawns.push((now + combat::RESPAWN, view));
             }
         }
     }
@@ -1193,6 +1338,7 @@ mod tests {
             pos: [x, 0.0, 0.0],
             rotation: 0.5,
             aggressive: false,
+            wander_range: 0.0,
         };
         let enpc = NpcPlacement { enpc: 1000914, pos: [3.0, 0.0, 0.0], rotation: 0.0 };
         let mut zone = ZoneState::new(134, &[enpc], &[bnpc(1.0), bnpc(400.0)]);
@@ -1249,6 +1395,7 @@ mod tests {
             pos: [2.0, 0.0, 0.0],
             rotation: 0.0,
             aggressive: false,
+            wander_range: 0.0,
         };
         let mut zone = ZoneState::new(129, &[], &[rat]);
         let rat_id = BNPC_ACTOR_BASE + (129 << 14) + 1;
@@ -1304,6 +1451,84 @@ mod tests {
     }
 
     #[test]
+    fn idle_ones_wander_near_their_spawn_at_a_walk() {
+        let rat = BnpcPlacement {
+            base_id: 347,
+            name_id: 417,
+            level: 1,
+            pos: [10.0, 0.0, 10.0],
+            rotation: 0.0,
+            aggressive: false,
+            wander_range: 8.0,
+        };
+        let mut zone = ZoneState::new(129, &[], &[rat]);
+        let rat_id = BNPC_ACTOR_BASE + (129 << 14) + 1;
+        let (tx, mut a) = mpsc::channel(4096);
+        zone.enter(A, 1, look("Alpha"), [0.0; 3], 0.0, tx);
+        zone.update_visibility();
+        drain(&mut a);
+        let t0 = Instant::now();
+        let mut moves = 0;
+        for i in 0..400 {
+            zone.combat_tick(t0 + Duration::from_millis(250 * i));
+            for e in drain(&mut a) {
+                if let Event::Move { actor, pos, motion, .. } = e
+                    && actor == rat_id
+                {
+                    moves += 1;
+                    assert_eq!(motion.flags, Motion::WALKING);
+                    assert!(distance2(pos, [10.0, 0.0, 10.0]).sqrt() <= 8.0 + 0.01, "{pos:?}");
+                }
+            }
+        }
+        assert!(moves > 10, "100 s: it walked somewhere ({moves} moves)");
+    }
+
+    #[test]
+    fn leashed_ones_run_home_rather_than_appear_there() {
+        let (mut zone, mut a, rat_id, t0) = in_a_fight(tough("Alpha"));
+        // far past the leash
+        zone.moved(A, [300.0, 0.0, 0.0], 0.0, Motion::default());
+        zone.actors.get_mut(&rat_id).unwrap().pos = [80.0, 0.0, 0.0];
+        zone.combat_tick(t0 + Duration::from_millis(250));
+        assert!(zone.returning.contains(&rat_id));
+        drain(&mut a);
+        let mut t = t0 + Duration::from_millis(250);
+        let mut steps = Vec::new();
+        while zone.returning.contains(&rat_id) && steps.len() < 200 {
+            t += Duration::from_millis(250);
+            zone.combat_tick(t);
+            steps.push(zone.actors[&rat_id].pos[0]);
+        }
+        assert!(steps.len() > 10, "a run, not a jump ({} steps)", steps.len());
+        assert!(steps.windows(2).all(|w| w[1] <= w[0]), "always nearer");
+        assert_eq!(zone.actors[&rat_id].pos, [3.0, 0.0, 0.0]);
+    }
+
+    #[test]
+    fn an_archer_shoots_from_afar() {
+        let rat = BnpcPlacement {
+            base_id: 347,
+            name_id: 417,
+            level: 1,
+            pos: [20.0, 0.0, 0.0],
+            rotation: 0.0,
+            aggressive: false,
+            wander_range: 0.0,
+        };
+        let mut zone = ZoneState::new(129, &[], &[rat]);
+        let rat_id = BNPC_ACTOR_BASE + (129 << 14) + 1;
+        let (tx, mut a) = mpsc::channel(256);
+        let archer = Arc::new(PlayerLook { class: 5, ..(*tough("Alpha")).clone() });
+        zone.enter(A, 1, archer, [0.0; 3], 0.0, tx);
+        drain(&mut a);
+        zone.set_target(A, Some(rat_id));
+        zone.set_auto_attack(A, true);
+        zone.combat_tick(Instant::now());
+        assert!(drain(&mut a).iter().any(|e| matches!(e, Event::Damage { target, .. } if *target == rat_id)), "20 yalms: in reach");
+    }
+
+    #[test]
     fn no_swing_out_of_reach_or_at_a_changed_target() {
         let rat = BnpcPlacement {
             base_id: 347,
@@ -1312,6 +1537,7 @@ mod tests {
             pos: [20.0, 0.0, 0.0],
             rotation: 0.0,
             aggressive: false,
+            wander_range: 0.0,
         };
         let mut zone = ZoneState::new(129, &[], &[rat]);
         let rat_id = BNPC_ACTOR_BASE + (129 << 14) + 1;
@@ -1382,6 +1608,7 @@ mod tests {
             pos: [3.0, 0.0, 0.0],
             rotation: 0.0,
             aggressive: false,
+            wander_range: 0.0,
         };
         let mut zone = ZoneState::new(129, &[], &[rat]);
         let rat_id = BNPC_ACTOR_BASE + (129 << 14) + 1;
@@ -1636,6 +1863,7 @@ mod tests {
             pos: [3.0, 0.0, 0.0],
             rotation: 0.0,
             aggressive: false,
+            wander_range: 0.0,
         };
         let bomb = BnpcPlacement {
             base_id: 99,
@@ -1644,6 +1872,7 @@ mod tests {
             pos: [20.0, 0.0, 0.0],
             rotation: 0.0,
             aggressive: true,
+            wander_range: 0.0,
         };
         let mut zone = ZoneState::new(129, &[], &[rat, bomb]);
         let (rat_id, bomb_id) = (BNPC_ACTOR_BASE + (129 << 14) + 1, BNPC_ACTOR_BASE + (129 << 14) + 2);

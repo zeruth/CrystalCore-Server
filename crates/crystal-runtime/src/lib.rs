@@ -137,6 +137,7 @@ impl Server {
                             pos: s.pos,
                             rotation: s.rotation,
                             aggressive: s.aggressive && hostile,
+                            wander_range: s.wander_range,
                         });
                     }
                     info!(

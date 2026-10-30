@@ -8,6 +8,20 @@ use std::time::Duration;
 pub const SWING: Duration = Duration::from_millis(3000);
 /// How far an auto-attack reaches, yalms (ARR's melee range plus the target's size, roughly).
 pub const MELEE_RANGE: f32 = 5.0;
+/// A ranged class's reach: its auto-attack (Shot) and its actions whose `Action` range (col 11)
+/// is -1, as Sapphire resolves -1 (`Action.cpp`: 25 for archer and bard by the action's
+/// class, 3 for the rest).
+pub const RANGED_RANGE: f32 = 25.0;
+
+/// Archer (5) and bard (23): the classes that fight from range.
+pub fn is_ranged_class(class: u8) -> bool {
+    matches!(class, 5 | 23)
+}
+
+/// How far a class's auto-attack reaches.
+pub fn auto_attack_range(class: u8) -> f32 {
+    if is_ranged_class(class) { RANGED_RANGE + 1.0 } else { MELEE_RANGE }
+}
 /// How long a dead battle NPC's body stays.
 pub const CORPSE: Duration = Duration::from_secs(5);
 /// How long until a dead battle NPC is back where it stood.
@@ -36,6 +50,12 @@ pub fn mp_cost(cost: u32, mp_base: u32) -> u32 {
 
 /// How fast a battle NPC runs after its target, yalms a second.
 pub const CHASE_SPEED: f32 = 6.0;
+/// A walk, yalms a second (the move packet's walking speed, 24 tenths: `ActorMove::SPEED_WALK`).
+pub const WALK_SPEED: f32 = 2.4;
+/// How long a wandering battle NPC rests between walks, seconds (the server's choice: no source
+/// for 2.0's timing yet).
+pub const WANDER_PAUSE_MIN: f32 = 6.0;
+pub const WANDER_PAUSE_MAX: f32 = 16.0;
 /// How near a player comes before an aggressive battle NPC attacks, yalms.
 pub const AGGRO_RANGE: f32 = 8.0;
 /// How far a battle NPC follows from where it stands before it gives up and goes home.
