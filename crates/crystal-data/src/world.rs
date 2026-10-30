@@ -438,24 +438,26 @@ impl WorldData {
             .map(|(id, _)| *id)
     }
 
-    /// What a new character of `class` wears, as (equipped slot, item): the class's starting
-    /// weapon (`ClassJob` col 22) and the armour `CharaMakeClassEquip` shows (head, body, hands,
-    /// legs, feet), found by model.
-    pub fn starting_items(&self, class: u8) -> Vec<(u16, u32)> {
+    /// What a new character wears, as (equipped slot, item): its class's starting weapon
+    /// (`ClassJob` col 22: the weathered shortsword for a gladiator, the weathered shortbow an
+    /// archer was given) and its race's starting body, hands, legs and feet (`Race` cols 2-5 for
+    /// a male, 6-9 for a female: a Hyur's tunic, gloves, breeches, thighboots or chemisette,
+    /// halfgloves, skirt, longboots), nothing else, as Sapphire makes a character (its
+    /// `PlayerMinimal::saveAsNew`: `ClassJob.InitWeapon`, `Race.Body/Hand/Leg/Foot[gender]`).
+    /// `gender` is the CharaMake appearance's second value (0 male).
+    pub fn starting_items(&self, class: u8, race: u8, gender: u8) -> Vec<(u16, u32)> {
         let mut items = Vec::new();
         if let Some(weapon) = self.sheet("ClassJob").ok().and_then(|s| s.row(class as u32)?.get(22)?.as_u64())
             && weapon != 0
         {
             items.push((0, weapon as u32));
         }
-        if let Some((_, _, models)) = self.starting_gear(class) {
-            // CharaMakeClassEquip's armour order, as EquipSlotCategory rows and equipped slots
-            for (model, (category, slot)) in models.iter().zip([(3, 2), (4, 3), (5, 4), (7, 6), (8, 7)]) {
-                if *model != 0
-                    && let Some(id) = self.item_by_model(*model as u64, category)
-                {
-                    items.push((slot, id));
-                }
+        let races = self.sheet("Race").ok();
+        let first = if gender == 0 { 2 } else { 6 };
+        for (i, slot) in [3u16, 4, 6, 7].into_iter().enumerate() {
+            let item = races.as_ref().and_then(|s| s.row(race as u32)?.get(first + i)?.as_u64()).unwrap_or(0);
+            if item != 0 {
+                items.push((slot, item as u32));
             }
         }
         items

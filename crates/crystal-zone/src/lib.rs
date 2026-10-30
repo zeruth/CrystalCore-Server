@@ -757,8 +757,10 @@ impl Zone {
         if rows.is_empty()
             && let Some(data) = self.data.as_deref()
         {
-            let class = CharaMake::parse(&chara.appearance).map_or(1, |m| m.class);
-            for (slot, item_id) in data.starting_items(class) {
+            let make = CharaMake::parse(&chara.appearance);
+            let class = make.as_ref().map_or(1, |m| m.class);
+            let (race, gender) = make.as_ref().map_or((1, 0), |m| (m.customize[0], m.customize[1]));
+            for (slot, item_id) in data.starting_items(class, race, gender) {
                 let _ = inv.set(container::EQUIPPED, slot, Item::new(item_id, 1));
             }
             info!(character = %chara.name, items = inv.all().count(), "starting items");

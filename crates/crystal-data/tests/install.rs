@@ -83,12 +83,15 @@ fn looks_gear_and_warps() {
         (shortsword.name.as_str(), shortsword.stack_size, shortsword.slot_category),
         ("Weathered Shortsword", 1, 1)
     );
-    let items = world.starting_items(1);
-    assert_eq!(items[0], (0, 1601));
-    assert!(items.len() > 1, "armour too: {items:?}");
+    // a male Hyur gladiator: the weapon, then the race's tunic, gloves, breeches, thighboots
+    let items = world.starting_items(1, 1, 0);
+    assert_eq!(items, [(0, 1601), (3, 2983), (4, 3520), (6, 3296), (7, 3750)]);
     let (main, _, looks) = world.equipment_look(&items);
     assert_eq!(main, shortsword.model_main);
     assert_ne!(looks[1], 0, "a body piece");
+    // a female Miqo'te archer: the shortbow, the race's female set
+    let archer = world.starting_items(5, 4, 1);
+    assert_eq!(archer, [(0, 1889), (3, 2990), (4, 3527), (6, 3303), (7, 3757)]);
     // a Midlander gladiator at level 1: 20 × the class's modifier / 100 + the tribe's bonus
     let s = world.base_stats(1, 1, 1).unwrap();
     assert_eq!((s.strength, s.vitality, s.dexterity), (20, 19, 18));
