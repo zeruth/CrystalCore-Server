@@ -360,6 +360,33 @@ impl Database {
         self.id_set_add("unlocks", "unlock_id", character_id, unlock_id).await
     }
 
+    /// The map parts a character has revealed: (`Map` row, part).
+    pub async fn discovery(&self, character_id: i64) -> Result<Vec<(u32, u8)>> {
+        let rows = sqlx::query("SELECT map_id, part FROM discovery WHERE character_id = $1 ORDER BY map_id, part")
+            .bind(character_id)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| self.sql(e))?;
+        rows.iter()
+            .map(|r| Ok((r.try_get::<i64, _>(0)? as u32, r.try_get::<i64, _>(1)? as u8)))
+            .collect::<std::result::Result<_, sqlx::Error>>()
+            .map_err(|e| self.sql(e))
+    }
+
+    pub async fn add_discovery(&self, character_id: i64, map: u32, part: u8) -> Result<()> {
+        sqlx::query(
+            "INSERT INTO discovery (character_id, map_id, part) SELECT $1, $2, $3 \
+             WHERE NOT EXISTS (SELECT 1 FROM discovery WHERE character_id = $1 AND map_id = $2 AND part = $3)",
+        )
+        .bind(character_id)
+        .bind(map as i32)
+        .bind(part as i32)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| self.sql(e))?;
+        Ok(())
+    }
+
     async fn id_set(&self, sql: &'static str, character_id: i64) -> Result<Vec<u32>> {
         let rows = sqlx::query(sql).bind(character_id).fetch_all(&self.pool).await.map_err(|e| self.sql(e))?;
         rows.iter()

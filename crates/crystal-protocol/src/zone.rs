@@ -154,7 +154,12 @@ pub mod opcode {
     /// `Global::SendClientTrigger` @0xa51200: the command @0, four u32 arguments @4; see
     /// [`super::trigger`] (`tools/re/triggers.py` lists every sender).
     pub const COMMAND: u16 = 0x191;
+    /// Up (0x20 bytes): the player walked into a map range (sent by @0xab0ff0, which then waits):
+    /// the range's layout id @0, the player's position @4. Answered with [`DISCOVERY_REPLY`].
     pub const DISCOVERY: u16 = 0x194;
+    /// Down: a map part revealed; see [`super::discovery_reply`] (case 0x84 → @0xa4f660 →
+    /// @0xab91b0, which also ends the wait the up packet started; Sapphire's DiscoveryReply).
+    pub const DISCOVERY_REPLY: u16 = 0x28c;
     /// Up (0x18 bytes): the player uses an action; see [`super::ActionRequest`] (sent by
     /// @0xa51de0).
     pub const ACTION_REQUEST: u16 = 0x196;
@@ -284,6 +289,10 @@ pub struct Spawn {
     pub status: u8,
     /// 1 a player, 2 a battle NPC, 3 an event NPC (@0x30; the client's switch).
     pub kind: u8,
+    /// A battle NPC's sort (@0x31 → the character's +0x2f03, read back by @0xa666f0): the client
+    /// tests 1 with a parent's id (a part of another NPC) and 3 with the player as owner (a
+    /// chocobo), as Sapphire's BattleNpcSubKind numbers them; 5 is its Enemy. 0: not hostile.
+    pub sub_kind: u8,
     /// For kinds 2 and 3, where the name comes from (@0x38): a `BNpcName` / `ENpcResident` row,
     /// looked up by @0x463610 (`ReadSpawn` @0xaac200; the text @0x208 is used instead when the
     /// byte @0x31 is 3).
@@ -316,6 +325,7 @@ impl Spawn {
         b[0x2b] = self.index;
         b[0x2c] = self.status;
         b[0x30] = self.kind;
+        b[0x31] = self.sub_kind;
         b[0x38..0x3c].copy_from_slice(&self.name_id.to_le_bytes());
         b[0x48..0x50].copy_from_slice(&self.main_weapon.to_le_bytes());
         b[0x50..0x58].copy_from_slice(&self.sub_weapon.to_le_bytes());
@@ -357,6 +367,7 @@ impl Spawn {
             index: b[0x2b],
             status: b[0x2c],
             kind: b[0x30],
+            sub_kind: b[0x31],
             name_id: u32_at(b, 0x38)?,
             main_weapon: u64_at(0x48),
             sub_weapon: u64_at(0x50),
@@ -422,6 +433,9 @@ pub fn parse_blacklist_request(b: &[u8]) -> Option<(u8, u8)> {
 /// 0xD8  u8 x16    unlocks, bit (1 << id & 7) of byte id >> 3 (→ @0x14b4ec0; 1 Return, 4 Teleport)
 /// 0xE8  u8 x12    aetherytes attuned, the same way by `Aetheryte` row (→ @0x14b4ed0, which
 ///                 the aethernet menu reads, @0x714f80)
+/// 0xF7  u8 x320   revealed map parts, 2 bytes per map slot (`Map` col 10, col 13 true), part p
+///                 bit 1 << (p & 7) of byte p >> 3 (@0xab0f60)
+/// 0x237 u8 x80    the same, 4 bytes per slot for the maps with col 13 false (@0xab0fb0)
 /// ```
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct PlayerStatus {
@@ -435,6 +449,8 @@ pub struct PlayerStatus {
     pub exp: [u32; 19],
     pub unlocks: [u8; 16],
     pub aetherytes: [u8; 12],
+    /// Revealed map parts: (map slot, 16-part table, part).
+    pub discovery: Vec<(u16, bool, u8)>,
 }
 
 /// Ids as the client's bit arrays hold them: bit 1 << (id & 7) of byte id >> 3 (ids past the
@@ -469,6 +485,13 @@ impl PlayerStatus {
         }
         b[0xd8..0xe8].copy_from_slice(&self.unlocks);
         b[0xe8..0xf4].copy_from_slice(&self.aetherytes);
+        for &(slot, sixteen, part) in &self.discovery {
+            let (base, per, parts) = if sixteen { (0xf7, 2, 16) } else { (0x237, 4, 32) };
+            let at = base + slot as usize * per + (part as usize >> 3);
+            if (part as usize) < parts && at < base + if sixteen { 320 } else { 80 } {
+                b[at] |= 1 << (part & 7);
+            }
+        }
         b.freeze()
     }
 }
@@ -1199,6 +1222,19 @@ pub fn create_object(slot: u8, kind: u8, id: u32, rotation: f32, pos: [f32; 3]) 
     b.freeze()
 }
 
+/// [`opcode::DISCOVERY_REPLY`]'s body (8 bytes): the part @0 (a byte), the `Map` row @4.
+pub fn discovery_reply(map: u32, part: u8) -> Bytes {
+    let mut b = BytesMut::zeroed(8);
+    b[0] = part;
+    b[4..8].copy_from_slice(&map.to_le_bytes());
+    b.freeze()
+}
+
+/// The layout id an up [`opcode::DISCOVERY`] names.
+pub fn parse_discovery(b: &[u8]) -> Option<u32> {
+    u32_at(b, 0)
+}
+
 /// [`opcode::DELETE_OBJECT`]'s body: the slot @0.
 pub fn delete_object(slot: u8) -> Bytes {
     let mut b = BytesMut::zeroed(8);
@@ -1569,6 +1605,9 @@ mod tests {
         // Gridania's aetheryte (2) and its first aethernet shard (25)
         let bits: [u8; 12] = id_bits(&[2, 25]);
         assert_eq!((bits[0], bits[3]), (0x04, 0x02));
+        let d = PlayerStatus { discovery: vec![(0, true, 2), (3, true, 9), (1, false, 17)], ..Default::default() }.to_bytes();
+        assert_eq!((d[0xf7], d[0xf7 + 7], d[0x237 + 4 + 2]), (0x04, 0x02, 0x02));
+        assert_eq!(&discovery_reply(4, 2)[..], &[2, 0, 0, 0, 4, 0, 0, 0]);
         assert_eq!(s.len(), PlayerStatus::SIZE);
         assert_eq!(&s[8..0xc], &0x1000_0001u32.to_le_bytes());
         assert_eq!(s[0x1a], 1);

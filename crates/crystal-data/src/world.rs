@@ -626,6 +626,41 @@ impl WorldData {
         Some(Arrival { territory, pos: [f(0), f(1), f(2)], rotation: f(3) })
     }
 
+    /// What walking into a map range (type 43; the client sends its id, up 0x194) reveals: the
+    /// territory's map (`TerritoryType` col 6) and the part, the range's data @0x2c, when @0x2f
+    /// (discovery on) is set (Sapphire's MapRangeData: discoveryIndex, discoveryEnabled; its
+    /// mapId @0xc is 0 in the β).
+    pub fn map_discovery(&self, territory: u16, range_id: u32) -> Option<(u32, u8)> {
+        let layout = self.layout(territory).ok()?;
+        let range = layout.find(range_id).filter(|o| o.kind == crate::lgb::kind::MAP_RANGE)?;
+        let d = range.data();
+        if d.get(0x2f).copied().unwrap_or(0) == 0 {
+            return None;
+        }
+        let map = self.sheet("TerritoryType").ok()?.row(territory as u32)?.get(6)?.as_u64()? as u32;
+        Some((map, *d.get(0x2c)?))
+    }
+
+    /// Where a map's revealed parts are kept in the player's status: its slot (`Map` col 10) and
+    /// whether in the 16-part table (col 13 true: 160 maps × 2 bytes @0xf7) or the 32-part one
+    /// (20 maps × 4 bytes @0x237); @0xab5430 reads them so.
+    pub fn map_discovery_slot(&self, map: u32) -> Option<(u16, bool)> {
+        let sheet = self.sheet("Map").ok()?;
+        let row = sheet.row(map)?;
+        let slot = row.get(10)?.as_i64()?;
+        let sixteen = row.get(13)?.as_u64()? != 0;
+        (slot >= 0).then_some((slot as u16, sixteen))
+    }
+
+    /// Whether a battle NPC fights players: its battalion (`BNpcBase` col 1) against the players'
+    /// (0) in the `Battalion` table (row: the attacker's battalion, col n: hostile to n). The
+    /// player-side NPCs are battalion 0 (Central Shroud's Wood Wailers, Gods' Quiver bows, Yda
+    /// and Papalymo), monsters 4 and beast tribes like the Ixal 6, both hostile to 0.
+    pub fn bnpc_hostile(&self, base_id: u32) -> Option<bool> {
+        let battalion = self.sheet("BNpcBase").ok()?.row(base_id)?.get(1)?.as_u64()? as u32;
+        Some(self.sheet("Battalion").ok()?.row(battalion)?.first()?.as_u64()? != 0)
+    }
+
     /// An `Aetheryte` row as the β has it: col 16 true for an aetheryte (teleport), false for an
     /// aethernet shard; col 11 its territory; col 12 the pop range players arrive at (a type-40
     /// layout object: 2563653 in New Gridania for shard 25, 1359064 for its aetheryte, 2).

@@ -44,6 +44,11 @@ pub struct ExitRange {
 }
 
 impl Object {
+    /// The type-specific bytes after the header (up to 0x40 of them).
+    pub fn data(&self) -> &[u8] {
+        &self.data
+    }
+
     pub fn exit_range(&self) -> Option<ExitRange> {
         if self.kind != kind::EXIT_RANGE || self.data.len() < 0x24 {
             return None;

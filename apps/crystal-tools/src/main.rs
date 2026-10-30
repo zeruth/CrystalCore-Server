@@ -353,6 +353,10 @@ async fn main() -> anyhow::Result<()> {
                                 "    type {k} id {} \"{}\" at ({:.1}, {:.1}, {:.1})",
                                 o.id, o.name, o.pos[0], o.pos[1], o.pos[2]
                             );
+                            if all {
+                                let bytes: String = o.data().iter().take(0x30).map(|b| format!("{b:02x}")).collect();
+                                println!("      data {bytes}");
+                            }
                         }
                     }
                 }

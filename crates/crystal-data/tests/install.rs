@@ -54,6 +54,25 @@ fn classes_start_in_their_towns() {
 }
 
 #[test]
+fn battalions() {
+    let Some(game) = game() else { return };
+    let world = WorldData::open(&game).unwrap();
+    // a bomb (battalion 5) fights players, a Wood Wailer lance (0) does not
+    assert_eq!(world.bnpc_hostile(596), Some(true));
+    assert_eq!(world.bnpc_hostile(551), Some(false));
+}
+
+#[test]
+fn map_discovery() {
+    let Some(game) = game() else { return };
+    let world = WorldData::open(&game).unwrap();
+    // Central Shroud (148, Map 4): a map range and the part it reveals (its data @0x2c)
+    assert_eq!(world.map_discovery(148, 1367775), Some((4, 2)));
+    assert_eq!(world.map_discovery(148, 1367778), Some((4, 1)));
+    assert_eq!(world.map_discovery_slot(4), Some((0, true)));
+}
+
+#[test]
 fn aetherytes_and_shards() {
     let Some(game) = game() else { return };
     let world = WorldData::open(&game).unwrap();

@@ -123,6 +123,8 @@ struct Session {
     /// The aetherytes the character is attuned to, and its unlocks.
     aetherytes: Vec<u32>,
     unlocks: Vec<u32>,
+    /// The map parts it has revealed: (`Map` row, part).
+    discovery: Vec<(u32, u8)>,
     /// The client's object slots: the gathering point in each.
     objects: [Option<u32>; ipc::object::SLOTS as usize],
     /// Where the player stood when the objects were last worked out.
@@ -164,6 +166,7 @@ impl Session {
             completed: Vec::new(),
             aetherytes: Vec::new(),
             unlocks: Vec::new(),
+            discovery: Vec::new(),
             objects: [None; ipc::object::SLOTS as usize],
             objects_at: None,
         }
@@ -377,7 +380,7 @@ impl Zone {
                         }),
                         None => vec![],
                     };
-                    let (aetherytes, unlocks) = match &chara {
+                    let (aetherytes, unlocks, discovery) = match &chara {
                         Some(c) => {
                             let a = self.db.characters.aetherytes(c.id).await.unwrap_or_else(|e| {
                                 warn!("aetherytes: {e}");
@@ -387,13 +390,17 @@ impl Zone {
                                 warn!("unlocks: {e}");
                                 vec![]
                             });
-                            (a, u)
+                            let d = self.db.characters.discovery(c.id).await.unwrap_or_else(|e| {
+                                warn!("discovery: {e}");
+                                vec![]
+                            });
+                            (a, u, d)
                         }
-                        None => (vec![], vec![]),
+                        None => (vec![], vec![], vec![]),
                     };
                     let mut s =
                         Session::new(actor_id, kind, chara, gm_level, inventory, progress, self.data.as_deref());
-                    (s.aetherytes, s.unlocks) = (aetherytes, unlocks);
+                    (s.aetherytes, s.unlocks, s.discovery) = (aetherytes, unlocks, discovery);
                     s.quests = quests
                         .into_iter()
                         .map(|q| ipc::QuestSlot { slot: q.slot, quest_id: q.quest_id, sequence: q.sequence, vars: q.vars })
@@ -533,7 +540,8 @@ impl Zone {
                 self.action_request(sess, body);
                 vec![]
             }
-            opcode::DISCOVERY | opcode::LINKSHELL_LIST => {
+            opcode::DISCOVERY => self.discover(sess, body).await,
+            opcode::LINKSHELL_LIST => {
                 debug!(opcode = format_args!("{op:#06x}"), body = %hex::encode(body), "  not acted on yet");
                 vec![]
             }
@@ -888,6 +896,14 @@ impl Zone {
             exp,
             unlocks: ipc::id_bits(&sess.unlocks),
             aetherytes: ipc::id_bits(&sess.aetherytes),
+            discovery: sess
+                .discovery
+                .iter()
+                .filter_map(|&(map, part)| {
+                    let (slot, sixteen) = self.data.as_deref()?.map_discovery_slot(map)?;
+                    Some((slot, sixteen, part))
+                })
+                .collect(),
         }
         .to_bytes()
     }
@@ -1019,6 +1035,28 @@ impl Zone {
             }
             _ => vec![],
         }
+    }
+
+    /// The player walked into a map range: the map part it reveals is kept and told to the client
+    /// (which waits for the answer before it asks about another range, so every request is
+    /// answered, again or not).
+    async fn discover(&self, sess: &mut Session, body: &[u8]) -> Vec<(u16, Bytes)> {
+        let Some(range) = ipc::parse_discovery(body) else { return vec![] };
+        let territory = sess.position.zone_id as u16;
+        let Some((map, part)) = self.data.as_deref().and_then(|d| d.map_discovery(territory, range)) else {
+            debug!(range, territory, "  discovery: not a map range that reveals anything");
+            return vec![];
+        };
+        if !sess.discovery.contains(&(map, part)) {
+            info!(map, part, range, "  map part revealed");
+            sess.discovery.push((map, part));
+            if let Some(chara) = &sess.chara
+                && let Err(e) = self.db.characters.add_discovery(chara.id, map, part).await
+            {
+                warn!(character = %chara.name, "discovery not saved: {e}");
+            }
+        }
+        vec![(opcode::DISCOVERY_REPLY, ipc::discovery_reply(map, part))]
     }
 
     /// Takes the player out of its territory and has its client load `territory` at `pos`; it
@@ -1299,6 +1337,8 @@ fn actor_spawn(slot: u8, actor: &ActorView, data: Option<&WorldData>) -> ipc::Sp
                 index: slot,
                 status: 1,
                 kind: ipc::kind::BATTLE_NPC,
+                // an enemy when its battalion fights players (Battalion), else a friendly NPC
+                sub_kind: if data.and_then(|d| d.bnpc_hostile(*base_id)).unwrap_or(true) { 5 } else { 0 },
                 rotation: actor.rotation,
                 pos: actor.pos,
                 level: (*level).min(255) as u8,

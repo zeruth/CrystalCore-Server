@@ -128,13 +128,15 @@ impl Server {
                     // battle NPCs from the world database, by territory (read once; a few MB at most)
                     let mut bnpcs: HashMap<u16, Vec<BnpcPlacement>> = HashMap::new();
                     for s in db.world.bnpc_spawns(BETA_PATCH, None).await.context("battle NPC spawns")? {
+                        // only those hostile to players (their battalion) go for them
+                        let hostile = world.as_deref().and_then(|d| d.bnpc_hostile(s.base_id)).unwrap_or(true);
                         bnpcs.entry(s.territory).or_default().push(BnpcPlacement {
                             base_id: s.base_id,
                             name_id: s.name_id,
                             level: s.level,
                             pos: s.pos,
                             rotation: s.rotation,
-                            aggressive: s.aggressive,
+                            aggressive: s.aggressive && hostile,
                         });
                     }
                     info!(

@@ -119,6 +119,10 @@ async fn exercise(db: &Databases) {
     chars.add_unlock(me, 1).await.unwrap();
     chars.add_unlock(me, 1).await.unwrap();
     assert_eq!(chars.unlocks(me).await.unwrap(), vec![1]);
+    chars.add_discovery(me, 4, 2).await.unwrap();
+    chars.add_discovery(me, 4, 2).await.unwrap();
+    chars.add_discovery(me, 4, 1).await.unwrap();
+    assert_eq!(chars.discovery(me).await.unwrap(), vec![(4, 1), (4, 2)]);
 
     // deleting: only the owner's, then gone from every lookup, its name free again
     let other = db.login.ensure_account("someone else", 1).await.unwrap();
