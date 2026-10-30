@@ -254,6 +254,39 @@ impl Database {
             .map_err(|e| self.sql(e))
     }
 
+    /// A character's active quests: (slot, quest id, sequence), by slot.
+    pub async fn quests(&self, character_id: i64) -> Result<Vec<(u8, u32, u8)>> {
+        let rows = sqlx::query("SELECT slot, quest_id, sequence FROM quests WHERE character_id = $1 ORDER BY slot")
+            .bind(character_id)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| self.sql(e))?;
+        rows.iter()
+            .map(|r| Ok((r.try_get::<i64, _>(0)? as u8, r.try_get::<i64, _>(1)? as u32, r.try_get::<i64, _>(2)? as u8)))
+            .collect::<std::result::Result<_, sqlx::Error>>()
+            .map_err(|e| self.sql(e))
+    }
+
+    /// Puts a quest in a slot at a sequence (replacing what the slot held).
+    pub async fn set_quest(&self, character_id: i64, slot: u8, quest_id: u32, sequence: u8) -> Result<()> {
+        let mut tx = self.pool.begin().await.map_err(|e| self.sql(e))?;
+        sqlx::query("DELETE FROM quests WHERE character_id = $1 AND slot = $2")
+            .bind(character_id)
+            .bind(slot as i32)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| self.sql(e))?;
+        sqlx::query("INSERT INTO quests (character_id, slot, quest_id, sequence) VALUES ($1, $2, $3, $4)")
+            .bind(character_id)
+            .bind(slot as i32)
+            .bind(quest_id as i32)
+            .bind(sequence as i32)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| self.sql(e))?;
+        tx.commit().await.map_err(|e| self.sql(e))
+    }
+
     /// Sets one class slot's level and experience.
     pub async fn set_class_progress(&self, character_id: i64, slot: u8, level: u8, exp: u32) -> Result<()> {
         let mut tx = self.pool.begin().await.map_err(|e| self.sql(e))?;

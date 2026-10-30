@@ -123,6 +123,9 @@ pub mod opcode {
     /// u16 @0, 8 bytes of its state @2). After all 30 the client marks its quests loaded
     /// (0x14a73d2) the first time; see [`super::quests`].
     pub const QUESTS: u16 = 0x1e0;
+    /// Down: one quest slot (case 0x6a → @0xa50040: the slot u8 @0, its 10-byte entry @4, as in
+    /// [`QUESTS`]); see [`super::quest`].
+    pub const QUEST: u16 = 0x1e1;
     /// Down: the completed quests, 200 bytes of flags (case 0x6b → @0xa50160, copied to
     /// 0x14a875a). The first one marks them loaded (0x14a73d3) and, with the quests loaded too,
     /// has the event system refresh its objects (@0x6e5e50 → @0x6de320); until both have come,
@@ -953,6 +956,9 @@ pub mod event {
     pub const OPENING: u16 = 0x0013;
     /// The event kind `EVENT_START` and `EVENT_FINISH` carry for talking.
     pub const TALK: u8 = 1;
+    /// The kind of an event started inside another: the client starts it while one runs
+    /// (@0x6f0be0 lets kind 7 past its running-event check; Sapphire's Nest).
+    pub const NEST: u8 = 7;
     /// The kind of an event an event range starts (@0x6f7db0 sets 10).
     pub const WITHIN_RANGE: u8 = 10;
     /// The kind the client gives an event a territory's handlers offer on entering it
@@ -986,14 +992,30 @@ pub fn conditions(set: &[u8]) -> Bytes {
     b.freeze()
 }
 
-/// [`opcode::QUESTS`]: up to 30 active quests, each its id (`Quest` row - 0x10000) and 8 bytes of
-/// state; the rest empty.
-pub fn quests(active: &[(u16, [u8; 8])]) -> Bytes {
+/// One quest slot's 10 bytes as [`opcode::QUESTS`] and [`opcode::QUEST`] carry them: the id's low
+/// 16 bits @0 (the client compares them as a short: 39 for quest 0x10027) and its sequence @2,
+/// which the client keeps at slot +6 and its scripts read through `GetQuestSequence` (@0x6cc000);
+/// the other 7 bytes (slot +7.., +8 holding `GetQuestUI8AL`'s nibble) left 0.
+fn quest_entry(b: &mut [u8], quest_id: u32, sequence: u8) {
+    b[0..2].copy_from_slice(&(quest_id as u16).to_le_bytes());
+    b[2] = sequence;
+}
+
+/// [`opcode::QUESTS`]: the 30 slots, each (slot, quest id, sequence); the rest empty.
+pub fn quests(active: &[(u8, u32, u8)]) -> Bytes {
     let mut b = BytesMut::zeroed(30 * 10);
-    for (i, (id, state)) in active.iter().take(30).enumerate() {
-        b[i * 10..i * 10 + 2].copy_from_slice(&id.to_le_bytes());
-        b[i * 10 + 2..i * 10 + 10].copy_from_slice(state);
+    for &(slot, quest_id, sequence) in active.iter().filter(|q| q.0 < 30) {
+        let at = slot as usize * 10;
+        quest_entry(&mut b[at..at + 10], quest_id, sequence);
     }
+    b.freeze()
+}
+
+/// [`opcode::QUEST`]: one slot's quest.
+pub fn quest(slot: u8, quest_id: u32, sequence: u8) -> Bytes {
+    let mut b = BytesMut::zeroed(0x10);
+    b[0] = slot;
+    quest_entry(&mut b[4..0xe], quest_id, sequence);
     b.freeze()
 }
 
@@ -1550,6 +1572,11 @@ mod tests {
         let (range, event_id, pos) = parse_range_event(&up).unwrap();
         assert_eq!((range, event_id), (2351918, 0x0013_0002), "ERANGE_SEQ_1_CLOSED_1, as the script names it");
         assert!((pos[0] - 114.6).abs() < 0.1 && (pos[2] - 139.6).abs() < 0.1);
+        // a quest slot: the id's low 16 bits @0, the sequence @2 (the client's slot +4, +6)
+        let q = quest(0, 0x10027, 255);
+        assert_eq!((q.len(), q[0], &q[4..7]), (0x10, 0, &[0x27, 0, 255][..]));
+        let all = quests(&[(2, 0x10027, 255)]);
+        assert_eq!((all.len(), &all[20..23]), (300, &[0x27, 0, 255][..]));
         // a condition's bit is byte id >> 3, bit id & 7 (@0xa4f150); none set clears 0x10
         assert_eq!(&conditions(&[0x10, 0x2d])[..], &[0, 0, 1, 0, 0, 0x20, 0, 0]);
         assert!(conditions(&[]).iter().all(|&b| b == 0));

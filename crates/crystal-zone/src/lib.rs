@@ -68,6 +68,15 @@ pub struct Zone {
 /// connection closes).
 pub const POSITION_SAVE_INTERVAL: Duration = Duration::from_secs(10);
 
+/// An event the server has started for the client.
+#[derive(Debug, Clone, Copy)]
+struct RunningEvent {
+    target: u64,
+    event_id: u32,
+    kind: u8,
+    arg: u32,
+}
+
 /// One connection's player, once its session init named it.
 struct Session {
     actor_id: u32,
@@ -93,9 +102,12 @@ struct Session {
     class_slot: usize,
     /// What the player has targeted (for actions sent without one).
     target: Option<u32>,
-    /// The event the client is in, as its start named it (event id, kind, argument): its finish
-    /// must repeat all three (@0x6fd010).
-    event: Option<(u32, u8, u32)>,
+    /// The events the client is in, innermost last, as their starts named them: a finish must
+    /// repeat the event, kind and argument (@0x6fd010). More than one when an event nests another
+    /// (kind 7, which the client starts while one runs: @0x6f0be0).
+    events: Vec<RunningEvent>,
+    /// The character's active quests: (slot, quest id, sequence).
+    quests: Vec<(u8, u32, u8)>,
 }
 
 impl Session {
@@ -128,7 +140,8 @@ impl Session {
             progress,
             class_slot,
             target: None,
-            event: None,
+            events: Vec::new(),
+            quests: Vec::new(),
         }
     }
 
@@ -310,8 +323,17 @@ impl Zone {
                         Some(c) => self.load_progress(c).await,
                         None => Default::default(),
                     };
-                    *session =
-                        Some(Session::new(actor_id, kind, chara, gm_level, inventory, progress, self.data.as_deref()));
+                    let quests = match &chara {
+                        Some(c) => self.db.characters.quests(c.id).await.unwrap_or_else(|e| {
+                            warn!("quests: {e}");
+                            vec![]
+                        }),
+                        None => vec![],
+                    };
+                    let mut s =
+                        Session::new(actor_id, kind, chara, gm_level, inventory, progress, self.data.as_deref());
+                    s.quests = quests;
+                    *session = Some(s);
                 }
                 SegmentType::KeepAlive => {
                     let pong =
@@ -465,10 +487,10 @@ impl Zone {
                 .into_iter()
                 .chain(inventory_packets(&sess.inventory, &mut sess.item_sequence))
                 .chain([(opcode::INIT_ZONE, ipc::init_zone(pos.zone_id as u16, 1, sess.pos()))])
-                // the quest lists (none kept yet): until both have come the client leaves its
-                // quest-givers unshown (QUEST_COMPLETE_FLAGS)
+                // the quest lists (no completed ones kept yet): until both have come the client
+                // leaves its quest-givers unshown (QUEST_COMPLETE_FLAGS)
                 .chain([
-                    (opcode::QUESTS, ipc::quests(&[])),
+                    (opcode::QUESTS, ipc::quests(&sess.quests)),
                     (opcode::QUEST_COMPLETE_FLAGS, ipc::quest_complete_flags(&[0; 200])),
                 ])
                 .collect()
@@ -797,10 +819,15 @@ impl Zone {
         let Some((target, event_id)) = ipc::parse_talk_event(body) else { return vec![] };
         let handler = (event_id >> 16) as u16;
         info!(target = format_args!("{target:#x}"), event = format_args!("{event_id:#x}"), handler, "  talk event");
-        let mut out = vec![
-            (opcode::EVENT_START, ipc::event_start(target, event_id, ipc::event::TALK, 0, 0)),
-            (opcode::EVENT_FINISH, ipc::event_finish(event_id, ipc::event::TALK, 1, 0)),
-        ];
+        let mut out = start_event(sess, target, event_id, ipc::event::TALK, 0);
+        if handler == ipc::event::QUEST
+            && let Some(scene) = self.quest_talk(sess, event_id)
+        {
+            out.extend(play_scene(sess, scene, &[]));
+            return out;
+        }
+        // nothing to play: ended at once (the end clears what the talk set)
+        out.extend(finish_event(sess));
         if handler == ipc::event::WARP {
             match self.data.as_deref().and_then(|d| d.warp(event_id)) {
                 Some(to) => {
@@ -824,11 +851,10 @@ impl Zone {
         let territory = sess.position.zone_id;
         let opening = sess.chara.as_ref().map_or(0, |c| c.opening);
         info!(event = format_args!("{event_id:#x}"), territory, opening, "  event request");
-        let target = sess.actor_id as u64;
-        let mut out = start_event(sess, event_id, ipc::event::ENTER_TERRITORY, territory);
+        let mut out = start_event(sess, sess.actor_id as u64, event_id, ipc::event::ENTER_TERRITORY, territory);
         if (event_id >> 16) as u16 == ipc::event::OPENING {
             let scene = if opening == 0 { 0 } else { 40 };
-            out.push((opcode::EVENT_PLAY, ipc::event_play(target, event_id, scene, 0, &[opening as u32])));
+            out.extend(play_scene(sess, scene, &[opening as u32]));
         }
         out
     }
@@ -844,9 +870,8 @@ impl Zone {
     fn range_event(&self, sess: &mut Session, body: &[u8]) -> Vec<(u16, Bytes)> {
         let Some((range, event_id, pos)) = ipc::parse_range_event(body) else { return vec![] };
         info!(event = format_args!("{event_id:#x}"), range, ?pos, "  range event");
-        let mut out = start_event(sess, event_id, ipc::event::WITHIN_RANGE, range);
+        let mut out = start_event(sess, sess.actor_id as u64, event_id, ipc::event::WITHIN_RANGE, range);
         let is = |name: &str| self.data.as_deref().and_then(|d| d.opening_value(event_id, name)) == Some(range);
-        let target = sess.actor_id as u64;
         let scene = if (event_id >> 16) as u16 != ipc::event::OPENING {
             None
         } else if (1..=6).any(|i| is(&format!("ERANGE_ALWAYS_CLOSED_{i}"))) {
@@ -857,7 +882,7 @@ impl Zone {
             None
         };
         match scene {
-            Some((scene, params)) => out.push((opcode::EVENT_PLAY, ipc::event_play(target, event_id, scene, 0, &params))),
+            Some((scene, params)) => out.extend(play_scene(sess, scene, &params)),
             None => {
                 warn!(event = format_args!("{event_id:#x}"), range, "  range event: no scene for it; ending it");
                 out.extend(finish_event(sess));
@@ -875,10 +900,80 @@ impl Zone {
     async fn scene_result(&self, sess: &mut Session, body: &[u8]) -> Vec<(u16, Bytes)> {
         let Some(r) = ipc::parse_scene_result(body) else { return vec![] };
         info!(event = format_args!("{:#x}", r.event_id), scene = r.scene, values = ?r.values, byte_6 = r.byte_6, "  scene result");
-        let target = sess.actor_id as u64;
-        if (r.event_id >> 16) as u16 != ipc::event::OPENING {
-            return vec![];
+        match (r.event_id >> 16) as u16 {
+            ipc::event::OPENING => self.opening_scene_result(sess, &r).await,
+            ipc::event::QUEST => self.quest_scene_result(sess, &r).await,
+            _ => vec![],
         }
+    }
+
+    /// The scene a talk to a quest's event plays: the offer (scene 0) while the quest is not
+    /// active. The quest scripts' scene 0 asks (`QuestOffer`) and returns 1 when the player
+    /// accepts (ManFst001_00039's OnScene00000).
+    fn quest_talk(&self, sess: &Session, quest_id: u32) -> Option<u16> {
+        let active = sess.quests.iter().any(|q| q.1 == quest_id);
+        (!active).then_some(0)
+    }
+
+    /// An offered quest's scenes, as its script has them (ManFst001_00039): scene 0 returns 1 when
+    /// accepted (then scene 1, the quest-giver's lines, and scene 2, `QuestAccepted` and the
+    /// to-do tutorial), 0 when declined (the event ends). After scene 2 the quest is the
+    /// character's at `SEQ_FINISH` (255; the script's `IsAcceptEvent` then hands it to its last
+    /// NPC), told to the client in its slot (down 0x1e1), and a town's opening quest moves the
+    /// opening to `OPENING_SEQ_2`.
+    async fn quest_scene_result(&self, sess: &mut Session, r: &ipc::SceneResult) -> Vec<(u16, Bytes)> {
+        match r.scene {
+            0 if r.values.first() == Some(&1) => play_scene(sess, 1, &[]),
+            1 => play_scene(sess, 2, &[]),
+            2 => {
+                let (mut out, opening) = self.accept_quest(sess, r.event_id).await;
+                match opening {
+                    // the opening's onQuestAccepted (its scene 30: the way-out ranges off), in an
+                    // event nested in this one on the same NPC, as Sapphire's ManFst001 does it;
+                    // its end ends both (opening_scene_result)
+                    Some(opening) => {
+                        let target = sess.events.last().map_or(sess.actor_id as u64, |e| e.target);
+                        out.extend(start_event(sess, target, opening, ipc::event::NEST, 0));
+                        out.extend(play_scene(sess, 30, &[]));
+                    }
+                    None => out.extend(finish_event(sess)),
+                }
+                out
+            }
+            _ => finish_event(sess),
+        }
+    }
+
+    /// Makes `quest_id` the character's in its first free slot at `SEQ_FINISH`; a town's opening
+    /// quest (the `Opening` row's col 1) moves the opening on and names the opening's event.
+    async fn accept_quest(&self, sess: &mut Session, quest_id: u32) -> (Vec<(u16, Bytes)>, Option<u32>) {
+        const SEQ_FINISH: u8 = 255;
+        let Some(slot) = (0..30u8).find(|s| !sess.quests.iter().any(|q| q.0 == *s)) else {
+            warn!(quest = format_args!("{quest_id:#x}"), "  quest: no free slot");
+            return (vec![], None);
+        };
+        sess.quests.push((slot, quest_id, SEQ_FINISH));
+        info!(quest = format_args!("{quest_id:#x}"), slot, "  quest accepted");
+        let out = vec![(opcode::QUEST, ipc::quest(slot, quest_id, SEQ_FINISH))];
+        let Some(chara) = sess.chara.as_mut() else { return (out, None) };
+        if let Err(e) = self.db.characters.set_quest(chara.id, slot, quest_id, SEQ_FINISH).await {
+            warn!(character = %chara.name, "quest not saved: {e}");
+        }
+        let opening = (0x130001..=0x130003).find(|&event| {
+            self.data.as_deref().and_then(|d| d.sheet("Opening").ok()?.row(event)?.get(1)?.as_u64())
+                == Some(quest_id as u64)
+        });
+        if opening.is_some() && chara.opening < 2 {
+            chara.opening = 2;
+            if let Err(e) = self.db.characters.save_opening(chara.content_id, 2).await {
+                warn!(character = %chara.name, "opening not saved: {e}");
+            }
+        }
+        (out, opening)
+    }
+
+    /// An opening's scenes; see [`Self::event_request`] and [`Self::range_event`].
+    async fn opening_scene_result(&self, sess: &mut Session, r: &ipc::SceneResult) -> Vec<(u16, Bytes)> {
         match r.scene {
             0 => {
                 if let Some(chara) = sess.chara.as_mut()
@@ -889,10 +984,16 @@ impl Zone {
                         warn!(character = %chara.name, "opening not saved: {e}");
                     }
                 }
-                vec![(opcode::EVENT_PLAY, ipc::event_play(target, r.event_id, 1, 0, &[]))]
+                play_scene(sess, 1, &[])
             }
             // the welcome, the re-entry, an always-closed or a seq-1 range's scene
             1 | 40 | 10 | 20 => finish_event(sess),
+            // onQuestAccepted, nested in the quest's talk: ends both
+            30 => {
+                let mut out = finish_event(sess);
+                out.extend(finish_event(sess));
+                out
+            }
             _ => vec![],
         }
     }
@@ -1007,25 +1108,33 @@ impl Zone {
     }
 }
 
-/// Starts an event the client asked for, as it holds it pending (@0x6b9110): the player's own id
-/// (`GameObject::GetObjectId` @0xa5f080: the actor id, high half 0), the event, its kind and the
-/// argument; flags 0 (the client only stores them, @0x6f0be0 → +0x250). Kept on the session, so
-/// [`finish_event`] repeats it.
-fn start_event(sess: &mut Session, event_id: u32, kind: u8, arg: u32) -> Vec<(u16, Bytes)> {
-    sess.event = Some((event_id, kind, arg));
-    vec![(opcode::EVENT_START, ipc::event_start(sess.actor_id as u64, event_id, kind, 0, arg))]
+/// Starts an event the client asked for, as it holds it pending (@0x6b9110): the target (the
+/// player's own id for events it asked for itself, `GameObject::GetObjectId` @0xa5f080: the actor
+/// id, high half 0; the talked-to object's id as the client sent it for talk), the event, its kind
+/// and the argument; flags 0 (the client only stores them, @0x6f0be0 → +0x250). Kept on the
+/// session, so scenes play on the same target and [`finish_event`] repeats it.
+fn start_event(sess: &mut Session, target: u64, event_id: u32, kind: u8, arg: u32) -> Vec<(u16, Bytes)> {
+    sess.events.push(RunningEvent { target, event_id, kind, arg });
+    vec![(opcode::EVENT_START, ipc::event_start(target, event_id, kind, 0, arg))]
 }
 
-/// Ends the session's event with what started it (the client finds the running event by event,
-/// kind and argument and, with no match, writes through a null entry: @0x6fd010, an access
-/// violation at 0x6fd1bb), then sends no conditions: asking for the event set one (0x10 after
-/// the Gridania opening) that only the server clears (@0xa4f150).
+/// Plays a scene of the session's innermost event on its target.
+fn play_scene(sess: &Session, scene: u16, params: &[u32]) -> Vec<(u16, Bytes)> {
+    let Some(e) = sess.events.last() else { return vec![] };
+    vec![(opcode::EVENT_PLAY, ipc::event_play(e.target, e.event_id, scene, 0, params))]
+}
+
+/// Ends the session's innermost event with what started it (the client finds the running event
+/// by event, kind and argument and, with no match, writes through a null entry: @0x6fd010, an
+/// access violation at 0x6fd1bb). When it was the last, sends no conditions: asking for an event
+/// set one (0x10 after the Gridania opening) that only the server clears (@0xa4f150).
 fn finish_event(sess: &mut Session) -> Vec<(u16, Bytes)> {
-    let Some((event_id, kind, arg)) = sess.event.take() else { return vec![] };
-    vec![
-        (opcode::EVENT_FINISH, ipc::event_finish(event_id, kind, 1, arg)),
-        (opcode::CONDITIONS, ipc::conditions(&[])),
-    ]
+    let Some(RunningEvent { event_id, kind, arg, .. }) = sess.events.pop() else { return vec![] };
+    let mut out = vec![(opcode::EVENT_FINISH, ipc::event_finish(event_id, kind, 1, arg))];
+    if sess.events.is_empty() {
+        out.push((opcode::CONDITIONS, ipc::conditions(&[])));
+    }
+    out
 }
 
 /// What others see of a stored character: its CharaMake text gives the appearance and class,
