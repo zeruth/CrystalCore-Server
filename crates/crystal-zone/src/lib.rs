@@ -1366,7 +1366,7 @@ fn player_spawn(look: &PlayerLook, slot: u8, pos: [f32; 3], rotation: f32) -> ip
 fn actor_spawn(slot: u8, actor: &ActorView, data: Option<&WorldData>) -> ipc::Spawn {
     match &actor.kind {
         ActorKind::Player(look) => player_spawn(look, slot, actor.pos, actor.rotation),
-        ActorKind::BattleNpc { base_id, name_id, level } => {
+        ActorKind::BattleNpc { base_id, name_id, level, aggressive } => {
             // the body is the spawn's (ModelChara, customize, gear), from the BNpcBase row
             let look = data.and_then(|d| d.bnpc_look(*base_id)).unwrap_or_default();
             ipc::Spawn {
@@ -1379,6 +1379,7 @@ fn actor_spawn(slot: u8, actor: &ActorView, data: Option<&WorldData>) -> ipc::Sp
                 name_id: *name_id,
                 index: slot,
                 status: 1,
+                active_type: if *aggressive { ipc::active_type::AGGRESSIVE } else { ipc::active_type::PASSIVE },
                 kind: ipc::kind::BATTLE_NPC,
                 // an enemy when its battalion fights players (Battalion), else a friendly NPC
                 sub_kind: if data.and_then(|d| d.bnpc_hostile(*base_id)).unwrap_or(true) { 5 } else { 0 },

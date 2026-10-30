@@ -114,7 +114,7 @@ def main():
                     else:
                         saved.pop(addr)
                     k32.Wow64SetThreadContext(th, ctypes.byref(ctx))
-                    args = struct.unpack("<5I", read(ctx.Esp, 20).ljust(20, b"\0"))
+                    args = struct.unpack("<9I", read(ctx.Esp, 36).ljust(36, b"\0"))
                     extra = ""
                     if ":m " in targets[addr]:
                         extra = " [arg1]=" + read(args[1], 32).hex()

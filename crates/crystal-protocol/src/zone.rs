@@ -268,6 +268,12 @@ impl PositionUpdate {
     }
 }
 
+/// [`Spawn::active_type`] values (Sapphire's `NpcSpawnPacket`: 1 passive, 2 aggressive).
+pub mod active_type {
+    pub const PASSIVE: u8 = 1;
+    pub const AGGRESSIVE: u8 = 2;
+}
+
 /// [`Spawn::kind`] values (the client's switch on @0x30, @0xaac200).
 pub mod kind {
     pub const PLAYER: u8 = 1;
@@ -287,6 +293,11 @@ pub struct Spawn {
     pub index: u8,
     /// 1 alive, 2 dead, 3 posed (@0x2c; Sapphire's `status`).
     pub status: u8,
+    /// How a battle NPC takes to players (@0x2e; Sapphire's `ActiveType`, sent as
+    /// [`active_type`]): 2 or 3 sets the character's +0x2dd2 bit 1 (@0xaac200), which picks the
+    /// aggressive set of target icons over the passive one (@0x760720) and is read by the
+    /// nameplate pass (@0xaa1d40).
+    pub active_type: u8,
     /// 1 a player, 2 a battle NPC, 3 an event NPC (@0x30; the client's switch).
     pub kind: u8,
     /// A battle NPC's sort (@0x31 → the character's +0x2f03, read back by @0xa666f0): the client
@@ -329,6 +340,7 @@ impl Spawn {
         b[4..8].copy_from_slice(&self.base_id.to_le_bytes());
         b[0x2b] = self.index;
         b[0x2c] = self.status;
+        b[0x2e] = self.active_type;
         b[0x30] = self.kind;
         b[0x31] = self.sub_kind;
         b[0x38..0x3c].copy_from_slice(&self.name_id.to_le_bytes());
@@ -372,6 +384,7 @@ impl Spawn {
             base_id: u32_at(b, 4)?,
             index: b[0x2b],
             status: b[0x2c],
+            active_type: b[0x2e],
             kind: b[0x30],
             sub_kind: b[0x31],
             battalion: b[0x66],

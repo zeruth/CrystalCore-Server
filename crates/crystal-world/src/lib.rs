@@ -102,7 +102,8 @@ pub struct TerritoryContent {
 pub enum ActorKind {
     Player(Arc<PlayerLook>),
     EventNpc { enpc: u32 },
-    BattleNpc { base_id: u32, name_id: u32, level: u16 },
+    /// `aggressive`: it attacks players who come near (the spawn tells the client, which shows it).
+    BattleNpc { base_id: u32, name_id: u32, level: u16, aggressive: bool },
 }
 
 /// An actor as a spawn shows it.

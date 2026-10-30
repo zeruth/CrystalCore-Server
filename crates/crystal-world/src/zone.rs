@@ -99,7 +99,16 @@ struct ActionResultKey {
 }
 
 impl ActionResultKey {
+    /// The β's `Action` row 7, Attack: a melee auto-attack.
     const AUTO_ATTACK: Self = Self { action: 7, sequence: 0 };
+    /// Row 8, Shot ("Delivers a ranged attack"): a ranged class's auto-attack, with its own
+    /// animation (col 7: 1876 against Attack's 1875).
+    const SHOT: Self = Self { action: 8, sequence: 0 };
+
+    /// The auto-attack of a player of `class`.
+    fn auto_attack(class: u8) -> Self {
+        if combat::is_ranged_class(class) { Self::SHOT } else { Self::AUTO_ATTACK }
+    }
 }
 
 /// A player's fighting state.
@@ -234,7 +243,8 @@ impl ZoneState {
         });
         let bnpcs = bnpcs.iter().take(MAX_BNPCS).enumerate().map(|(i, b)| {
             let id = BNPC_ACTOR_BASE + ((territory as u32) << 14) + i as u32 + 1;
-            let kind = ActorKind::BattleNpc { base_id: b.base_id, name_id: b.name_id, level: b.level };
+            let kind =
+                ActorKind::BattleNpc { base_id: b.base_id, name_id: b.name_id, level: b.level, aggressive: b.aggressive };
             (id, ActorView { id, kind, pos: b.pos, rotation: b.rotation })
         });
         let spawn_points = bnpcs_in
@@ -494,7 +504,8 @@ impl ZoneState {
     pub fn add_bnpc(&mut self, b: BnpcPlacement) -> ActorId {
         self.bnpcs += 1;
         let id = BNPC_ACTOR_BASE + ((self.territory as u32) << 14) + self.bnpcs;
-        let kind = ActorKind::BattleNpc { base_id: b.base_id, name_id: b.name_id, level: b.level };
+        let kind =
+            ActorKind::BattleNpc { base_id: b.base_id, name_id: b.name_id, level: b.level, aggressive: b.aggressive };
         self.actors.insert(id, ActorView { id, kind, pos: b.pos, rotation: b.rotation });
         self.spawn_points.insert(id, (b.pos, b.rotation, b.wander_range));
         self.health.insert(id, (combat::bnpc_hp(b.level), combat::bnpc_hp(b.level)));
@@ -871,7 +882,7 @@ impl ZoneState {
         if let Some(f) = self.fighters.get_mut(&attacker) {
             f.next_swing = Some(now + combat::SWING);
         }
-        self.strike(attacker, target, amount, ActionResultKey::AUTO_ATTACK, now);
+        self.strike(attacker, target, amount, ActionResultKey::auto_attack(look.class), now);
     }
 
     /// The attacker's look, when it is a live player and `target` a live battle NPC within `range`.
@@ -1473,7 +1484,7 @@ mod tests {
         let first = BNPC_ACTOR_BASE + (134 << 14) + 1;
         assert_eq!(spawned(&events), vec![first, NPC_ACTOR_BASE + (134 << 12) + 1], "the near one, nearest first");
         let Event::Spawn { actor, .. } = &events[0] else { panic!() };
-        assert_eq!(actor.kind, ActorKind::BattleNpc { base_id: 37, name_id: 37, level: 2 });
+        assert_eq!(actor.kind, ActorKind::BattleNpc { base_id: 37, name_id: 37, level: 2, aggressive: false });
     }
 
     #[test]
