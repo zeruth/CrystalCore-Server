@@ -56,10 +56,34 @@ pub const WALK_SPEED: f32 = 2.4;
 /// for 2.0's timing yet).
 pub const WANDER_PAUSE_MIN: f32 = 6.0;
 pub const WANDER_PAUSE_MAX: f32 = 16.0;
-/// How near a player comes before an aggressive battle NPC attacks, yalms.
-pub const AGGRO_RANGE: f32 = 8.0;
-/// How far a battle NPC follows from where it stands before it gives up and goes home.
+/// How near a player comes before an aggressive battle NPC of the same level or above attacks,
+/// yalms (Sapphire's `BNpc::checkAggro`, the range it uses without the BNpc's sense data).
+pub const AGGRO_RANGE: f32 = 14.0;
+
+/// How near a player of `player_level` comes before an aggressive battle NPC of `level` attacks
+/// (Sapphire's `checkAggro`): the full range against those no higher than it; against higher
+/// ones `14 - 1.53^(diff * 0.6)`, and never at 10 levels or more.
+pub fn aggro_range(player_level: u8, level: u16) -> f32 {
+    let diff = player_level as i32 - level as i32;
+    if diff <= 0 {
+        AGGRO_RANGE
+    } else if diff >= 10 {
+        0.0
+    } else {
+        (AGGRO_RANGE - 1.53f32.powf(diff as f32 * 0.6)).max(0.0)
+    }
+}
+
+/// The hate a battle NPC starts with for one it went for itself (Sapphire's `aggro()`: 1000).
+pub const AGGRO_HATE: u32 = 1000;
+/// How far a battle NPC's target gets from it before it forgets that one (Sapphire's
+/// `StateCombat`: 80 yalms).
+pub const DEAGGRO_RANGE: f32 = 80.0;
+/// How far a battle NPC follows from its spawn point before it gives up and goes home
+/// (Sapphire's `SpawnPointDistanceGtMaxDistanceCondition`: 40 yalms).
 pub const LEASH: f32 = 40.0;
+/// Time between a battle NPC's auto-attacks (Sapphire's `BNpc::autoAttack`: 2500 ms).
+pub const MOB_SWING: Duration = Duration::from_millis(2500);
 
 /// One of a battle NPC's swings at `level`.
 pub fn bnpc_damage(level: u16) -> u32 {

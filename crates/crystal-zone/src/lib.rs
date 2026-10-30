@@ -286,12 +286,12 @@ impl Zone {
                 }
                 Input::Event(Some(first)) => {
                     let sess = session.as_mut().expect("events come to a session");
-                    // the player's own kills, to credit after the frame
+                    // kills the player shares in (it was on the hate list), to credit after the frame
                     let mut kills: Vec<u16> = Vec::new();
                     let me = sess.actor_id;
                     let mut note = |e: &Event| {
-                        if let Event::Death { killer: Some(k), level, .. } = e
-                            && *k == me
+                        if let Event::Death { level, credit, .. } = e
+                            && credit.contains(&me)
                         {
                             kills.push(*level);
                         }
@@ -1506,6 +1506,7 @@ fn event_segment(sess: &Session, event: Event, data: Option<&WorldData>) -> Vec<
             let body = ipc::ChatDown { kind, actor, content_id, name: name.to_string(), text: text.to_string() };
             sess.segment(actor, opcode::CHAT_DOWN, &body.to_bytes())
         }
+        Event::Order { actor, kind, args } => sess.segment(actor, opcode::ORDER, &ipc::order(kind, args)),
     }]
 }
 

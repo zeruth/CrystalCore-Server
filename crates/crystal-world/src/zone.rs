@@ -83,12 +83,14 @@ struct Status {
     source: ActorId,
 }
 
-/// A battle NPC in a fight: where it came from, who it is after, when it next swings.
-#[derive(Debug, Clone, Copy)]
+/// A battle NPC in a fight: where it came from, who it is after (the top of its hate list),
+/// when it next swings, and its hate list (Sapphire's `BNpc::m_hateList`: who, how much).
+#[derive(Debug, Clone)]
 struct Mob {
     home: [f32; 3],
     target: ActorId,
     next_swing: Option<Instant>,
+    hate: Vec<(ActorId, u32)>,
 }
 
 /// The action a hit came from, and the player's request it answers (0: none).
@@ -572,6 +574,7 @@ impl ZoneState {
         if self.next_server_tick.is_none_or(|t| t <= now) {
             self.next_server_tick = Some(now + combat::SERVER_TICK);
             self.regenerate();
+            self.rest_returning(now);
         }
         self.drop_failed();
     }
@@ -644,23 +647,32 @@ impl ZoneState {
         self.tell_hp(id, self.now());
     }
 
-    /// Battle NPCs in a fight: past the leash they go home; out of reach they run after their
-    /// target; in reach they swing on their timer.
+    /// Battle NPCs in a fight (Sapphire's `StateCombat`): hate on the dead, the gone and those
+    /// past [`combat::DEAGGRO_RANGE`] is dropped; with none left, or past the leash from its
+    /// spawn point, it goes home; otherwise it goes for the top of its hate list, swinging in
+    /// reach on its timer.
     fn mob_tick(&mut self, now: Instant, dt: f32) {
-        self.aggro();
+        self.aggro(now);
         let ids: Vec<ActorId> = self.mobs.keys().copied().collect();
         for id in ids {
-            let Some(mob) = self.mobs.get(&id).copied() else { continue };
-            let (Some(me), Some(them)) = (self.actors.get(&id), self.actors.get(&mob.target)) else {
+            let Some(here) = self.actors.get(&id).map(|a| a.pos) else {
                 self.go_home(id);
                 continue;
             };
-            let target_alive = self.health.get(&mob.target).is_some_and(|(hp, _)| *hp > 0);
-            if !target_alive || distance2(me.pos, mob.home) > combat::LEASH.powi(2) {
+            let Some(mut mob) = self.mobs.get(&id).cloned() else { continue };
+            mob.hate.retain(|(who, _)| {
+                self.health.get(who).is_some_and(|(hp, _)| *hp > 0)
+                    && self.actors.get(who).is_some_and(|a| distance2(here, a.pos) <= combat::DEAGGRO_RANGE.powi(2))
+            });
+            let top = mob.hate.iter().max_by_key(|(_, h)| *h).map(|(who, _)| *who);
+            let Some(target) = top.filter(|_| distance2(here, mob.home) <= combat::LEASH.powi(2)) else {
                 self.go_home(id);
                 continue;
-            }
-            let (here, there) = (me.pos, them.pos);
+            };
+            mob.target = target;
+            let next_swing = mob.next_swing;
+            self.mobs.insert(id, mob);
+            let there = self.actors[&target].pos;
             let reach = combat::MELEE_RANGE * 0.8;
             if distance2(here, there) > reach.powi(2) {
                 // a step toward the target, stopping just inside reach; one it cannot get to
@@ -668,21 +680,30 @@ impl ZoneState {
                 if self.move_toward(id, there, combat::CHASE_SPEED * dt, reach * 0.75, false, now) == Moved::Stuck {
                     self.go_home(id);
                 }
-            } else if mob.next_swing.is_none_or(|t| t <= now) {
-                self.mob_swing(id, mob.target, now);
+            } else if next_swing.is_none_or(|t| t <= now) {
+                // facing its target as it swings
+                let facing = (there[0] - here[0]).atan2(there[2] - here[2]);
+                if (facing - self.actors[&id].rotation).abs() > 0.01 {
+                    self.place(id, here, facing);
+                }
+                self.mob_swing(id, target, now);
             }
         }
         self.walk_home(now, dt);
         self.wander(now, dt);
     }
 
-    /// Aggressive battle NPCs, alive and not fighting, go for the nearest live player in sight.
-    fn aggro(&mut self) {
-        let players: Vec<(ActorId, [f32; 3])> = self
+    /// Aggressive battle NPCs, alive and not fighting, go for a live player within their sense
+    /// range: [`combat::aggro_range`] of the two levels (Sapphire's `BNpc::checkAggro`).
+    fn aggro(&mut self, now: Instant) {
+        let players: Vec<(ActorId, [f32; 3], u8)> = self
             .viewers
             .keys()
             .filter(|id| self.health.get(id).is_some_and(|(hp, _)| *hp > 0))
-            .filter_map(|id| self.actors.get(id).map(|a| (*id, a.pos)))
+            .filter_map(|id| match self.actors.get(id) {
+                Some(ActorView { kind: ActorKind::Player(look), pos, .. }) => Some((*id, *pos, look.level)),
+                _ => None,
+            })
             .collect();
         if players.is_empty() {
             return;
@@ -695,21 +716,55 @@ impl ZoneState {
             {
                 continue;
             }
-            let Some(me) = self.actors.get(id) else { continue };
+            let Some(ActorView { kind: ActorKind::BattleNpc { level, .. }, pos, .. }) = self.actors.get(id) else {
+                continue;
+            };
             let nearest = players
                 .iter()
-                .map(|(p, pos)| (distance2(me.pos, *pos), *p))
-                .filter(|(d, _)| *d <= combat::AGGRO_RANGE.powi(2))
+                .map(|(p, at, player_level)| (distance2(*pos, *at), *p, *player_level))
+                .filter(|(d, _, player_level)| *d < combat::aggro_range(*player_level, *level).powi(2))
                 .min_by(|a, b| a.0.total_cmp(&b.0));
-            if let Some((_, target)) = nearest {
-                found.push((*id, me.pos, target));
+            if let Some((_, target, _)) = nearest {
+                found.push((*id, target));
             }
         }
-        for (id, here, target) in found {
-            let home = self.spawn_points.get(&id).map_or(here, |s| s.0);
-            self.idle.remove(&id);
-            self.routes.remove(&id);
-            self.mobs.insert(id, Mob { home, target, next_swing: None });
+        for (id, target) in found {
+            self.add_hate(id, target, combat::AGGRO_HATE, now);
+        }
+    }
+
+    /// `who` angers battle NPC `id` by `amount` (Sapphire's `hateListUpdate`): added to its hate
+    /// list, and a fight starts when it was not in one (its weapon out, battle stance on; its
+    /// first swing a swing and a little after). Nothing on the dead and those running home.
+    fn add_hate(&mut self, id: ActorId, who: ActorId, amount: u32, now: Instant) {
+        if self.returning.contains(&id) || self.health.get(&id).is_none_or(|(hp, _)| *hp == 0) {
+            return;
+        }
+        if let Some(mob) = self.mobs.get_mut(&id) {
+            match mob.hate.iter_mut().find(|(w, _)| *w == who) {
+                Some((_, h)) => *h = h.saturating_add(amount),
+                None => mob.hate.push((who, amount)),
+            }
+            return;
+        }
+        let Some(here) = self.actors.get(&id).map(|a| a.pos) else { return };
+        let home = self.spawn_points.get(&id).map_or(here, |s| s.0);
+        self.idle.remove(&id);
+        self.routes.remove(&id);
+        // Sapphire's aggro(): the last attack set 500-1000 ms ahead of now
+        let variation = Duration::from_secs_f32(0.5 + 0.5 * self.random());
+        let next_swing = Some(now + combat::MOB_SWING + variation);
+        self.mobs.insert(id, Mob { home, target: who, next_swing, hate: vec![(who, amount)] });
+        self.tell_order(id, crate::order::SET_BATTLE, [1, 0, 0, 0]);
+    }
+
+    /// Tells whoever sees `id` an order about it.
+    fn tell_order(&mut self, id: ActorId, kind: u16, args: [u32; 4]) {
+        let failed = &mut self.failed;
+        for (&vid, viewer) in &self.viewers {
+            if viewer.visible.contains_key(&id) {
+                send(vid, viewer, Event::Order { actor: id, kind, args }, failed);
+            }
         }
     }
 
@@ -734,22 +789,38 @@ impl ZoneState {
         }
     }
 
-    /// A battle NPC gives up: whole again, it runs back to its spawn point (and fights no one
-    /// on the way).
+    /// A battle NPC gives up (Sapphire's `StateRetreat`): weapon away and out of battle stance,
+    /// it runs back to its spawn point, taking no damage and fighting no one on the way, and
+    /// healing a tenth of its HP each server tick ([`Self::rest_returning`]); whole once there.
     fn go_home(&mut self, id: ActorId) {
         if self.mobs.remove(&id).is_none() {
             return;
         }
-        if let Some(ActorKind::BattleNpc { level, .. }) = self.actors.get(&id).map(|a| a.kind.clone()) {
-            self.health.insert(id, (combat::bnpc_hp(level), combat::bnpc_hp(level)));
+        if matches!(self.actors.get(&id).map(|a| &a.kind), Some(ActorKind::BattleNpc { .. })) {
             self.idle.remove(&id);
             self.routes.remove(&id);
             self.returning.insert(id);
+            self.tell_order(id, crate::order::TOGGLE_WEAPON, [0, 1, 1, 0]);
+            self.tell_order(id, crate::order::SET_BATTLE, [0, 0, 0, 0]);
+        }
+    }
+
+    /// Battle NPCs running home heal a tenth of their HP (and 1) on the server tick (Sapphire's
+    /// `BNpc::restHp`).
+    fn rest_returning(&mut self, now: Instant) {
+        let ids: Vec<ActorId> = self.returning.iter().copied().collect();
+        for id in ids {
+            if let Some(&(hp, hp_max)) = self.health.get(&id)
+                && hp < hp_max
+            {
+                self.health.insert(id, ((hp + hp_max / 10 + 1).min(hp_max), hp_max));
+                self.tell_hp(id, now);
+            }
         }
     }
 
     /// Battle NPCs going home: a run's step toward their spawn point; there, they face as they
-    /// were placed and are idle again (one with no way home is put there).
+    /// were placed, whole, and are idle again (one with no way home is put there).
     fn walk_home(&mut self, now: Instant, dt: f32) {
         let ids: Vec<ActorId> = self.returning.iter().copied().collect();
         for id in ids {
@@ -760,6 +831,12 @@ impl ZoneState {
             if self.move_toward(id, home, combat::CHASE_SPEED * dt, 0.0, false, now) != Moved::Going {
                 self.returning.remove(&id);
                 self.place(id, home, facing);
+                if let Some(&(hp, hp_max)) = self.health.get(&id)
+                    && hp < hp_max
+                {
+                    self.health.insert(id, (hp_max, hp_max));
+                    self.tell_hp(id, now);
+                }
             }
         }
     }
@@ -821,7 +898,7 @@ impl ZoneState {
         let hp = hp - amount;
         self.health.insert(target, (hp, hp_max));
         if let Some(m) = self.mobs.get_mut(&id) {
-            m.next_swing = Some(now + combat::SWING);
+            m.next_swing = Some(now + combat::MOB_SWING);
         }
         // the dead keep no statuses, and cast nothing
         if hp == 0 {
@@ -853,7 +930,8 @@ impl ZoneState {
                     failed,
                 );
                 if hp == 0 {
-                    send(vid, viewer, Event::Death { actor: target, killer: Some(id), level: player_level }, failed);
+                    let credit = Arc::from([]);
+                    send(vid, viewer, Event::Death { actor: target, killer: Some(id), level: player_level, credit }, failed);
                 }
             }
         }
@@ -1047,8 +1125,8 @@ impl ZoneState {
         let Some((hp, hp_max)) = self.health.get(&target).copied() else { return };
         let Some(t) = self.actors.get(&target) else { return };
         let ActorKind::BattleNpc { level: target_level, .. } = t.kind else { return };
-        let home = self.spawn_points.get(&target).map_or(t.pos, |s| s.0);
-        let amount = amount.min(hp);
+        // one running home takes no damage (Sapphire's retreat: InvincibilityIgnoreDamage)
+        let amount = if self.returning.contains(&target) { 0 } else { amount.min(hp) };
         let hp = hp - amount;
         self.health.insert(target, (hp, hp_max));
         if hp == 0 {
@@ -1057,6 +1135,17 @@ impl ZoneState {
         let statuses = self.statuses(target, now);
         let mana = self.mana_of(target);
         let ActionResultKey { action, sequence } = key;
+        // the experience: everyone it hated, and the killer
+        let credit: Arc<[ActorId]> = if hp == 0 {
+            let mut who: Vec<ActorId> =
+                self.mobs.get(&target).map(|m| m.hate.iter().map(|(w, _)| *w).collect()).unwrap_or_default();
+            if !who.contains(&attacker) {
+                who.push(attacker);
+            }
+            who.into()
+        } else {
+            Arc::from([])
+        };
         let failed = &mut self.failed;
         for (&vid, viewer) in &self.viewers {
             if vid == attacker || viewer.visible.contains_key(&target) {
@@ -1080,19 +1169,20 @@ impl ZoneState {
                     send(
                         vid,
                         viewer,
-                        Event::Death { actor: target, killer: Some(attacker), level: target_level },
+                        Event::Death {
+                            actor: target,
+                            killer: Some(attacker),
+                            level: target_level,
+                            credit: credit.clone(),
+                        },
                         failed,
                     );
                 }
             }
         }
         if hp > 0 {
-            // it fights back (its first swing a swing's time after this one)
-            if let std::collections::hash_map::Entry::Vacant(e) = self.mobs.entry(target) {
-                e.insert(Mob { home, target: attacker, next_swing: Some(now + combat::SWING) });
-                self.returning.remove(&target);
-                self.routes.remove(&target);
-            }
+            // it hates its attacker by the damage (and fights back when it was not fighting)
+            self.add_hate(target, attacker, amount.max(1), now);
         }
         if hp == 0 {
             self.mobs.remove(&target);
@@ -1342,6 +1432,10 @@ pub(crate) async fn run(mut state: ZoneState, mut rx: mpsc::Receiver<Request>, s
 mod tests {
     use super::*;
 
+    /// By when a battle NPC drawn into a fight has swung once: its swing time and Sapphire's
+    /// 500-1000 ms on top.
+    const FIRST_SWING: Duration = Duration::from_millis(3500);
+
     fn look(name: &str) -> Arc<PlayerLook> {
         Arc::new(PlayerLook { name: name.into(), content_id: 7, ..Default::default() })
     }
@@ -1548,11 +1642,15 @@ mod tests {
         zone.set_target(A, Some(rat_id));
         zone.set_auto_attack(A, true);
         zone.combat_tick(t0);
-        // the first swing at once, seen by the attacker and whoever sees the rat
+        // the first swing at once, seen by the attacker and whoever sees the rat (the rat's
+        // battle stance with it)
+        let damage_only = |events: Vec<Event>| -> Vec<Event> {
+            events.into_iter().filter(|e| !matches!(e, Event::Order { .. })).collect()
+        };
         assert!(
-            matches!(drain(&mut a)[..], [Event::Damage { source: A, target, amount, .. }] if target == rat_id && amount == damage)
+            matches!(damage_only(drain(&mut a))[..], [Event::Damage { source: A, target, amount, .. }] if target == rat_id && amount == damage)
         );
-        assert_eq!(drain(&mut b).len(), 1);
+        assert_eq!(damage_only(drain(&mut b)).len(), 1);
         // not again before the swing time
         zone.combat_tick(t0 + Duration::from_secs(1));
         assert!(drain(&mut a).is_empty());
@@ -1661,6 +1759,57 @@ mod tests {
         zone.set_auto_attack(A, true);
         zone.combat_tick(Instant::now());
         assert!(drain(&mut a).iter().any(|e| matches!(e, Event::Damage { target, .. } if *target == rat_id)), "20 yalms: in reach");
+    }
+
+    #[test]
+    fn aggressive_ones_leave_much_higher_levels_alone() {
+        let bomb = BnpcPlacement {
+            base_id: 347,
+            name_id: 417,
+            level: 1,
+            pos: [10.0, 0.0, 0.0],
+            rotation: 0.0,
+            aggressive: true,
+            wander_range: 0.0,
+        };
+        assert_eq!(combat::aggro_range(11, 1), 0.0);
+        assert!(combat::aggro_range(3, 1) < combat::AGGRO_RANGE);
+        let mut zone = ZoneState::new(129, &[], &[bomb]);
+        let (tx, _a) = mpsc::channel(256);
+        let high = Arc::new(PlayerLook { level: 11, ..(*tough("Alpha")).clone() });
+        zone.enter(A, 1, high, [0.0; 3], 0.0, tx);
+        zone.combat_tick(Instant::now());
+        assert!(zone.mobs.is_empty(), "ten levels up: ignored");
+        let mut zone = ZoneState::new(129, &[], &[bomb]);
+        let (tx, _a) = mpsc::channel(256);
+        zone.enter(A, 1, tough("Alpha"), [0.0; 3], 0.0, tx);
+        zone.combat_tick(Instant::now());
+        assert_eq!(zone.mobs.values().next().map(|m| m.target), Some(A), "10 yalms, same level: it comes");
+    }
+
+    #[test]
+    fn it_goes_for_whoever_it_hates_most() {
+        let (mut zone, _a, rat_id, t0) = in_a_fight(tough("Alpha"));
+        let (tx, _b) = mpsc::channel(256);
+        zone.enter(B, 2, tough("Beta"), [1.0, 0.0, 0.0], 0.0, tx);
+        assert_eq!(zone.mobs[&rat_id].target, A);
+        zone.add_hate(rat_id, B, 10_000, t0);
+        zone.combat_tick(t0 + Duration::from_millis(250));
+        assert_eq!(zone.mobs[&rat_id].target, B);
+    }
+
+    #[test]
+    fn going_home_it_takes_no_damage_and_heals_on_the_way() {
+        let (mut zone, _a, rat_id, t0) = in_a_fight(tough("Alpha"));
+        let (hurt, hp_max) = zone.health(rat_id).unwrap();
+        assert!(hurt < hp_max);
+        zone.actors.get_mut(&rat_id).unwrap().pos = [30.0, 0.0, 0.0];
+        zone.go_home(rat_id);
+        zone.strike(A, rat_id, 1, ActionResultKey::AUTO_ATTACK, t0);
+        assert_eq!(zone.health(rat_id).unwrap().0, hurt, "no damage");
+        assert!(!zone.mobs.contains_key(&rat_id), "and no fight");
+        zone.rest_returning(t0);
+        assert_eq!(zone.health(rat_id).unwrap().0, (hurt + hp_max / 10 + 1).min(hp_max));
     }
 
     #[test]
@@ -1810,7 +1959,7 @@ mod tests {
         // not before a swing's time
         zone.combat_tick(t0 + Duration::from_secs(1));
         assert!(!drain(&mut a).iter().any(|e| matches!(e, Event::Damage { target: A, .. })));
-        zone.combat_tick(t0 + combat::SWING);
+        zone.combat_tick(t0 + FIRST_SWING);
         let hit = drain(&mut a).into_iter().find_map(|e| match e {
             Event::Damage { source, target: A, amount, .. } => Some((source, amount)),
             _ => None,
@@ -1847,14 +1996,14 @@ mod tests {
     fn a_player_can_die() {
         // one HP: the rat's first swing kills
         let (mut zone, mut a, rat_id, t0) = in_a_fight(fighter("Alpha"));
-        zone.combat_tick(t0 + combat::SWING);
+        zone.combat_tick(t0 + FIRST_SWING);
         let events = drain(&mut a);
         assert!(events.iter().any(|e| matches!(e, Event::Death { actor: A, killer: Some(k), .. } if *k == rat_id)));
         assert_eq!(zone.health(A).unwrap().0, 0);
         // the rat goes home; the dead swing no more
-        zone.combat_tick(t0 + combat::SWING * 2);
+        zone.combat_tick(t0 + FIRST_SWING * 2);
         zone.set_auto_attack(A, true);
-        zone.combat_tick(t0 + combat::SWING * 3);
+        zone.combat_tick(t0 + FIRST_SWING * 3);
         assert!(!drain(&mut a).iter().any(|e| matches!(e, Event::Damage { source: A, .. })));
     }
 
@@ -1906,10 +2055,10 @@ mod tests {
     fn a_cast_lands_when_it_ends_and_a_heal_goes_on_its_user() {
         let (mut zone, mut a, rat_id, t0) = in_a_fight(tough("Alpha"));
         // the rat's swing hurts Alpha
-        zone.combat_tick(t0 + combat::SWING);
+        zone.combat_tick(t0 + FIRST_SWING);
         let hurt = zone.health(A).unwrap().0;
         drain(&mut a);
-        let t1 = t0 + combat::SWING;
+        let t1 = t0 + FIRST_SWING;
         // Cure with the rat targeted: on Alpha itself, its cast bar first
         assert!(zone.use_action(A, rat_id, cure(51), t1));
         assert!(drain(&mut a).iter().any(|e| matches!(e,
@@ -1999,7 +2148,7 @@ mod tests {
         }
         assert!(!zone.set_status(A, 999, 0, Some(Duration::from_secs(60)), A, t0));
         // one HP: the rat's swing kills, and its hit says no statuses are left
-        zone.combat_tick(t0 + combat::SWING);
+        zone.combat_tick(t0 + FIRST_SWING);
         assert_eq!(statuses_told(&drain(&mut a), A), Some(vec![]));
         assert!(zone.statuses(A, t0).is_empty());
         assert!(!zone.set_status(A, 50, 0, Some(Duration::from_secs(10)), A, t0));
@@ -2008,16 +2157,16 @@ mod tests {
     #[test]
     fn hp_comes_back_on_the_server_tick_out_of_a_fight_and_the_dead_get_up() {
         let (mut zone, mut a, rat_id, t0) = in_a_fight(tough("Alpha"));
-        zone.combat_tick(t0 + combat::SWING);
+        zone.combat_tick(t0 + FIRST_SWING);
         let hurt = zone.health(A).unwrap().0;
         assert!(hurt < 1000);
         // in a fight: nothing back
-        zone.combat_tick(t0 + combat::SWING + combat::SERVER_TICK);
+        zone.combat_tick(t0 + FIRST_SWING + combat::SERVER_TICK);
         assert!(zone.health(A).unwrap().0 <= hurt);
         // out of it (the rat sent home by leaving its reach for good)
         zone.go_home(rat_id);
         drain(&mut a);
-        let t = t0 + combat::SWING + combat::SERVER_TICK * 2;
+        let t = t0 + FIRST_SWING + combat::SERVER_TICK * 2;
         zone.combat_tick(t);
         let back = zone.health(A).unwrap().0;
         assert!(back > hurt, "{back} > {hurt}");

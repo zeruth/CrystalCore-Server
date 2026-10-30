@@ -222,8 +222,11 @@ pub enum Event {
         actor: ActorId,
         /// Who dealt the last blow.
         killer: Option<ActorId>,
-        /// The dead actor's level (for the killer's experience).
+        /// The dead actor's level (for the experience).
         level: u16,
+        /// The players a battle NPC's experience goes to: everyone on its hate list (Sapphire's
+        /// `BNpc::onDeath`), the killer among them.
+        credit: Arc<[ActorId]>,
     },
     /// The actor's gear changed (players; the actor's own client is told too).
     Look {
@@ -237,6 +240,22 @@ pub enum Event {
         kind: u16,
         text: Arc<str>,
     },
+    /// An order about `actor` (the client's Order, Sapphire's ActorControl): its category and
+    /// arguments, as [`order`] names them.
+    Order {
+        actor: ActorId,
+        kind: u16,
+        args: [u32; 4],
+    },
+}
+
+/// [`Event::Order`] categories the territory sends (Sapphire's ActorControl ids; the β's order
+/// handler @0xa55f80 has a case for each, through its byte table @0xa5bfb0).
+pub mod order {
+    /// Weapon drawn (arg 1 = 1) or sheathed (Sapphire's ToggleWeapon).
+    pub const TOGGLE_WEAPON: u16 = 0x00;
+    /// In battle stance (arg 1 = 1) or out of it (Sapphire's SetBattle: an enemy engaging).
+    pub const SET_BATTLE: u16 = 0x04;
 }
 
 /// The most statuses an actor has (the client's 30 slots).
