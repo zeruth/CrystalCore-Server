@@ -203,7 +203,11 @@ structs; no ECS until a module needs one. `.item` and `.level` wait for Phase 5.
 - Commands: GM commands as a module (`.tele`, `.item`, `.level`, in AzerothCore's style).
 - Load testing with headless clients built from `crystal-protocol`.
 
-### Phase 4: Data (done 2026-10-26, except loot, gathering and shop data: no source for this patch yet)
+### Phase 4: Data (done 2026-10-26, except loot and gathering positions: no source for this patch yet)
+
+Correction (2026-10-30): the β has its gil shops, under their older name: `Shop` (rows 0x40000+n,
+cols 2-41 `ShopItem` rows, col 42 the name) and `ShopItem` (col 0 the item), linked from
+`ENpcBase` cols 2-33; also `SpecialShop`, `GCShop`, `GrandCompanySealShopItem`.
 
 Done: the EXD reader reads any sheet, language and header (`crystal-data::exd`), and the server
 applies `world.exd_override` rows over the client's (any column, or a new row) through
@@ -225,7 +229,8 @@ layers are empty, like its battle NPC ones). Hand placement: `.bnpc add`/`.bnpc 
 Done: the inventory and item moves, gear changes, levels and experience, targeting,
 auto-attack and hostile actions with placeholder numbers, death and self-revive, aggro, chase and
 leash (straight line), regeneration on the tick, statuses (slots, wearing off, sent; nothing
-applies them yet).
+applies them yet). Starting gear as the client's data has it: the class's weapon (`ClassJob` col
+22) and the race's body, hands, legs and feet (`Race` cols 2-9, by gender), as Sapphire does.
 
 - Inventory, equipment, the armoury chest, gil, shops.
 - Classes and jobs, levels, experience.
@@ -234,11 +239,19 @@ applies them yet).
 - BNpc AI: aggro, leash, pathing on the zone's navmesh, scripted abilities in Lua.
 - Loot and the treasure coffer.
 
-### Phase 6: Content
+### Phase 6: Content (in progress, 2026-10-30)
+
+The β ships its content scripts: compiled Lua 5.1 under `game_script/` (openings, every quest,
+`crystal-tools file` reads them, unluac decompiles them). The client runs the scenes; the server
+starts events, picks scenes, keeps the state (opening sequence, quests) and ends them. Done and
+seen in the client: a new character starts at its town's opening (`Opening` row, `POS_START`), the
+opening's cutscenes play once (`characters.opening`), its welcome, re-entry and wall ranges, the
+quest lists at login (without them the client never draws its quest-givers), the first quest
+offered and accepted ("Coming to Gridania", kept in `quests`), the opening's walls lifted.
 
 - The event system: talk, cutscenes, the client's event handlers as server events.
-- The Lua content API, mirroring what the client's quest scripts expect; check whether the β data
-  carries quest/event Lua that tells us the server side's sequence steps.
+- The content API, mirroring what the client's scripts call and return; the β's own scripts
+  are the authority for every scene (Sapphire's scripts are a cross-check).
 - Main scenario and class quests to the end of 2.0, levequests, FATEs, gathering and crafting.
 - Hot reload of scripts; a test harness that runs a quest script against a fake player.
 
@@ -266,6 +279,50 @@ applies them yet).
 - Capture and preserve what is left of the mobile protocol and data first; that part is urgent and
   can happen in parallel with everything above.
 - A protocol module for the mobile client; the game rules it shares with 2.x reuse `crystal-world`.
+
+## Accuracy: the road to 100%
+
+`crystal-tools coverage` writes `var/coverage.html`: every domain of the β (quests, openings,
+leves, FATEs, duties, items and how each is obtained, shops, recipes, gathering, NPC event
+handlers, battle NPC spawns, territories, aetherytes, actions, statuses, traits, classes,
+achievements, titles, emotes, mounts, minions, hunting log, GC ranks, materia, dyes, the journal,
+social systems, every zone packet), each entry linked to the client data it comes from and marked
+verified / implemented / partial / pending / no source / absent, with each domain's plan. Its
+fidelity (verified 1, implemented .75, partial .35) is the measure. Status rules live in
+`apps/crystal-tools/src/coverage.rs` beside their evidence; a status only rises with evidence
+(the client's code or data, a dated 2.0-era source, or seeing it work in the client).
+
+Sources, in order of authority: the β client's code (the recomp) and data (sheets, layouts,
+scripts); dated 2.0-2.x sources (patch notes, forum posts, 2013 Japanese theorycraft) for what
+the client cannot say (formulas, rates, drop tables); Sapphire (4.0 era) as a cross-check and for
+server-only data where its patch matches, each row tagged with its source. Research notes are
+kept locally in `.reference/era-2.0/`.
+
+In order (each step ends with something seen in the client):
+
+1. **The content engine.** Every quest, opening, guildleve and custom talk is a β script; the
+   server runs them generically from the script's scenes and the sheet's variables (`Quest` cols
+   32-131, `Opening` cols 2-81), keeps their state and sends it (Quests, Quest, QuestCompleteFlags,
+   the tracker). Quest rewards (gil col 1334, exp factor col 1333; item columns to pin). Then the
+   main scenario to the end of 2.0 and the class quests, verified line by line.
+2. **The economy that the client's data already defines.** Gil shops (`Shop`/`ShopItem`),
+   special and GC shops, recipes and crafting, the gathering and fishing sheets; inventory
+   operations (split, discard, sort), gil.
+3. **Combat to 2.0's numbers.** Damage, healing, HP/MP and regen formulas from dated 2.x
+   derivations (replacing `combat.rs` placeholders), the statuses each action applies, DoTs and
+   HoTs, traits, class change and jobs, enmity, battle NPC stats from the client's data.
+4. **World systems.** Aetherytes (attune, teleport, return, home point), chocobo porters,
+   weather and Eorzea time, instances and the Director, duties and the duty finder, FATEs.
+5. **Social.** Tells, party, linkshells, free companies, friend list, search, trade, mail, the
+   market board and retainers; their InfoProxy replies from the client's layouts.
+6. **Server-only data from β-era sources.** Battle NPC spawns re-checked against 2.0 evidence,
+   loot tables, gathering node and FATE positions, treasure contents: each from the best dated
+   source, tagged, and corrected by play.
+7. **Character progression.** Achievements, titles, hunting log, GC ranks and seals, emotes,
+   mounts, minions, the chocobo companion, materia, dyes.
+
+Not in this build (absent, not missing): PvP (the Wolves' Den) and housing, both patch 2.1; they
+belong to the 2.1 client's protocol module (Phase 9).
 
 ## Working method
 

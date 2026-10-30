@@ -6,6 +6,7 @@
 //! - `export`: the world's battle NPC spawns as the repository's seed file.
 //! - `prune`: world content that does not belong in this client build, found (and removed).
 //! - `file`: raw files out of the client's SqPack by path (quest scripts, layouts).
+//! - `coverage`: how much of the β the server serves, domain by domain, as an HTML report.
 //! - `bots`: headless clients that log into the zone service, walk circles around a point, ping and
 //!   talk, for load tests and for seeing other players from the real client.
 //!
@@ -30,6 +31,7 @@ use tracing::{info, warn};
 /// Player actor ids are this plus the character's row id (the zone's `PLAYER_ACTOR_BASE`).
 const PLAYER_ACTOR_BASE: u32 = 0x1000_0000;
 
+mod coverage;
 mod exd;
 mod import;
 mod prune;
@@ -84,6 +86,12 @@ enum Command {
     File {
         paths: Vec<String>,
         #[arg(long, default_value = ".")]
+        out: PathBuf,
+    },
+    /// How much of the β the server serves, domain by domain (quests, items, shops, NPCs,
+    /// combat, social systems, protocol...), linked to the client's data, as an HTML report.
+    Coverage {
+        #[arg(long, default_value = "var/coverage.html")]
         out: PathBuf,
     },
     /// Runs headless clients against the zone service until Ctrl+C.
@@ -235,6 +243,12 @@ async fn main() -> anyhow::Result<()> {
             let db = databases(&config).await?;
             let data = game_data(&config, None, true).await?;
             prune::run(&db, &data, apply).await?;
+            db.close().await;
+        }
+        Command::Coverage { out } => {
+            let db = databases(&config).await?;
+            let data = game_data(&config, Some(&db), false).await?;
+            coverage::run(&data, &db, &out).await?;
             db.close().await;
         }
         Command::File { paths, out } => {
