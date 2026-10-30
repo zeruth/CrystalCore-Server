@@ -122,6 +122,21 @@ impl Database {
         Ok(row.get::<i64, _>(0) == 0)
     }
 
+    /// Deletes one of the account's characters (kept, marked `deleted_at`: every query leaves it
+    /// out, and its name is free again). False when the account has no such character.
+    pub async fn delete_character(&self, account_id: i64, content_id: u64, now: i64) -> Result<bool> {
+        let done = sqlx::query(
+            "UPDATE characters SET deleted_at = $1 WHERE account_id = $2 AND content_id = $3 AND deleted_at IS NULL",
+        )
+        .bind(now)
+        .bind(account_id)
+        .bind(content_id as i64)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| self.sql(e))?;
+        Ok(done.rows_affected() > 0)
+    }
+
     /// The account's characters, oldest first.
     pub async fn characters_of(&self, account_id: i64) -> Result<Vec<Character>> {
         let sql = format!(

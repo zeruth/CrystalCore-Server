@@ -80,6 +80,12 @@ pub struct CharaMakeRequest {
 }
 
 impl CharaMakeRequest {
+    /// The step that deletes a character (Sapphire's `CHARAOPE_DELETECHARA`; the β's reply
+    /// handler @0xe45f40 knows steps 1, 2, 3, 4, 6, 7, as Sapphire's 1 reserve name, 2 make, 3
+    /// rename, 4 delete, 6 rename retainer, 7 remake). Seen: deleting from character select sends
+    /// it with the character's name.
+    pub const DELETE: u8 = 4;
+
     pub fn parse(body: &[u8]) -> Option<Self> {
         let body = body.get(..0x1cc)?;
         let cstr = |b: &[u8]| b[..b.iter().position(|&c| c == 0).unwrap_or(b.len())].to_vec();

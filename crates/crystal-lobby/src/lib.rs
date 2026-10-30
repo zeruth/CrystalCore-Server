@@ -300,6 +300,9 @@ impl Lobby {
         let req = ipc::CharaMakeRequest::parse(body).ok_or_else(|| anyhow::anyhow!("short chara make"))?;
         info!(step = req.step, more = req.more, world = req.world_id, name = %req.name, "  chara make");
         let account = self.account(conn).await?;
+        if req.step == ipc::CharaMakeRequest::DELETE {
+            return self.delete_character(account, seq, &req).await;
+        }
         if conn.making.is_none() || req.step == 1 {
             conn.making = Some(Making { content_id: self.next_content_id().await?, ..Default::default() });
         }
@@ -347,6 +350,34 @@ impl Lobby {
             world_id: making.world_id,
             name: making.name.clone(),
             appearance: self.select_data(&making.name, &appearance, None).into_bytes(),
+        };
+        Ok(vec![(opcode::CHARA_MAKE_REPLY, ipc::chara_make_reply(seq, req.step, &entry))])
+    }
+
+    /// Step 4 of [`ipc::opcode::CHARA_MAKE`]: delete a character (the client sends it from
+    /// character select with the character's content id and name), answered with the deleted
+    /// character; the client then asks for the list again.
+    async fn delete_character(
+        &self,
+        account: i64,
+        seq: u64,
+        req: &ipc::CharaMakeRequest,
+    ) -> anyhow::Result<Vec<(u16, Bytes)>> {
+        let mine = self.db.characters.characters_of(account).await?;
+        let chara = mine
+            .iter()
+            .find(|c| req.content_id != 0 && c.content_id == req.content_id)
+            .or_else(|| mine.iter().find(|c| c.name.eq_ignore_ascii_case(&req.name)))
+            .ok_or_else(|| anyhow::anyhow!("delete: account {account} has no character {:?} ({:#x})", req.name, req.content_id))?;
+        if !self.db.characters.delete_character(account, chara.content_id, now()).await? {
+            anyhow::bail!("delete: {:?} was not deleted", chara.name);
+        }
+        info!(content_id = chara.content_id, name = %chara.name, "  character deleted");
+        let entry = CharaEntry {
+            content_id: chara.content_id,
+            world_id: chara.world_id,
+            name: chara.name.clone(),
+            appearance: self.select_data(&chara.name, &chara.appearance, None).into_bytes(),
         };
         Ok(vec![(opcode::CHARA_MAKE_REPLY, ipc::chara_make_reply(seq, req.step, &entry))])
     }

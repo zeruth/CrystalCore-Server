@@ -110,6 +110,17 @@ async fn exercise(db: &Databases) {
     chars.set_class_progress(me, 1, 6, 3).await.unwrap();
     assert_eq!(chars.class_progress(me).await.unwrap(), vec![(0, 1, 0), (1, 6, 3)]);
 
+    // deleting: only the owner's, then gone from every lookup, its name free again
+    let other = db.login.ensure_account("someone else", 1).await.unwrap();
+    let doomed = content_id + 2;
+    chars.create_character(account, doomed, 1, "Randy Lahey", "{}", 1).await.unwrap();
+    assert!(!chars.delete_character(other, doomed, 2).await.unwrap(), "not theirs");
+    assert!(chars.delete_character(account, doomed, 2).await.unwrap());
+    assert!(!chars.delete_character(account, doomed, 3).await.unwrap(), "already gone");
+    assert!(chars.character_by_content_id(doomed).await.unwrap().is_none());
+    assert_eq!(chars.characters_of(account).await.unwrap().len(), 1);
+    assert!(chars.character_name_free(1, "Randy Lahey").await.unwrap());
+
     // the world repository: overrides and battle NPC spawns
     let w = &db.world;
     let o = ExdOverride { sheet: "BNpcName".into(), row_id: 2, col: 0, value: "ruins sprinter".into(), comment: None };
