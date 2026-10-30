@@ -115,6 +115,94 @@
         ]
       }
     ],
+    "2": [
+      {
+        "then": [
+          {
+            "do": "set_flag",
+            "index": 1,
+            "set": true
+          }
+        ]
+      }
+    ],
+    "3": [
+      {
+        "then": [
+          {
+            "do": "set_flag",
+            "index": 2,
+            "set": true
+          }
+        ]
+      }
+    ],
+    "4": [
+      {
+        "then": [
+          {
+            "do": "set_flag",
+            "index": 3,
+            "set": true
+          }
+        ]
+      }
+    ],
+    "5": [
+      {
+        "then": [
+          {
+            "do": "set_flag",
+            "index": 4,
+            "set": true
+          }
+        ]
+      }
+    ],
+    "6": [
+      {
+        "then": [
+          {
+            "do": "set_flag",
+            "index": 5,
+            "set": true
+          }
+        ]
+      }
+    ],
+    "7": [
+      {
+        "then": [
+          {
+            "do": "set_flag",
+            "index": 6,
+            "set": true
+          }
+        ]
+      }
+    ],
+    "8": [
+      {
+        "then": [
+          {
+            "do": "set_flag",
+            "index": 7,
+            "set": true
+          }
+        ]
+      }
+    ],
+    "9": [
+      {
+        "then": [
+          {
+            "do": "set_flag",
+            "index": 8,
+            "set": true
+          }
+        ]
+      }
+    ],
     "26": [
       {
         "then": [
@@ -169,7 +257,7 @@
     ]
   },
   "review": [
-    "condition `varIdx == 1` not expressible; its branch dropped",
+    "condition `varIdx == 1` not expressible; the if left out",
     "hook onBNpcKill not run by the engine yet",
     "hook onEObjHit not run by the engine yet"
   ]

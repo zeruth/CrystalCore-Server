@@ -164,15 +164,6 @@
             "index": 0,
             "op": "eq",
             "value": 1
-          },
-          {
-            "if": "var",
-            "var": {
-              "byte": 0,
-              "part": "low"
-            },
-            "op": "eq",
-            "value": 1
           }
         ],
         "then": [
@@ -205,53 +196,6 @@
           {
             "do": "set_seq",
             "seq": 255
-          },
-          {
-            "do": "finish"
-          },
-          {
-            "do": "warp",
-            "territory": 181,
-            "pos": [
-              9.0,
-              40.0,
-              14.0
-            ],
-            "rotation": 0.0
-          }
-        ]
-      },
-      {
-        "when": [
-          {
-            "if": "result",
-            "index": 0,
-            "op": "eq",
-            "value": 1
-          },
-          {
-            "if": "var",
-            "var": {
-              "byte": 0,
-              "part": "low"
-            },
-            "op": "ne",
-            "value": 1
-          }
-        ],
-        "then": [
-          {
-            "do": "set_var",
-            "var": {
-              "byte": 0,
-              "part": "low"
-            },
-            "value": 1
-          },
-          {
-            "do": "set_flag",
-            "index": 1,
-            "set": true
           },
           {
             "do": "finish"

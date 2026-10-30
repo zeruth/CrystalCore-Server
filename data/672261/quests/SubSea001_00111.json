@@ -75,12 +75,34 @@
         ]
       }
     ],
+    "4": [
+      {
+        "then": [
+          {
+            "do": "set_flag",
+            "index": 1,
+            "set": true
+          }
+        ]
+      }
+    ],
     "5": [
       {
         "then": [
           {
             "do": "play",
             "scene": 6
+          }
+        ]
+      }
+    ],
+    "6": [
+      {
+        "then": [
+          {
+            "do": "set_flag",
+            "index": 2,
+            "set": true
           }
         ]
       }
@@ -95,12 +117,34 @@
         ]
       }
     ],
+    "8": [
+      {
+        "then": [
+          {
+            "do": "set_flag",
+            "index": 3,
+            "set": true
+          }
+        ]
+      }
+    ],
     "9": [
       {
         "then": [
           {
             "do": "play",
             "scene": 10
+          }
+        ]
+      }
+    ],
+    "10": [
+      {
+        "then": [
+          {
+            "do": "set_flag",
+            "index": 4,
+            "set": true
           }
         ]
       }
@@ -115,12 +159,34 @@
         ]
       }
     ],
+    "12": [
+      {
+        "then": [
+          {
+            "do": "set_flag",
+            "index": 5,
+            "set": true
+          }
+        ]
+      }
+    ],
     "13": [
       {
         "then": [
           {
             "do": "play",
             "scene": 14
+          }
+        ]
+      }
+    ],
+    "14": [
+      {
+        "then": [
+          {
+            "do": "set_flag",
+            "index": 6,
+            "set": true
           }
         ]
       }
@@ -163,8 +229,8 @@
     ]
   },
   "review": [
-    "condition `currentCC + 1 >= 6` not expressible; its branch dropped",
-    "condition `player.hasQuest(Quest0) || player.hasQuest(Quest1)` not expressible; its branch dropped",
+    "condition `currentCC + 1 >= 6` not expressible; the if left out",
+    "condition `player.hasQuest(Quest0) || player.hasQuest(Quest1)` not expressible; the if left out",
     "statement `eventMgr().sendEventNotice(player, getId(), 1, 3, currentCC + 1, 6)`"
   ]
 }

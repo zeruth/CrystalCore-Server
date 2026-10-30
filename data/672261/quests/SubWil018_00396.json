@@ -53,12 +53,34 @@
         ]
       }
     ],
+    "2": [
+      {
+        "then": [
+          {
+            "do": "set_flag",
+            "index": 1,
+            "set": true
+          }
+        ]
+      }
+    ],
     "4": [
       {
         "then": [
           {
             "do": "play",
             "scene": 5
+          }
+        ]
+      }
+    ],
+    "5": [
+      {
+        "then": [
+          {
+            "do": "set_flag",
+            "index": 2,
+            "set": true
           }
         ]
       }
@@ -73,6 +95,17 @@
         ]
       }
     ],
+    "8": [
+      {
+        "then": [
+          {
+            "do": "set_flag",
+            "index": 3,
+            "set": true
+          }
+        ]
+      }
+    ],
     "10": [
       {
         "then": [
@@ -83,12 +116,34 @@
         ]
       }
     ],
+    "11": [
+      {
+        "then": [
+          {
+            "do": "set_flag",
+            "index": 4,
+            "set": true
+          }
+        ]
+      }
+    ],
     "13": [
       {
         "then": [
           {
             "do": "play",
             "scene": 14
+          }
+        ]
+      }
+    ],
+    "14": [
+      {
+        "then": [
+          {
+            "do": "set_flag",
+            "index": 5,
+            "set": true
           }
         ]
       }
@@ -147,7 +202,7 @@
     ]
   },
   "review": [
-    "condition `currentCC + 1 >= 5` not expressible; its branch dropped",
+    "condition `currentCC + 1 >= 5` not expressible; the if left out",
     "onTalk condition `!player.hasQuest(getId())` not expressible",
     "statement `eventMgr().sendEventNotice(player, getId(), 0, 3, currentCC + 1, 5)`"
   ]

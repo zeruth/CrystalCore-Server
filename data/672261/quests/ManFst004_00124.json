@@ -5,15 +5,48 @@
   "talks": [
     {
       "actor": 1001140,
+      "when": [
+        {
+          "if": "var",
+          "var": {
+            "byte": 2,
+            "part": "high"
+          },
+          "op": "ne",
+          "value": 1
+        }
+      ],
       "scene": 0
     },
     {
       "actor": 2,
+      "when": [
+        {
+          "if": "var",
+          "var": {
+            "byte": 0,
+            "part": "low"
+          },
+          "op": "ne",
+          "value": 1
+        }
+      ],
       "scene": 51,
       "action": 19
     },
     {
       "actor": 1000323,
+      "when": [
+        {
+          "if": "var",
+          "var": {
+            "byte": 1,
+            "part": "high"
+          },
+          "op": "ne",
+          "value": 1
+        }
+      ],
       "scene": 2
     },
     {
@@ -40,6 +73,106 @@
           {
             "do": "play",
             "scene": 50
+          }
+        ]
+      }
+    ],
+    "1": [
+      {
+        "when": [
+          {
+            "if": "var",
+            "var": {
+              "byte": 1,
+              "part": "high"
+            },
+            "op": "eq",
+            "value": 1
+          },
+          {
+            "if": "var",
+            "var": {
+              "byte": 1,
+              "part": "low"
+            },
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 0,
+              "part": "low"
+            },
+            "value": 1
+          },
+          {
+            "do": "set_seq",
+            "seq": 255
+          }
+        ]
+      },
+      {
+        "then": [
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 0,
+              "part": "low"
+            },
+            "value": 1
+          }
+        ]
+      }
+    ],
+    "2": [
+      {
+        "when": [
+          {
+            "if": "var",
+            "var": {
+              "byte": 0,
+              "part": "low"
+            },
+            "op": "eq",
+            "value": 1
+          },
+          {
+            "if": "var",
+            "var": {
+              "byte": 1,
+              "part": "low"
+            },
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 1,
+              "part": "high"
+            },
+            "value": 1
+          },
+          {
+            "do": "set_seq",
+            "seq": 255
+          }
+        ]
+      },
+      {
+        "then": [
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 1,
+              "part": "high"
+            },
+            "value": 1
           }
         ]
       }
@@ -147,9 +280,75 @@
           }
         ]
       }
+    ],
+    "100": [
+      {
+        "when": [
+          {
+            "if": "var",
+            "var": {
+              "byte": 0,
+              "part": "low"
+            },
+            "op": "eq",
+            "value": 1
+          },
+          {
+            "if": "var",
+            "var": {
+              "byte": 1,
+              "part": "high"
+            },
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 2,
+              "part": "high"
+            },
+            "value": 0
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 1,
+              "part": "low"
+            },
+            "value": 1
+          },
+          {
+            "do": "set_seq",
+            "seq": 255
+          }
+        ]
+      },
+      {
+        "then": [
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 2,
+              "part": "high"
+            },
+            "value": 0
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 1,
+              "part": "low"
+            },
+            "value": 1
+          }
+        ]
+      }
     ]
   },
   "review": [
-    "condition `varIdx == 3` not expressible; its branch dropped"
+    "condition `varIdx == 3` not expressible; the if left out"
   ]
 }

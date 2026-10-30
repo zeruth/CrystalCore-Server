@@ -9,14 +9,47 @@
     },
     {
       "actor": 1001203,
+      "when": [
+        {
+          "if": "var",
+          "var": {
+            "byte": 0,
+            "part": "low"
+          },
+          "op": "ne",
+          "value": 1
+        }
+      ],
       "scene": 2
     },
     {
       "actor": 1001208,
+      "when": [
+        {
+          "if": "var",
+          "var": {
+            "byte": 1,
+            "part": "high"
+          },
+          "op": "ne",
+          "value": 1
+        }
+      ],
       "scene": 3
     },
     {
       "actor": 1003254,
+      "when": [
+        {
+          "if": "var",
+          "var": {
+            "byte": 1,
+            "part": "low"
+          },
+          "op": "ne",
+          "value": 1
+        }
+      ],
       "scene": 4
     },
     {
@@ -169,7 +202,7 @@
     ]
   },
   "review": [
-    "condition `varIdx == 1` not expressible; its branch dropped",
+    "condition `varIdx == 1` not expressible; the if left out",
     "hook onEventItem not run by the engine yet"
   ]
 }

@@ -573,10 +573,14 @@ impl Conv<'_> {
                 {
                     let (m, _) = self.call(e).unwrap();
                     let inner = self.paths(&body(self.s, m).unwrap_or_default(), depth + 1);
+                    // the helper's tests see what the caller set before calling it
                     paths = paths
                         .iter()
                         .flat_map(|(pc, pa)| {
-                            inner.iter().map(move |(ic, ia)| ([pc.clone(), ic.clone()].concat(), [pa.clone(), ia.clone()].concat()))
+                            inner.iter().filter_map(move |(ic, ia)| {
+                                let ic = resolve(ic, pa)?;
+                                Some(([pc.clone(), ic].concat(), [pa.clone(), ia.clone()].concat()))
+                            })
                         })
                         .collect();
                 }
@@ -589,11 +593,33 @@ impl Conv<'_> {
                 Stmt::If(c, then, otherwise) => {
                     let conds = self.cond(c);
                     let neg = conds.as_deref().and_then(|c| self.negate(c));
-                    if conds.is_none() || (!otherwise.is_empty() && neg.is_none()) {
+                    if conds.is_none() {
+                        // a condition on something the format does not hold (a helper's
+                        // argument: `varIdx == 3` choosing a notice): the statement is left out,
+                        // the paths through it kept
+                        self.review.push(format!("condition `{}` not expressible; the if left out", show(c)));
+                        continue;
+                    }
+                    if !otherwise.is_empty() && neg.is_none() {
                         self.review.push(format!("condition `{}` not expressible; its branch dropped", show(c)));
                     }
                     let mut next = Vec::new();
                     for (pc, pa) in &paths {
+                        // a test of a variable this path has already set is known now (Sapphire
+                        // tests after its assignments; a rule's conditions see the state before
+                        // its actions): true drops the test, false drops the branch
+                        let resolved = conds.as_ref().map(|c| resolve(c, pa));
+                        if let Some(None) = resolved {
+                            if let Some(n) = &neg {
+                                for (bc, ba) in self.paths(otherwise, depth) {
+                                    next.push(([pc.clone(), resolve(n, pa).unwrap_or_default(), bc].concat(), [pa.clone(), ba].concat()));
+                                }
+                            } else if otherwise.is_empty() {
+                                next.push((pc.clone(), pa.clone()));
+                            }
+                            continue;
+                        }
+                        let conds = resolved.flatten();
                         if let Some(c) = &conds {
                             for (bc, ba) in self.paths(then, depth) {
                                 next.push(([pc.clone(), c.clone(), bc].concat(), [pa.clone(), ba].concat()));
@@ -837,10 +863,72 @@ fn convert(src: &str, script: &str) -> Option<QuestDef> {
             scenes.insert(num, rules);
         }
     }
+    guard_done_steps(&mut talks, &scenes);
     let mut review = c.review;
     review.sort();
     review.dedup();
     Some(QuestDef { quest: s.quest, script: script.to_owned(), source: Source::Sapphire, talks, scenes, review })
+}
+
+/// `conds` given what `actions` (a path so far) set: `None` when one is then known false, else
+/// those not yet known (the ones known true left out).
+fn resolve(conds: &[Cond], actions: &[Action]) -> Option<Vec<Cond>> {
+    let mut known: Vec<(Var, Option<u8>)> = Vec::new();
+    for a in actions {
+        match *a {
+            Action::SetVar { var, value } => {
+                known.retain(|(v, _)| *v != var);
+                known.push((var, Some(value)));
+            }
+            Action::AddVar { var, .. } => {
+                known.retain(|(v, _)| *v != var);
+                known.push((var, None));
+            }
+            _ => {}
+        }
+    }
+    let mut left = Vec::new();
+    for c in conds {
+        match c {
+            Cond::Var { var, op, value } => match known.iter().find(|(v, _)| v == var) {
+                Some((_, Some(have))) if op.test(*have as u32, *value as u32) => {}
+                Some((_, Some(_))) => return None,
+                _ => left.push(c.clone()),
+            },
+            c => left.push(c.clone()),
+        }
+    }
+    Some(left)
+}
+
+/// A talk with no condition whose scenes, followed through their unconditional rules, set a quest
+/// variable (Close to Home's aetheryte: scene 51 → 1, which sets UI8AL to 1) is a step: done
+/// once. Sapphire's onTalk does not check (the original server's state did), so without this the
+/// step replays: the talk gets the condition that the variable is not yet that value.
+fn guard_done_steps(talks: &mut [Talk], scenes: &BTreeMap<u16, Vec<Rule>>) {
+    for talk in talks.iter_mut().filter(|t| t.when.is_empty()) {
+        let (mut scene, mut set) = (Some(talk.scene), None);
+        for _ in 0..8 {
+            let Some(s) = scene.take() else { break };
+            let Some(rules) = scenes.get(&s).filter(|r| !r.is_empty()) else { break };
+            // what every rule of the scene does, whichever applies
+            let in_all = |a: &Action| rules.iter().all(|r| r.then.contains(a));
+            let first = &rules[0].then;
+            if set.is_none() {
+                set = first.iter().find_map(|a| match *a {
+                    Action::SetVar { var, value } if in_all(a) => Some((var, value)),
+                    _ => None,
+                });
+            }
+            scene = first.iter().find_map(|a| match *a {
+                Action::Play { scene: next } if in_all(a) => Some(next),
+                _ => None,
+            });
+        }
+        if let Some((var, value)) = set {
+            talk.when.push(Cond::Var { var, op: Op::Ne, value });
+        }
+    }
 }
 
 /// Every script under `dir` whose quest the β has, written as `<out>/<script>.json`; the quests

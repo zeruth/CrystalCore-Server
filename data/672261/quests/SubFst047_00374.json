@@ -32,6 +32,17 @@
     },
     {
       "actor": 2000999,
+      "when": [
+        {
+          "if": "var",
+          "var": {
+            "byte": 1,
+            "part": "high"
+          },
+          "op": "ne",
+          "value": 3
+        }
+      ],
       "scene": 1,
       "action": 2
     },

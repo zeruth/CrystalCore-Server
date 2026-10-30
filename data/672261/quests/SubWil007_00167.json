@@ -72,6 +72,61 @@
         ]
       }
     ],
+    "6": [
+      {
+        "then": [
+          {
+            "do": "set_flag",
+            "index": 1,
+            "set": true
+          }
+        ]
+      }
+    ],
+    "9": [
+      {
+        "then": [
+          {
+            "do": "set_flag",
+            "index": 2,
+            "set": true
+          }
+        ]
+      }
+    ],
+    "12": [
+      {
+        "then": [
+          {
+            "do": "set_flag",
+            "index": 3,
+            "set": true
+          }
+        ]
+      }
+    ],
+    "15": [
+      {
+        "then": [
+          {
+            "do": "set_flag",
+            "index": 4,
+            "set": true
+          }
+        ]
+      }
+    ],
+    "18": [
+      {
+        "then": [
+          {
+            "do": "set_flag",
+            "index": 5,
+            "set": true
+          }
+        ]
+      }
+    ],
     "20": [
       {
         "when": [
@@ -92,7 +147,7 @@
     ]
   },
   "review": [
-    "condition `currentQC >= 5` not expressible; its branch dropped",
+    "condition `currentQC >= 5` not expressible; the if left out",
     "hook onEmote not run by the engine yet",
     "onTalk condition `!player.hasQuest(getId())` not expressible",
     "statement `auto currentQC=quest.getUI8AL()+1;`"

@@ -153,6 +153,39 @@
         ]
       }
     ],
+    "3": [
+      {
+        "then": [
+          {
+            "do": "set_flag",
+            "index": 1,
+            "set": true
+          }
+        ]
+      }
+    ],
+    "4": [
+      {
+        "then": [
+          {
+            "do": "set_flag",
+            "index": 2,
+            "set": true
+          }
+        ]
+      }
+    ],
+    "5": [
+      {
+        "then": [
+          {
+            "do": "set_flag",
+            "index": 3,
+            "set": true
+          }
+        ]
+      }
+    ],
     "13": [
       {
         "then": [
@@ -252,7 +285,7 @@
     ]
   },
   "review": [
-    "condition `currentCC + 1 >= 3` not expressible; its branch dropped",
+    "condition `currentCC + 1 >= 3` not expressible; the if left out",
     "statement `eventMgr().sendEventNotice(player, getId(), 1, 2, currentCC + 1, 3)`",
     "statement `playerMgr().sendUrgent(player, \"QuestBattle content is currently broken. The fight has been skipped for you.\")`"
   ]

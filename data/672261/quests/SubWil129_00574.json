@@ -714,9 +714,9 @@
     ]
   },
   "review": [
-    "condition `!hasBody` not expressible; its branch dropped",
-    "condition `!hasLegs` not expressible; its branch dropped",
-    "condition `checkPlayerCorrectEquipment(player)` not expressible; its branch dropped",
+    "condition `!hasBody` not expressible; the if left out",
+    "condition `!hasLegs` not expressible; the if left out",
+    "condition `checkPlayerCorrectEquipment(player)` not expressible; the if left out",
     "statement `Inventory::InventoryContainerPair pair;`",
     "statement `bool hasBody=player.findFirstItemWithId(Ritem0,pair);`",
     "statement `bool hasLegs=player.findFirstItemWithId(Ritem1,pair);`",

@@ -5,6 +5,17 @@
   "talks": [
     {
       "actor": 1001295,
+      "when": [
+        {
+          "if": "var",
+          "var": {
+            "byte": 1,
+            "part": "high"
+          },
+          "op": "ne",
+          "value": 1
+        }
+      ],
       "scene": 0
     },
     {

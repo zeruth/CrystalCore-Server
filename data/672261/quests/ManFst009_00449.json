@@ -135,7 +135,7 @@
     ]
   },
   "review": [
-    "condition `headEquipped && headEquipped.getId() == Ritem0` not expressible; its branch dropped",
+    "condition `headEquipped && headEquipped.getId() == Ritem0` not expressible; the if left out",
     "statement `auto headEquipped=player.getItemAt(Sapphire::Common::InventoryType::GearSet0,Sapphire::Common::GearSetSlot::Head);`",
     "statement `auto instance=teriMgr().createTerritoryInstance(179);`",
     "statement `auto instance=teriMgr().createTerritoryInstance(Territorytype0);`",

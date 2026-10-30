@@ -84,15 +84,6 @@
           {
             "if": "var",
             "var": {
-              "byte": 0,
-              "part": "low"
-            },
-            "op": "ne",
-            "value": 0
-          },
-          {
-            "if": "var",
-            "var": {
               "byte": 1,
               "part": "high"
             },
@@ -231,15 +222,6 @@
             "if": "var",
             "var": {
               "byte": 1,
-              "part": "high"
-            },
-            "op": "ne",
-            "value": 0
-          },
-          {
-            "if": "var",
-            "var": {
-              "byte": 1,
               "part": "low"
             },
             "op": "ne",
@@ -369,15 +351,6 @@
             "var": {
               "byte": 1,
               "part": "high"
-            },
-            "op": "ne",
-            "value": 0
-          },
-          {
-            "if": "var",
-            "var": {
-              "byte": 1,
-              "part": "low"
             },
             "op": "ne",
             "value": 0

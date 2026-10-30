@@ -27,6 +27,17 @@
     },
     {
       "actor": 2000141,
+      "when": [
+        {
+          "if": "var",
+          "var": {
+            "byte": 0,
+            "part": "low"
+          },
+          "op": "ne",
+          "value": 1
+        }
+      ],
       "scene": 1,
       "action": 2
     },
@@ -42,6 +53,17 @@
     },
     {
       "actor": 2000149,
+      "when": [
+        {
+          "if": "var",
+          "var": {
+            "byte": 1,
+            "part": "low"
+          },
+          "op": "ne",
+          "value": 1
+        }
+      ],
       "scene": 4,
       "action": 2
     }
@@ -68,15 +90,6 @@
     "1": [
       {
         "when": [
-          {
-            "if": "var",
-            "var": {
-              "byte": 0,
-              "part": "low"
-            },
-            "op": "ge",
-            "value": 1
-          },
           {
             "if": "var",
             "var": {
@@ -344,15 +357,6 @@
             },
             "op": "ge",
             "value": 2
-          },
-          {
-            "if": "var",
-            "var": {
-              "byte": 1,
-              "part": "low"
-            },
-            "op": "ge",
-            "value": 1
           }
         ],
         "then": [

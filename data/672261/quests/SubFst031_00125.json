@@ -32,36 +32,113 @@
     },
     {
       "actor": 2000010,
+      "when": [
+        {
+          "if": "var",
+          "var": {
+            "byte": 0,
+            "part": "low"
+          },
+          "op": "ne",
+          "value": 0
+        }
+      ],
       "scene": 1,
       "action": 2
     },
     {
       "actor": 2000011,
+      "when": [
+        {
+          "if": "var",
+          "var": {
+            "byte": 0,
+            "part": "low"
+          },
+          "op": "ne",
+          "value": 0
+        }
+      ],
       "scene": 2,
       "action": 2
     },
     {
       "actor": 2000012,
+      "when": [
+        {
+          "if": "var",
+          "var": {
+            "byte": 0,
+            "part": "low"
+          },
+          "op": "ne",
+          "value": 0
+        }
+      ],
       "scene": 3,
       "action": 2
     },
     {
       "actor": 2000013,
+      "when": [
+        {
+          "if": "var",
+          "var": {
+            "byte": 0,
+            "part": "low"
+          },
+          "op": "ne",
+          "value": 0
+        }
+      ],
       "scene": 4,
       "action": 2
     },
     {
       "actor": 2000014,
+      "when": [
+        {
+          "if": "var",
+          "var": {
+            "byte": 0,
+            "part": "low"
+          },
+          "op": "ne",
+          "value": 0
+        }
+      ],
       "scene": 5,
       "action": 2
     },
     {
       "actor": 2000150,
+      "when": [
+        {
+          "if": "var",
+          "var": {
+            "byte": 0,
+            "part": "low"
+          },
+          "op": "ne",
+          "value": 0
+        }
+      ],
       "scene": 6,
       "action": 2
     },
     {
       "actor": 0,
+      "when": [
+        {
+          "if": "var",
+          "var": {
+            "byte": 0,
+            "part": "low"
+          },
+          "op": "ne",
+          "value": 0
+        }
+      ],
       "scene": 1,
       "action": 2
     }

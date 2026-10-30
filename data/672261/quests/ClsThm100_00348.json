@@ -54,6 +54,17 @@
     },
     {
       "actor": 2001498,
+      "when": [
+        {
+          "if": "var",
+          "var": {
+            "byte": 1,
+            "part": "high"
+          },
+          "op": "ne",
+          "value": 1
+        }
+      ],
       "scene": 6,
       "action": 1
     }

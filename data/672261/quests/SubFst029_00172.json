@@ -42,7 +42,7 @@
     ]
   },
   "review": [
-    "condition `result.getResult(0) == 1 && player.collectHandInItems({Ritem0})` not expressible; its branch dropped",
+    "condition `result.getResult(0) == 1 && player.collectHandInItems({Ritem0})` not expressible; the if left out",
     "onTalk condition `!player.hasQuest(getId())` not expressible"
   ]
 }

@@ -184,7 +184,7 @@
     ]
   },
   "review": [
-    "condition `varIdx == 1` not expressible; its branch dropped",
+    "condition `varIdx == 1` not expressible; the if left out",
     "hook onEventItem not run by the engine yet",
     "statement `eventMgr().sendNotice(player, getId(), 0, {quest.getUI8AL(), 4, Item0Icon})`"
   ]

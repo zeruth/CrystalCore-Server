@@ -141,7 +141,7 @@
     ]
   },
   "review": [
-    "condition `!enemy0Spawned && !enemy1Spawned` not expressible; its branch dropped",
+    "condition `!enemy0Spawned && !enemy1Spawned` not expressible; the if left out",
     "hook onBNpcKill not run by the engine yet",
     "hook onWithinRange not run by the engine yet",
     "onTalk condition `enemy0Spawned || enemy1Spawned` not expressible",

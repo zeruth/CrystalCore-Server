@@ -85,9 +85,31 @@
           }
         ]
       }
+    ],
+    "98": [
+      {
+        "then": [
+          {
+            "do": "set_flag",
+            "index": 2,
+            "set": true
+          }
+        ]
+      }
+    ],
+    "100": [
+      {
+        "then": [
+          {
+            "do": "set_flag",
+            "index": 1,
+            "set": true
+          }
+        ]
+      }
     ]
   },
   "review": [
-    "condition `credit + 1 >= 2` not expressible; its branch dropped"
+    "condition `credit + 1 >= 2` not expressible; the if left out"
   ]
 }

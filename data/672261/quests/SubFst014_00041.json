@@ -217,7 +217,7 @@
     ]
   },
   "review": [
-    "condition `currentCC + 1 >= 6` not expressible; its branch dropped",
+    "condition `currentCC + 1 >= 6` not expressible; the if left out",
     "onTalk condition `!player.hasQuest(getId())` not expressible",
     "statement `eventMgr().sendEventNotice(player, getId(), 0, 2, currentCC + 1, 6)`",
     "statement `quest.setUI8AL(currentCC + 1)`",

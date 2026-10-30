@@ -5,14 +5,47 @@
   "talks": [
     {
       "actor": 1003988,
+      "when": [
+        {
+          "if": "var",
+          "var": {
+            "byte": 2,
+            "part": "high"
+          },
+          "op": "ne",
+          "value": 1
+        }
+      ],
       "scene": 0
     },
     {
       "actor": 1001286,
+      "when": [
+        {
+          "if": "var",
+          "var": {
+            "byte": 0,
+            "part": "low"
+          },
+          "op": "ne",
+          "value": 1
+        }
+      ],
       "scene": 3
     },
     {
       "actor": 1003908,
+      "when": [
+        {
+          "if": "var",
+          "var": {
+            "byte": 2,
+            "part": "high"
+          },
+          "op": "ne",
+          "value": 0
+        }
+      ],
       "scene": 4
     },
     {
@@ -21,6 +54,17 @@
     },
     {
       "actor": 9,
+      "when": [
+        {
+          "if": "var",
+          "var": {
+            "byte": 1,
+            "part": "low"
+          },
+          "op": "ne",
+          "value": 1
+        }
+      ],
       "scene": 1,
       "action": 19
     }
@@ -71,15 +115,6 @@
             "var": {
               "byte": 1,
               "part": "high"
-            },
-            "op": "eq",
-            "value": 1
-          },
-          {
-            "if": "var",
-            "var": {
-              "byte": 1,
-              "part": "low"
             },
             "op": "eq",
             "value": 1
@@ -134,15 +169,6 @@
     "3": [
       {
         "when": [
-          {
-            "if": "var",
-            "var": {
-              "byte": 0,
-              "part": "low"
-            },
-            "op": "eq",
-            "value": 1
-          },
           {
             "if": "var",
             "var": {
@@ -242,15 +268,6 @@
             "var": {
               "byte": 0,
               "part": "low"
-            },
-            "op": "eq",
-            "value": 1
-          },
-          {
-            "if": "var",
-            "var": {
-              "byte": 1,
-              "part": "high"
             },
             "op": "eq",
             "value": 1

@@ -681,7 +681,7 @@
     ]
   },
   "review": [
-    "condition `result.errorCode != 50` not expressible; its branch dropped",
+    "condition `result.errorCode != 50` not expressible; the if left out",
     "hook onEventItem not run by the engine yet",
     "statement `auto dest=teriMgr().getTerritoryByTypeId(Territorytype2);`",
     "statement `auto dest=teriMgr().getTerritoryByTypeId(Territorytype3);`",

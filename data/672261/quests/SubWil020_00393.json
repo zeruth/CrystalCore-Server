@@ -227,6 +227,6 @@
     ]
   },
   "review": [
-    "condition `!quest.getBitFlag8(index)` not expressible; its branch dropped"
+    "condition `!quest.getBitFlag8(index)` not expressible; the if left out"
   ]
 }

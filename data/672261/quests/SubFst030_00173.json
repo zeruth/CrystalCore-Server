@@ -13,6 +13,17 @@
     },
     {
       "actor": 2000146,
+      "when": [
+        {
+          "if": "var",
+          "var": {
+            "byte": 5,
+            "part": "low"
+          },
+          "op": "ne",
+          "value": 1
+        }
+      ],
       "scene": 2,
       "action": 6
     }

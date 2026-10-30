@@ -65,16 +65,49 @@
     },
     {
       "actor": 2001013,
+      "when": [
+        {
+          "if": "var",
+          "var": {
+            "byte": 2,
+            "part": "high"
+          },
+          "op": "ne",
+          "value": 1
+        }
+      ],
       "scene": 100,
       "action": 1
     },
     {
       "actor": 2001014,
+      "when": [
+        {
+          "if": "var",
+          "var": {
+            "byte": 2,
+            "part": "low"
+          },
+          "op": "ne",
+          "value": 1
+        }
+      ],
       "scene": 98,
       "action": 1
     },
     {
       "actor": 2001015,
+      "when": [
+        {
+          "if": "var",
+          "var": {
+            "byte": 3,
+            "part": "high"
+          },
+          "op": "ne",
+          "value": 1
+        }
+      ],
       "scene": 96,
       "action": 1
     }
