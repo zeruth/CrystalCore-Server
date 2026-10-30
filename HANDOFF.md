@@ -4,7 +4,24 @@ State of CrystalCore-Server for the next session. Repo: `C:\Users\tyler\Document
 (branch `main`, pushed to https://github.com/zeruth/CrystalCore-Server). The client is
 `C:\Users\tyler\Documents\code\CrystalCore`. Read [ROADMAP.md](ROADMAP.md) first.
 
-## Where it stands (2026-10-30)
+## Phase 6 so far (2026-10-30, seen in the client)
+
+A new Gridania character plays the β's introduction to its end ("This concludes the introductory
+game tutorial"): starts at its town's opening (town from `ClassJob` col 25, `Opening` `POS_START`),
+the opening's cutscenes once (`characters.opening`), the welcome, the walls back to Bertennant,
+the quest offered, accepted, the walls lifted (the opening's scene 30, nested), the turn-in at
+Mother Miounne, 103 gil. The β's own scripts drive it (decompiled under `.reference/era-2.0/
+scripts`, local); every packet and layout is from the client's code (see `CrystalCore/data/
+names.json`: the event, condition, range and quest functions). Starting gear is the class's
+weapon and the race's set (`Race` cols 2-9). `crystal-tools coverage` writes `var/coverage.html`,
+the β domain by domain against the server; ROADMAP's "road to 100%" is the plan.
+
+Next: the content engine (scenes and variables read from each quest's script and `Quest` row
+instead of per-quest tables like `turn_in_scenes`), quest experience (the β's formula), the
+Limsa and Ul'dah openings played through, the pet hotbar showing for no reason (catch
+`F_008dc9e0` with `bptrace.py` while logging in), the InfoProxy list requests (up 0xcb).
+
+## Where it stood before Phase 6 (2026-10-30)
 
 Phases 0-2 work against the real β client, unmodified: log in, make a character (stored), pick it,
 enter Limsa Lominsa, see its event NPCs, move (position saved), walk through a zone exit into Middle
