@@ -142,7 +142,7 @@ impl Server {
                         territories = bnpcs.len(),
                         "battle NPCs"
                     );
-                    let npcs_from = world.clone();
+                    let npcs_from = world.clone().filter(|_| config.zone.event_npcs);
                     let npcs = Box::new(move |territory: u16| -> TerritoryContent {
                         let bnpcs = bnpcs.get(&territory).cloned().unwrap_or_default();
                         let Some(data) = &npcs_from else { return TerritoryContent { enpcs: vec![], bnpcs } };

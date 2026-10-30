@@ -44,3 +44,5 @@ create_host = 1
 # Also the address game login sends the client to.
 bind = "127.0.0.1:54992"
 # capture_dir = "protocol/672261/captures"
+# Also spawn the Level sheet's event NPCs (off: the client places them itself from its layouts).
+# event_npcs = false

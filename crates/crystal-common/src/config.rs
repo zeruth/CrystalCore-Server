@@ -119,11 +119,15 @@ pub struct ZoneConfig {
     pub bind: SocketAddr,
     /// When set, every connection's received frames are written here, raw, for replay tests.
     pub capture_dir: Option<PathBuf>,
+    /// Whether the server also spawns the event NPCs the `Level` sheet places. Off: the client
+    /// places a territory's layout event NPCs itself (read in its object table in 183: every
+    /// `Level` event NPC there present with its layout id), and the server's spawns doubled them.
+    pub event_npcs: bool,
 }
 
 impl Default for ZoneConfig {
     fn default() -> Self {
-        Self { bind: SocketAddr::from(([127, 0, 0, 1], 54992)), capture_dir: None }
+        Self { bind: SocketAddr::from(([127, 0, 0, 1], 54992)), capture_dir: None, event_npcs: false }
     }
 }
 

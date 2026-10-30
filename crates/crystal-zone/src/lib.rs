@@ -465,6 +465,12 @@ impl Zone {
                 .into_iter()
                 .chain(inventory_packets(&sess.inventory, &mut sess.item_sequence))
                 .chain([(opcode::INIT_ZONE, ipc::init_zone(pos.zone_id as u16, 1, sess.pos()))])
+                // the quest lists (none kept yet): until both have come the client leaves its
+                // quest-givers unshown (QUEST_COMPLETE_FLAGS)
+                .chain([
+                    (opcode::QUESTS, ipc::quests(&[])),
+                    (opcode::QUEST_COMPLETE_FLAGS, ipc::quest_complete_flags(&[0; 200])),
+                ])
                 .collect()
             }
             opcode::FINISH_LOADING => {

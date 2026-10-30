@@ -119,6 +119,16 @@ pub mod opcode {
     pub const SCENE_RESULT: u16 = 0x1d7;
     pub const SCENE_RESULT_4: u16 = 0x1d8;
     pub const SCENE_RESULT_8: u16 = 0x1d9;
+    /// Down: the player's active quests, 30 entries of 10 bytes (case 0x69 → @0xa54690: quest id
+    /// u16 @0, 8 bytes of its state @2). After all 30 the client marks its quests loaded
+    /// (0x14a73d2) the first time; see [`super::quests`].
+    pub const QUESTS: u16 = 0x1e0;
+    /// Down: the completed quests, 200 bytes of flags (case 0x6b → @0xa50160, copied to
+    /// 0x14a875a). The first one marks them loaded (0x14a73d3) and, with the quests loaded too,
+    /// has the event system refresh its objects (@0x6e5e50 → @0x6de320); until both have come,
+    /// a quest-giver the client places from its layout stays unshown (Bertennant in the Gridania
+    /// opening: in the client's object table, never drawn).
+    pub const QUEST_COMPLETE_FLAGS: u16 = 0x1e2;
     /// Down: the player's conditions; see [`super::conditions`] (case 0x4c → @0xa4f150).
     pub const CONDITIONS: u16 = 0x1a3;
     /// Down: an event starts; see [`super::event_start`] (case 0x65 → @0x6f0be0).
@@ -974,6 +984,22 @@ pub fn conditions(set: &[u8]) -> Bytes {
         b[(id >> 3) as usize] |= 1 << (id & 7);
     }
     b.freeze()
+}
+
+/// [`opcode::QUESTS`]: up to 30 active quests, each its id (`Quest` row - 0x10000) and 8 bytes of
+/// state; the rest empty.
+pub fn quests(active: &[(u16, [u8; 8])]) -> Bytes {
+    let mut b = BytesMut::zeroed(30 * 10);
+    for (i, (id, state)) in active.iter().take(30).enumerate() {
+        b[i * 10..i * 10 + 2].copy_from_slice(&id.to_le_bytes());
+        b[i * 10 + 2..i * 10 + 10].copy_from_slice(state);
+    }
+    b.freeze()
+}
+
+/// [`opcode::QUEST_COMPLETE_FLAGS`]: 200 bytes, a bit per quest.
+pub fn quest_complete_flags(flags: &[u8; 200]) -> Bytes {
+    Bytes::copy_from_slice(flags)
 }
 
 /// A scene's end, as [`opcode::SCENE_RESULT`] carries it.
