@@ -108,12 +108,19 @@ pub mod opcode {
     /// argument) until an [`EVENT_START`] that matches all of them (@0x6b9110). Seen after an
     /// opening territory loads: 0x130001 in 181.
     pub const EVENT_REQUEST: u16 = 0x1c6;
+    /// Up (0x28 bytes): the player walked into an event range a handler wants the server to run;
+    /// see [`super::parse_range_event`]. Sent by @0x6f7db0, which holds the event pending (kind
+    /// 10, the range's id as the argument, the player as the target) until a matching
+    /// [`EVENT_START`]; the handler's script vets the range first (`OnPreWithinRange`).
+    pub const RANGE_EVENT: u16 = 0x1c4;
     /// Up: a scene of an event has ended; see [`super::parse_scene_result`]. Sent by @0xa50640:
     /// 0x1d7 with up to 2 values, 0x1d8 with 4, 0x1d9 with 8 (more through @0xa5d9c0..). Seen when
     /// the Gridania opening's scene 0 had played to its end: (0x130002, scene 0, one value 3).
     pub const SCENE_RESULT: u16 = 0x1d7;
     pub const SCENE_RESULT_4: u16 = 0x1d8;
     pub const SCENE_RESULT_8: u16 = 0x1d9;
+    /// Down: the player's conditions; see [`super::conditions`] (case 0x4c → @0xa4f150).
+    pub const CONDITIONS: u16 = 0x1a3;
     /// Down: an event starts; see [`super::event_start`] (case 0x65 → @0x6f0be0).
     pub const EVENT_START: u16 = 0x1cc;
     /// Down: a scene of an event plays; see [`super::event_play`] (case 0x64 → @0xa50d10 →
@@ -936,14 +943,37 @@ pub mod event {
     pub const OPENING: u16 = 0x0013;
     /// The event kind `EVENT_START` and `EVENT_FINISH` carry for talking.
     pub const TALK: u8 = 1;
+    /// The kind of an event an event range starts (@0x6f7db0 sets 10).
+    pub const WITHIN_RANGE: u8 = 10;
     /// The kind the client gives an event a territory's handlers offer on entering it
     /// (@0x70dfa0 sets 0xf before asking them).
     pub const ENTER_TERRITORY: u8 = 0xf;
 }
 
+/// [`opcode::RANGE_EVENT`]'s range id @0 (the range object's +0x14), event id @4 and the player's
+/// position @8.
+pub fn parse_range_event(b: &[u8]) -> Option<(u32, u32, [f32; 3])> {
+    let f = |at: usize| u32_at(b, at).map(f32::from_bits);
+    Some((u32_at(b, 0)?, u32_at(b, 4)?, [f(8)?, f(0xc)?, f(0x10)?]))
+}
+
 /// [`opcode::EVENT_REQUEST`]'s event id.
 pub fn parse_event_request(b: &[u8]) -> Option<u32> {
     u32_at(b, 0)
+}
+
+/// [`opcode::CONDITIONS`]: one bit per condition (byte `id >> 3`, bit `id & 7`). The client sets
+/// each of its conditions 9-0x2d from its bit (@0xa4f150 → @0xa4a760, a byte per condition at
+/// 0x14a7360), except 0xf while an event runs, 0x20 and 0x29; conditions below 9 it keeps itself.
+/// An event the client asks for on entering a territory leaves one set (0x10, read in the client
+/// after the Gridania opening ended) that its event's end does not clear (@0x6f8f10 clears only
+/// those below 9), so the server clears it with this.
+pub fn conditions(set: &[u8]) -> Bytes {
+    let mut b = BytesMut::zeroed(8);
+    for &id in set {
+        b[(id >> 3) as usize] |= 1 << (id & 7);
+    }
+    b.freeze()
 }
 
 /// A scene's end, as [`opcode::SCENE_RESULT`] carries it.
@@ -1489,6 +1519,14 @@ mod tests {
         let up = hex::decode("0200130000000001030000007126ceca").unwrap();
         let r = parse_scene_result(&up).unwrap();
         assert_eq!(r, SceneResult { event_id: 0x0013_0002, scene: 0, byte_6: 0, values: vec![3] });
+        // walking into the Gridania opening's ERANGE_SEQ_1_CLOSED_1, as the client sent it
+        let up = hex::decode("2ee3230002001300cd35e542681942c1aa980b4300000000").unwrap();
+        let (range, event_id, pos) = parse_range_event(&up).unwrap();
+        assert_eq!((range, event_id), (2351918, 0x0013_0002), "ERANGE_SEQ_1_CLOSED_1, as the script names it");
+        assert!((pos[0] - 114.6).abs() < 0.1 && (pos[2] - 139.6).abs() < 0.1);
+        // a condition's bit is byte id >> 3, bit id & 7 (@0xa4f150); none set clears 0x10
+        assert_eq!(&conditions(&[0x10, 0x2d])[..], &[0, 0, 1, 0, 0, 0x20, 0, 0]);
+        assert!(conditions(&[]).iter().all(|&b| b == 0));
     }
 
     #[test]

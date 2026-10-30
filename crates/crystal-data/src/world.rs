@@ -538,6 +538,15 @@ impl WorldData {
         (v > 0).then_some(v as u32)
     }
 
+    /// A variable of an opening's script, from its `Opening` row (0x130001-0x130003): the names
+    /// are cols 2-41, each value 40 columns on (`ERANGE_SEQ_1_CLOSED_1`, `POS_START`, ...).
+    pub fn opening_value(&self, event_id: u32, name: &str) -> Option<u32> {
+        let sheet = self.sheet("Opening").ok()?;
+        let row = sheet.row(event_id)?;
+        let at = (2..42).find(|&i| row.get(i).and_then(|v| v.as_str()) == Some(name))?;
+        row.get(at + 40)?.as_u64().map(|v| v as u32)
+    }
+
     /// The town a class starts in (`ClassJob` col 25, a `Town` row: 1 Limsa Lominsa, 2 Gridania,
     /// 3 Ul'dah); `None` for a class one cannot start as (0 there). The β's rows: gladiator,
     /// pugilist, thaumaturge 3; marauder, arcanist 1; lancer, archer, conjurer 2; the client's

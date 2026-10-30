@@ -48,6 +48,9 @@ fn classes_start_in_their_towns() {
         assert_eq!(start[9].as_u64(), Some(zone as u64), "town {town}");
         assert!((start[0].as_f32().unwrap() as f64 - point[0]).abs() < 0.001, "town {town}");
     }
+    // the range the Gridania opening's way out is (the client sent it walking into it)
+    assert_eq!(world.opening_value(0x130002, "ERANGE_SEQ_1_CLOSED_1"), Some(2351918));
+    assert_eq!(world.opening_value(0x130002, "NO_SUCH_NAME"), None);
 }
 
 #[test]

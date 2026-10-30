@@ -93,6 +93,9 @@ struct Session {
     class_slot: usize,
     /// What the player has targeted (for actions sent without one).
     target: Option<u32>,
+    /// The event the client is in, as its start named it (event id, kind, argument): its finish
+    /// must repeat all three (@0x6fd010).
+    event: Option<(u32, u8, u32)>,
 }
 
 impl Session {
@@ -125,6 +128,7 @@ impl Session {
             progress,
             class_slot,
             target: None,
+            event: None,
         }
     }
 
@@ -424,6 +428,7 @@ impl Zone {
             }
             opcode::TALK_EVENT => self.talk_event(sess, body).await,
             opcode::EVENT_REQUEST => self.event_request(sess, body),
+            opcode::RANGE_EVENT => self.range_event(sess, body),
             opcode::SCENE_RESULT | opcode::SCENE_RESULT_4 | opcode::SCENE_RESULT_8 => {
                 self.scene_result(sess, body).await
             }
@@ -814,12 +819,43 @@ impl Zone {
         let opening = sess.chara.as_ref().map_or(0, |c| c.opening);
         info!(event = format_args!("{event_id:#x}"), territory, opening, "  event request");
         let target = sess.actor_id as u64;
-        // flags 0: the client only stores them (@0x6f0be0 → this+0x250); untested beyond that
-        let mut out =
-            vec![(opcode::EVENT_START, ipc::event_start(target, event_id, ipc::event::ENTER_TERRITORY, 0, territory))];
+        let mut out = start_event(sess, event_id, ipc::event::ENTER_TERRITORY, territory);
         if (event_id >> 16) as u16 == ipc::event::OPENING {
             let scene = if opening == 0 { 0 } else { 40 };
             out.push((opcode::EVENT_PLAY, ipc::event_play(target, event_id, scene, 0, &[opening as u32])));
+        }
+        out
+    }
+
+    /// The player walked into an event range of an opening. Its script enables, while the first
+    /// quest is not accepted (`OPENING_SEQ_1`), the `ERANGE_SEQ_1_CLOSED_*` ranges (the way out,
+    /// before talking to the quest's NPC), and always the `ERANGE_ALWAYS_CLOSED_*` ones and two
+    /// tutorial ranges it handles itself (`OnPreWithinRange` returns false for those). Scene 10
+    /// answers an always-closed range (its first parameter picks the NPC and the way back), scene
+    /// 20 a seq-1 one (the quest NPC calls the player back). The client names a range by its
+    /// object's +0x14, the script's id for it (the Gridania opening's six registered ranges, read
+    /// in the client, carry exactly the `Opening` sheet's ids).
+    fn range_event(&self, sess: &mut Session, body: &[u8]) -> Vec<(u16, Bytes)> {
+        let Some((range, event_id, pos)) = ipc::parse_range_event(body) else { return vec![] };
+        info!(event = format_args!("{event_id:#x}"), range, ?pos, "  range event");
+        let mut out = start_event(sess, event_id, ipc::event::WITHIN_RANGE, range);
+        let is = |name: &str| self.data.as_deref().and_then(|d| d.opening_value(event_id, name)) == Some(range);
+        let target = sess.actor_id as u64;
+        let scene = if (event_id >> 16) as u16 != ipc::event::OPENING {
+            None
+        } else if (1..=6).any(|i| is(&format!("ERANGE_ALWAYS_CLOSED_{i}"))) {
+            Some((10, vec![range]))
+        } else if (1..=2).any(|i| is(&format!("ERANGE_SEQ_1_CLOSED_{i}"))) {
+            Some((20, vec![]))
+        } else {
+            None
+        };
+        match scene {
+            Some((scene, params)) => out.push((opcode::EVENT_PLAY, ipc::event_play(target, event_id, scene, 0, &params))),
+            None => {
+                warn!(event = format_args!("{event_id:#x}"), range, "  range event: no scene for it; ending it");
+                out.extend(finish_event(sess));
+            }
         }
         out
     }
@@ -849,13 +885,8 @@ impl Zone {
                 }
                 vec![(opcode::EVENT_PLAY, ipc::event_play(target, r.event_id, 1, 0, &[]))]
             }
-            // the argument names the event as its start did (the territory): the client looks
-            // the running event up by event, kind and argument, and with no match writes through
-            // a null entry (@0x6fd010: an access violation at 0x6fd1bb)
-            1 | 40 => vec![(
-                opcode::EVENT_FINISH,
-                ipc::event_finish(r.event_id, ipc::event::ENTER_TERRITORY, 1, sess.position.zone_id),
-            )],
+            // the welcome, the re-entry, an always-closed or a seq-1 range's scene
+            1 | 40 | 10 | 20 => finish_event(sess),
             _ => vec![],
         }
     }
@@ -968,6 +999,27 @@ impl Zone {
             }
         }
     }
+}
+
+/// Starts an event the client asked for, as it holds it pending (@0x6b9110): the player's own id
+/// (`GameObject::GetObjectId` @0xa5f080: the actor id, high half 0), the event, its kind and the
+/// argument; flags 0 (the client only stores them, @0x6f0be0 → +0x250). Kept on the session, so
+/// [`finish_event`] repeats it.
+fn start_event(sess: &mut Session, event_id: u32, kind: u8, arg: u32) -> Vec<(u16, Bytes)> {
+    sess.event = Some((event_id, kind, arg));
+    vec![(opcode::EVENT_START, ipc::event_start(sess.actor_id as u64, event_id, kind, 0, arg))]
+}
+
+/// Ends the session's event with what started it (the client finds the running event by event,
+/// kind and argument and, with no match, writes through a null entry: @0x6fd010, an access
+/// violation at 0x6fd1bb), then sends no conditions: asking for the event set one (0x10 after
+/// the Gridania opening) that only the server clears (@0xa4f150).
+fn finish_event(sess: &mut Session) -> Vec<(u16, Bytes)> {
+    let Some((event_id, kind, arg)) = sess.event.take() else { return vec![] };
+    vec![
+        (opcode::EVENT_FINISH, ipc::event_finish(event_id, kind, 1, arg)),
+        (opcode::CONDITIONS, ipc::conditions(&[])),
+    ]
 }
 
 /// What others see of a stored character: its CharaMake text gives the appearance and class,
