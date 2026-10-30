@@ -26,7 +26,8 @@ use tracing::{debug, info, warn};
 
 use crate::crypt::{Blowfish, KEY_PHRASE_LEN, lobby_key};
 use crate::ipc::{CharaEntry, IpcHeader, ServiceAccount, World, opcode};
-use crystal_common::chara::{CharaMake, ClientSelectData, starting_zone};
+use crystal_common::chara::{CharaMake, ClientSelectData};
+use crystal_data::WorldData;
 
 /// The world characters are played on.
 pub const CRYSTAL_WORLD: u16 = 1;
@@ -84,6 +85,8 @@ pub struct Lobby {
     /// Where game login sends the client: the zone server.
     zone_addr: SocketAddr,
     capture_dir: Option<PathBuf>,
+    /// The client's game data: a new character's starting town is its class's (`ClassJob`).
+    data: Option<Arc<WorldData>>,
     /// The id the next connection is given in its encryption reply (never 0: the client ignores a
     /// reply whose id is 0).
     next_connection_id: AtomicU32,
@@ -111,12 +114,19 @@ struct Making {
 }
 
 impl Lobby {
-    pub fn new(db: Databases, state: State, zone_addr: SocketAddr, capture_dir: Option<PathBuf>) -> Self {
+    pub fn new(
+        db: Databases,
+        state: State,
+        zone_addr: SocketAddr,
+        capture_dir: Option<PathBuf>,
+        data: Option<Arc<WorldData>>,
+    ) -> Self {
         Self {
             db,
             state,
             zone_addr,
             capture_dir,
+            data,
             next_connection_id: AtomicU32::new(1),
             next_content_id: AtomicU64::new(0),
         }
@@ -264,7 +274,9 @@ impl Lobby {
                     content_id: c.content_id,
                     world_id: c.world_id,
                     name: c.name.clone(),
-                    appearance: select_data(&c.name, &c.appearance, c.position.map(|p| p.zone_id as u16)).into_bytes(),
+                    appearance: self
+                        .select_data(&c.name, &c.appearance, c.position.map(|p| p.zone_id as u16))
+                        .into_bytes(),
                 });
             }
         }
@@ -317,21 +329,24 @@ impl Lobby {
         if req.step == 2 {
             let make =
                 CharaMake::parse(&appearance).ok_or_else(|| anyhow::anyhow!("unreadable CharaMake: {appearance}"))?;
+            let town = self.starting_town(make.class);
+            let Some((zone_id, [x, y, z, rotation])) = town.and_then(chara::opening_point) else {
+                anyhow::bail!("no starting town for class {} (ClassJob col 25; is [data] game set?)", make.class);
+            };
             let id = self
                 .db
                 .characters
                 .create_character(account, making.content_id, making.world_id, &making.name, &appearance, now())
                 .await?;
-            let (zone_id, [x, y, z, rotation]) = chara::opening_point(make.city);
             let start = crystal_db::Position { zone_id: zone_id as u32, x, y, z, rotation };
             self.db.characters.save_position(making.content_id, start).await?;
-            info!(id, content_id = making.content_id, name = %making.name, city = make.city, class = make.class, zone_id, "  character made");
+            info!(id, content_id = making.content_id, name = %making.name, class = make.class, town, zone_id, "  character made");
         }
         let entry = CharaEntry {
             content_id: making.content_id,
             world_id: making.world_id,
             name: making.name.clone(),
-            appearance: select_data(&making.name, &appearance, None).into_bytes(),
+            appearance: self.select_data(&making.name, &appearance, None).into_bytes(),
         };
         Ok(vec![(opcode::CHARA_MAKE_REPLY, ipc::chara_make_reply(seq, req.step, &entry))])
     }
@@ -398,14 +413,24 @@ impl Lobby {
     }
 }
 
-/// The `ClientSelectData` text for a character from its stored CharaMake text (empty when that
-/// cannot be read: the client then shows a default appearance).
-fn select_data(name: &str, chara_make: &str, zone: Option<u16>) -> String {
-    match CharaMake::parse(chara_make) {
-        Some(make) => {
-            ClientSelectData::from_chara_make(name, &make, zone.unwrap_or_else(|| starting_zone(make.city))).to_json()
+impl Lobby {
+    /// The town a class starts in (`ClassJob` col 25); `None` without game data.
+    fn starting_town(&self, class: u8) -> Option<u8> {
+        self.data.as_ref()?.starting_town(class)
+    }
+
+    /// The `ClientSelectData` text for a character from its stored CharaMake text (empty when that
+    /// cannot be read: the client then shows a default appearance). Its zone is where it stands,
+    /// else its class's opening (0 when neither is known).
+    fn select_data(&self, name: &str, chara_make: &str, zone: Option<u16>) -> String {
+        match CharaMake::parse(chara_make) {
+            Some(make) => {
+                let zone = zone
+                    .or_else(|| self.starting_town(make.class).and_then(chara::opening_point).map(|(zone, _)| zone));
+                ClientSelectData::from_chara_make(name, &make, zone.unwrap_or(0)).to_json()
+            }
+            None => String::new(),
         }
-        None => String::new(),
     }
 }
 

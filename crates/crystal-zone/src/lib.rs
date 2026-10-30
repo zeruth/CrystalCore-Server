@@ -45,7 +45,7 @@ pub const PLAYER_ACTOR_BASE: u32 = 0x1000_0000;
 pub use crystal_world::NPC_ACTOR_BASE;
 
 /// Where a character with no stored position stands: Limsa Lominsa's start (see
-/// `crystal_common::chara::start_point`).
+/// `crystal_common::chara::start_point(1)`).
 pub const DEFAULT_POSITION: Position = Position { zone_id: 129, x: -62.0, y: 18.0, z: -4.0, rotation: 0.2 };
 
 /// Events sent together in one frame, at most.
@@ -423,6 +423,7 @@ impl Zone {
                 vec![]
             }
             opcode::TALK_EVENT => self.talk_event(sess, body).await,
+            opcode::EVENT_REQUEST => self.event_request(sess, body),
             opcode::ITEM_OPERATION_REQUEST => self.item_operation(sess, body).await,
             opcode::COMMAND => {
                 self.trigger(sess, body);
@@ -794,6 +795,25 @@ impl Zone {
                 }
                 None => warn!(event = format_args!("{event_id:#x}"), "  warp: no Warp/Level row"),
             }
+        }
+        out
+    }
+
+    /// The client asks for an event it found on entering its territory (an opening's, so far).
+    /// The start must match what the client holds pending: its own id (`GameObject::vf0`
+    /// @0xa5f080: the actor id, high half 0), the event, kind 0xf and the territory. An opening
+    /// then plays its scene 0, whose script hands its first parameter to `onLogin` as the
+    /// opening's sequence (`OPENING_SEQ_0` = 0 for a new character, registered @0x6efc70).
+    fn event_request(&self, sess: &mut Session, body: &[u8]) -> Vec<(u16, Bytes)> {
+        let Some(event_id) = ipc::parse_event_request(body) else { return vec![] };
+        let territory = sess.position.zone_id;
+        info!(event = format_args!("{event_id:#x}"), territory, "  event request");
+        let target = sess.actor_id as u64;
+        // flags 0: the client only stores them (@0x6f0be0 → this+0x250); untested beyond that
+        let mut out =
+            vec![(opcode::EVENT_START, ipc::event_start(target, event_id, ipc::event::ENTER_TERRITORY, 0, territory))];
+        if (event_id >> 16) as u16 == ipc::event::OPENING {
+            out.push((opcode::EVENT_PLAY, ipc::event_play(target, event_id, 0, 0, &[0])));
         }
         out
     }

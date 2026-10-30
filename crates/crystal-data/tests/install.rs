@@ -30,6 +30,27 @@ fn territory_type_and_level_sheets() {
 }
 
 #[test]
+fn classes_start_in_their_towns() {
+    let Some(game) = game() else { return };
+    let world = WorldData::open(&game).unwrap();
+    // gladiator, pugilist, marauder, lancer, archer, conjurer, thaumaturge, arcanist
+    let towns: Vec<_> = [1, 2, 3, 4, 5, 6, 7, 26].into_iter().map(|c| world.starting_town(c)).collect();
+    assert_eq!(towns, [3, 3, 1, 2, 2, 2, 3, 1].map(Some));
+    assert_eq!(world.starting_town(8), None, "carpenter: not a starting class");
+    // each town's opening: its POS_START (Opening's variables) is the Level row the lobby uses
+    let opening = world.pack().sheet("Opening").unwrap();
+    let level = world.pack().sheet("Level").unwrap();
+    for town in 1..=3u8 {
+        let row = opening.row(0x130000 + town as u32).unwrap();
+        let at = (2..42).find(|&i| row[i].as_str() == Some("POS_START")).unwrap();
+        let start = level.row(row[at + 40].as_u64().unwrap() as u32).unwrap();
+        let (zone, point) = crystal_common::chara::opening_point(town).unwrap();
+        assert_eq!(start[9].as_u64(), Some(zone as u64), "town {town}");
+        assert!((start[0].as_f32().unwrap() as f64 - point[0]).abs() < 0.001, "town {town}");
+    }
+}
+
+#[test]
 fn lower_decks_npcs() {
     let Some(game) = game() else { return };
     let world = WorldData::open(&game).unwrap();

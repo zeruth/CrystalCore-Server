@@ -538,6 +538,15 @@ impl WorldData {
         (v > 0).then_some(v as u32)
     }
 
+    /// The town a class starts in (`ClassJob` col 25, a `Town` row: 1 Limsa Lominsa, 2 Gridania,
+    /// 3 Ul'dah); `None` for a class one cannot start as (0 there). The β's rows: gladiator,
+    /// pugilist, thaumaturge 3; marauder, arcanist 1; lancer, archer, conjurer 2; the client's
+    /// character creation showed Gridania for an archer.
+    pub fn starting_town(&self, class: u8) -> Option<u8> {
+        let v = self.sheet("ClassJob").ok()?.row(class as u32)?.get(25)?.as_i64()?;
+        (v > 0).then_some(v as u8)
+    }
+
     /// The experience a level needs to reach the next (`ParamGrow` col 0); `None` past the table.
     pub fn exp_to_next(&self, level: u8) -> Option<u32> {
         let v = self.sheet("ParamGrow").ok()?.row(level as u32)?.first()?.as_i64()?;

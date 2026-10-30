@@ -65,12 +65,35 @@ impl Server {
         let mut addrs = HashMap::new();
         let mut lobby_hosts = Vec::new();
         let mut worlds = Vec::new();
+        // the client's game data, read once for every service that needs it
+        let game_data = match &config.data.game {
+            Some(game) => {
+                let mut overrides = Overrides::default();
+                for o in db.world.exd_overrides(BETA_PATCH).await.context("exd overrides")? {
+                    overrides.add(&o.sheet, o.row_id, o.col as usize, o.value);
+                }
+                let count = overrides.len();
+                let world = WorldData::open_with(game, overrides)
+                    .with_context(|| format!("game data in {}", game.display()))?;
+                info!(game = %game.display(), overrides = count, "game data");
+                Some(Arc::new(world))
+            }
+            None => {
+                warn!("no game data configured ([data] game): zone exits are off, characters cannot be made");
+                None
+            }
+        };
         for role in &config.roles {
             match role {
                 Role::Lobby => {
                     let c = &config.lobby;
-                    let lobby =
-                        Arc::new(Lobby::new(db.clone(), state.clone(), config.zone.bind, c.capture_dir.clone()));
+                    let lobby = Arc::new(Lobby::new(
+                        db.clone(),
+                        state.clone(),
+                        config.zone.bind,
+                        c.capture_dir.clone(),
+                        game_data.clone(),
+                    ));
                     let hosts = match c.bind_2 {
                         None => vec![(c.bind, Host::Both)],
                         Some(bind_2) => vec![(c.bind, Host::One(1)), (bind_2, Host::One(2))],
@@ -93,23 +116,7 @@ impl Server {
                     }
                 }
                 Role::Zone => {
-                    let world = match &config.data.game {
-                        Some(game) => {
-                            let mut overrides = Overrides::default();
-                            for o in db.world.exd_overrides(BETA_PATCH).await.context("exd overrides")? {
-                                overrides.add(&o.sheet, o.row_id, o.col as usize, o.value);
-                            }
-                            let count = overrides.len();
-                            let world = WorldData::open_with(game, overrides)
-                                .with_context(|| format!("game data in {}", game.display()))?;
-                            info!(game = %game.display(), overrides = count, "game data");
-                            Some(Arc::new(world))
-                        }
-                        None => {
-                            warn!("no game data configured ([data] game): zone exits are off");
-                            None
-                        }
-                    };
+                    let world = game_data.clone();
                     let listener = Listener::bind("zone", config.zone.bind).await.context("zone")?;
                     addrs.insert(Role::Zone, listener.local_addr()?);
                     // a new server's world gets the repository's starting content

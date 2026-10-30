@@ -13,3 +13,6 @@ flate2.workspace = true
 parking_lot.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
+
+[dev-dependencies]
+crystal-common.workspace = true

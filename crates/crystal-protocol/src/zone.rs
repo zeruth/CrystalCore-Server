@@ -101,8 +101,18 @@ pub mod opcode {
     /// @8. The client waits for the event to start and end ([`EVENT_START`], [`EVENT_FINISH`]);
     /// answered with neither, it hangs.
     pub const TALK_EVENT: u16 = 0x1c2;
+    /// Up (0x18 bytes): the client asks to start an event it found for itself, the event id u32
+    /// @0. Sent by @0x70dfa0 when the territory's handlers offer event kind 0xf (with the
+    /// territory, `ReadInitZone` @0xab56a0 → @0x6ebf80, as its argument) without flag 2; the
+    /// client then waits with the event pending (event, its own `GameObject::vf0` id, kind,
+    /// argument) until an [`EVENT_START`] that matches all of them (@0x6b9110). Seen after an
+    /// opening territory loads: 0x130001 in 181.
+    pub const EVENT_REQUEST: u16 = 0x1c6;
     /// Down: an event starts; see [`super::event_start`] (case 0x65 → @0x6f0be0).
     pub const EVENT_START: u16 = 0x1cc;
+    /// Down: a scene of an event plays; see [`super::event_play`] (case 0x64 → @0xa50d10 →
+    /// @0x6fcf60). 0x1c3 carries up to 2 parameters; 0x1c4-0x1ca 4, 8, 16, 32, 64, 128, 255.
+    pub const EVENT_PLAY: u16 = 0x1c3;
     /// Down: an event ends and frees the player; see [`super::event_finish`] (case 0x66 →
     /// @0x6fd010).
     pub const EVENT_FINISH: u16 = 0x1cd;
@@ -912,8 +922,35 @@ pub mod trigger {
 pub mod event {
     pub const QUEST: u16 = 0x0001;
     pub const WARP: u16 = 0x0002;
+    /// The opening's handlers (the `Opening` sheet's rows, 0x130001-0x130003).
+    pub const OPENING: u16 = 0x0013;
     /// The event kind `EVENT_START` and `EVENT_FINISH` carry for talking.
     pub const TALK: u8 = 1;
+    /// The kind the client gives an event a territory's handlers offer on entering it
+    /// (@0x70dfa0 sets 0xf before asking them).
+    pub const ENTER_TERRITORY: u8 = 0xf;
+}
+
+/// [`opcode::EVENT_REQUEST`]'s event id.
+pub fn parse_event_request(b: &[u8]) -> Option<u32> {
+    u32_at(b, 0)
+}
+
+/// [`opcode::EVENT_PLAY`] with up to 2 parameters (the dispatcher passes @0, @4, @8, @0xc as
+/// u16, @0x10, @0x18 as the parameters' address, @0x14 as their count): the target u64 @0, the
+/// event id @8, the scene @0xc, flags @0x10, the parameter count @0x14, the parameters u32 @0x18.
+pub fn event_play(target: u64, event_id: u32, scene: u16, flags: u32, params: &[u32]) -> Bytes {
+    assert!(params.len() <= 2, "EVENT_PLAY (0x1c3) carries 2 parameters at most");
+    let mut b = BytesMut::zeroed(0x20);
+    b[0..8].copy_from_slice(&target.to_le_bytes());
+    b[8..0xc].copy_from_slice(&event_id.to_le_bytes());
+    b[0xc..0xe].copy_from_slice(&scene.to_le_bytes());
+    b[0x10..0x14].copy_from_slice(&flags.to_le_bytes());
+    b[0x14] = params.len() as u8;
+    for (i, p) in params.iter().enumerate() {
+        b[0x18 + i * 4..0x1c + i * 4].copy_from_slice(&p.to_le_bytes());
+    }
+    b.freeze()
 }
 
 /// [`opcode::TALK_EVENT`]'s target and event id.
@@ -1405,6 +1442,19 @@ mod tests {
         assert_eq!((start.len(), &start[..8], &start[8..0xc], start[0xc]), (0x18, &up[..8], &up[8..0xc], 1));
         let finish = event_finish(event_id, event::TALK, 1, 0);
         assert_eq!((&finish[..4], finish[4], finish[5]), (&up[8..0xc], 1, 1));
+    }
+
+    #[test]
+    fn the_opening_asks_for_its_event() {
+        // a new Limsa Lominsa character, once 181 loaded, as the client sent it
+        let up = hex::decode("0100130000000000").unwrap();
+        let event_id = parse_event_request(&up).unwrap();
+        assert_eq!((event_id, (event_id >> 16) as u16), (0x0013_0001, event::OPENING));
+        let play = event_play(0x1000_0008, event_id, 0, 0, &[7]);
+        assert_eq!(play.len(), 0x20);
+        assert_eq!(u64::from_le_bytes(play[..8].try_into().unwrap()), 0x1000_0008);
+        assert_eq!((&play[8..0xc], &play[0xc..0xe], play[0x14]), (&up[..4], &[0u8, 0][..], 1));
+        assert_eq!(&play[0x18..0x1c], &7u32.to_le_bytes());
     }
 
     #[test]

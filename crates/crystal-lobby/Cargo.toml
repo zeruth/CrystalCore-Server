@@ -11,6 +11,7 @@ license.workspace = true
 anyhow.workspace = true
 bytes.workspace = true
 crystal-common.workspace = true
+crystal-data.workspace = true
 crystal-db.workspace = true
 crystal-net.workspace = true
 crystal-state.workspace = true

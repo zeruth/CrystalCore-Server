@@ -19,10 +19,11 @@ pub struct CharaMake {
     pub guardian: u8,
     pub birth_month: u8,
     pub birth_day: u8,
-    /// The starting class (`ClassJob` row).
+    /// The starting class (`ClassJob` row); its town is where the character starts.
     pub class: u8,
-    /// The starting city (1 Limsa Lominsa, 2 Gridania, 3 Ul'dah).
-    pub city: u8,
+    /// The last field (the serializer writes it from +0x23, @0xe5ea60 case 6). Not the starting
+    /// town: an archer made in the β client, which showed Gridania (town 2), carried 1.
+    pub field_6: u8,
 }
 
 pub const CHARA_MAKE_CLASS_ID: u32 = 0x76;
@@ -60,7 +61,7 @@ impl CharaMake {
             birth_month: byte(3)?,
             birth_day: byte(4)?,
             class: byte(5)?,
-            city: byte(6)?,
+            field_6: byte(6)?,
         })
     }
 }
@@ -137,33 +138,32 @@ impl ClientSelectData {
     }
 }
 
-/// Where a new character first stands, by its starting city (`Town` row: 1 Limsa Lominsa, 2
-/// Gridania, 3 Ul'dah): the city's opening, as the β's `Opening` sheet places it. Each opening row
-/// (0x130000 + town, its script named for the town) names `POS_START` among its variables, whose
-/// value is a `Level` row: 4101800 in 181 (`s1t1_opening`), 2299848 in 183 (`f1t1_opening`),
-/// 4101669 in 182 (`w1t1_opening`); x, y, z, rotation are that row's cols 0-3.
-pub fn opening_point(city: u8) -> (u16, [f64; 4]) {
-    match city {
-        2 => (183, [129.8, -13.0091, 149.095, -1.96298]),
-        3 => (182, [42.6959, 4.0, -149.344, -1.83566]),
-        _ => (181, [-53.7963, 20.2096, 0.000325262, 1.56988]),
+/// Where a new character first stands, by its starting town (`Town` row: 1 Limsa Lominsa, 2
+/// Gridania, 3 Ul'dah; a class's is `ClassJob` col 25): the town's opening, as the β's `Opening`
+/// sheet places it. Each opening row (0x130000 + town, its script named for the town) names
+/// `POS_START` among its variables, whose value is a `Level` row: 4101800 in 181 (`s1t1_opening`),
+/// 2299848 in 183 (`f1t1_opening`), 4101669 in 182 (`w1t1_opening`); x, y, z, rotation are that
+/// row's cols 0-3. `None` for any other town.
+pub fn opening_point(town: u8) -> Option<(u16, [f64; 4])> {
+    match town {
+        1 => Some((181, [-53.7963, 20.2096, 0.000325262, 1.56988])),
+        2 => Some((183, [129.8, -13.0091, 149.095, -1.96298])),
+        3 => Some((182, [42.6959, 4.0, -149.344, -1.83566])),
+        _ => None,
     }
 }
 
-/// A point in the starting city itself (x, y, z, rotation), past its opening. The points stand
+/// A point in a starting town itself (x, y, z, rotation), past its opening. The points stand
 /// beside event NPCs placed in the client's `Level` sheet (rows 4069046 in 129 Limsa Lominsa Lower
 /// Decks, 1140471 in 132 New Gridania, 2360563 in 130 Ul'dah - Steps of Nald), so on walkable
-/// ground.
-pub fn start_point(city: u8) -> (u16, [f64; 4]) {
-    match city {
-        2 => (132, [27.0, -8.0, 108.0, 1.6]),
-        3 => (130, [-86.0, 2.55, -51.0, 1.5]),
-        _ => (129, [-62.0, 18.0, -4.0, 0.2]),
+/// ground. `None` for any other town.
+pub fn start_point(town: u8) -> Option<(u16, [f64; 4])> {
+    match town {
+        1 => Some((129, [-62.0, 18.0, -4.0, 0.2])),
+        2 => Some((132, [27.0, -8.0, 108.0, 1.6])),
+        3 => Some((130, [-86.0, 2.55, -51.0, 1.5])),
+        _ => None,
     }
-}
-
-pub fn starting_zone(city: u8) -> u16 {
-    start_point(city).0
 }
 
 #[cfg(test)]
@@ -178,14 +178,14 @@ mod tests {
         let m = CharaMake::parse(MADE).unwrap();
         assert_eq!(&m.customize[..5], &[1, 0, 1, 50, 2]);
         assert_eq!(m.customize[25], 36);
-        assert_eq!((m.voice, m.guardian, m.birth_month, m.birth_day, m.class, m.city), (52, 9, 3, 21, 3, 1));
+        assert_eq!((m.voice, m.guardian, m.birth_month, m.birth_day, m.class, m.field_6), (52, 9, 3, 21, 3, 1));
         assert_eq!(CharaMake::parse(r#"{"classid":116,"content":[]}"#), None);
     }
 
     #[test]
     fn client_select_data_shape() {
         let m = CharaMake::parse(MADE).unwrap();
-        let json = ClientSelectData::from_chara_make("Null Crystal", &m, starting_zone(m.city)).to_json();
+        let json = ClientSelectData::from_chara_make("Null Crystal", &m, 129).to_json();
         let v: Value = serde_json::from_str(&json).unwrap();
         assert_eq!(v["classid"], 116);
         assert_eq!(v["classname"], "ClientSelectData");

@@ -542,6 +542,7 @@ name = "crystal-data"
 version = "0.1.0"
 dependencies = [
  "crc32fast",
+ "crystal-common",
  "flate2",
  "parking_lot",
  "thiserror 2.0.21",
@@ -569,6 +570,7 @@ dependencies = [
  "anyhow",
  "bytes",
  "crystal-common",
+ "crystal-data",
  "crystal-db",
  "crystal-net",
  "crystal-state",
