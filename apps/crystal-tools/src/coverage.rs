@@ -134,6 +134,8 @@ fn named_rows(data: &WorldData, sheet: &str, name_col: Option<usize>) -> Vec<(u3
 
 /// The quest definitions, from the repository's root.
 const QUEST_DEFS: &str = "data/672261/quests";
+/// Where gathering points stand, from the repository's root.
+const GATHERING: &str = "data/672261/gathering.json";
 
 pub async fn run(data: &WorldData, db: &Databases, out: &Path) -> anyhow::Result<()> {
     let mut domains = Vec::new();
@@ -342,17 +344,33 @@ pub async fn run(data: &WorldData, db: &Databases, out: &Path) -> anyhow::Result
     ];
     domains.push(recipes);
 
-    let mut gathering =
-        Domain::new("Items & economy", "Gathering points", "β GatheringPoint/GatheringPointBase sheets; positions in layouts (empty in the β's gathering layers)");
-    for (id, _, _) in named_rows(data, "GatheringPoint", None) {
-        gathering.add(id, format!("GatheringPoint {id}"), Status::NoSource, "no position in the β's layouts");
+    let mut gathering = Domain::new(
+        "Items & economy",
+        "Gathering points",
+        "β GatheringPoint/GatheringPointBase sheets; spawned by the server as objects (down 0x19d kind 6, @0xa53340): the β's planlive gathering layers are empty; positions in data/672261/gathering.json",
+    );
+    let placed: HashMap<u32, String> = crystal_common::gathering::Placements::load(Path::new(GATHERING))
+        .map(|f| f.points.into_iter().map(|p| (p.point, p.source)).collect())
+        .unwrap_or_default();
+    for (id, _, r) in named_rows(data, "GatheringPoint", None) {
+        if u64_at(&r, 1) == 0 {
+            continue;
+        }
+        match placed.get(&id) {
+            // shown where the data puts it; the area is a fact, the spot in it a guess, and
+            // gathering itself (the event, the items) is not done yet
+            Some(source) => gathering.add(id, format!("GatheringPoint {id}"), Status::Partial, format!("placed ({source}), base {}; gathering not yet", u64_at(&r, 1))),
+            None => gathering.add(id, format!("GatheringPoint {id}"), Status::NoSource, format!("base {}: no area for it in any source yet", u64_at(&r, 1))),
+        }
     }
     for (id, _, _) in named_rows(data, "FishingSpot", None) {
         gathering.add(format!("fish {id}"), format!("FishingSpot {id}"), Status::Pending, "");
     }
     gathering.plan = vec![
-        "Gathering node positions from a β-era source (2.0 captures or dated databases); node respawn by Eorzea time",
-        "Gathering and fishing actions and their packets",
+        "Gathering: the event a gathering point starts (GatheringEventHandler), its items from GatheringPointBase, attempts and GP as 2.0 had them (GP only as a gatherer, reset on class change: patch 2.15's notes)",
+        "Areas for the 108 bases no source places (today's data repurposed them): dated 2.0 maps or guides; each territory's planlive layer names give its node levels",
+        "Which of a base's points show at once, and respawn; positions inside each area corrected by play",
+        "Fishing: FishingSpot positions are in the β's sheet (x/z); the fishing actions and packets",
     ];
     domains.push(gathering);
 

@@ -298,29 +298,36 @@ impl WorldData {
         Ok(layout)
     }
 
-    /// Whether `territory` is a `TerritoryType` row with a layout folder.
-    /// The names of every layer in `territory`'s layout files (empty layers too: later patches
-    /// fill layers the β already has, and add new ones).
-    pub fn layer_names(&self, territory: u16) -> Result<Arc<HashSet<String>>> {
-        if let Some(n) = self.layer_names.lock().get(&territory) {
-            return Ok(n.clone());
-        }
+    /// Every layout file `territory`'s level folder has, by file name, as read (files in an older
+    /// format left out).
+    pub fn layout_files(&self, territory: u16) -> Result<Vec<(&'static str, Layout)>> {
         let folder = self
             .territories
             .get(&(territory as u32))
             .ok_or_else(|| DataError::NotFound(format!("TerritoryType {territory}")))?;
-        let mut names = HashSet::new();
+        let mut files = Vec::new();
         for file in ALL_LAYOUT_FILES {
             let path = format!("{folder}/{file}");
             match self.pack.read(&path) {
                 Ok(d) => match Layout::parse(&path, &d) {
-                    Ok(l) => names.extend(l.layers.into_iter().map(|l| l.name)),
+                    Ok(l) => files.push((file, l)),
                     Err(e) => debug!("{e}"),
                 },
                 Err(DataError::NotFound(_)) => {}
                 Err(e) => return Err(e),
             }
         }
+        Ok(files)
+    }
+
+    /// The names of every layer in `territory`'s layout files (empty layers too: later patches
+    /// fill layers the β already has, and add new ones).
+    pub fn layer_names(&self, territory: u16) -> Result<Arc<HashSet<String>>> {
+        if let Some(n) = self.layer_names.lock().get(&territory) {
+            return Ok(n.clone());
+        }
+        let names: HashSet<String> =
+            self.layout_files(territory)?.into_iter().flat_map(|(_, l)| l.layers).map(|l| l.name).collect();
         let names = Arc::new(names);
         self.layer_names.lock().insert(territory, names.clone());
         Ok(names)

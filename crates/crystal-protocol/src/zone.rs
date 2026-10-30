@@ -165,6 +165,23 @@ pub mod opcode {
     /// Down: another character moves; see [`super::ActorMove`] (case 0x3e → @0xa55ae0, which
     /// queues the body under the segment's source; @0xa55030 plays the queue).
     pub const ACTOR_MOVE: u16 = 0x192;
+    /// Down: an object that is not a character (a gathering point, an event object) appears in
+    /// one of the client's 40 object slots; see [`super::create_object`] (case 0x46 →
+    /// @0xa53340; the opcode's case read from the dispatcher's byte table @0xba6358).
+    pub const CREATE_OBJECT: u16 = 0x19d;
+    /// Down: the object in a slot goes away; see [`super::delete_object`] (case 0x47 → @0xa4ecc0).
+    pub const DELETE_OBJECT: u16 = 0x19e;
+}
+
+/// The kinds of [`create_object`] (@0xa53340's switch on byte 1).
+pub mod object {
+    /// A gathering point: its id is its `GatheringPoint` row (@0xab2d80 looks it up at
+    /// id - 30000); built by @0xae3230 (`GatheringPointObject`).
+    pub const GATHERING_POINT: u8 = 6;
+    /// An event object (@0xae3330).
+    pub const EVENT_OBJECT: u8 = 7;
+    /// How many object slots the client has (@0xae3230 takes 0-0x27).
+    pub const SLOTS: u8 = 40;
 }
 
 /// Chat types: `LogKind` rows. The chat log drops a type every tab filters (@0x43b6e0), and the
@@ -1123,6 +1140,36 @@ pub fn event_finish(event_id: u32, kind: u8, result: u8, arg: u32) -> Bytes {
     b.freeze()
 }
 
+/// [`opcode::CREATE_OBJECT`]'s body, 0x38 bytes, as @0xa53340 reads it for a gathering point:
+///
+/// ```text
+/// 0x00  u8      slot (0-39)
+/// 0x01  u8      kind (object::GATHERING_POINT, object::EVENT_OBJECT)
+/// 0x04  u32     id (a gathering point's GatheringPoint row)
+/// 0x08  u32     (to the object, @0xa5f450; left 0)
+/// 0x0c  u32     (to the object, @0xa5f430; an event object's layout id; left 0)
+/// 0x22  u16     rotation (u16 / 65535 * 2pi - pi)
+/// 0x30  u16 x3  position (see coordinate_to_u16)
+/// ```
+pub fn create_object(slot: u8, kind: u8, id: u32, rotation: f32, pos: [f32; 3]) -> Bytes {
+    let mut b = BytesMut::zeroed(0x38);
+    (b[0], b[1]) = (slot, kind);
+    b[4..8].copy_from_slice(&id.to_le_bytes());
+    let turn = ((rotation + std::f32::consts::PI) / std::f32::consts::TAU * 65535.0).round();
+    b[0x22..0x24].copy_from_slice(&(turn.clamp(0.0, 65535.0) as u16).to_le_bytes());
+    for (i, v) in pos.iter().enumerate() {
+        b[0x30 + 2 * i..0x32 + 2 * i].copy_from_slice(&coordinate_to_u16(*v).to_le_bytes());
+    }
+    b.freeze()
+}
+
+/// [`opcode::DELETE_OBJECT`]'s body: the slot @0.
+pub fn delete_object(slot: u8) -> Bytes {
+    let mut b = BytesMut::zeroed(8);
+    b[0] = slot;
+    b.freeze()
+}
+
 /// The slot and actor id of a [`despawn`] body.
 pub fn parse_despawn(b: &[u8]) -> Option<(u8, u32)> {
     Some((*b.first()?, u32_at(b, 4)?))
@@ -1349,6 +1396,20 @@ pub fn parse_init_zone(b: &[u8]) -> Option<(u16, [f32; 3])> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn gathering_point_object_layout() {
+        let b = create_object(3, object::GATHERING_POINT, 30005, 0.0, [13.1, 0.6, -35.9]);
+        assert_eq!(b.len(), 0x38);
+        assert_eq!((b[0], b[1]), (3, 6));
+        assert_eq!(u32_at(&b, 4), Some(30005));
+        // rotation 0 is the middle of the turn
+        assert_eq!(u16_at(&b, 0x22), Some(32768));
+        let x = coordinate_from_u16(u16_at(&b, 0x30).unwrap());
+        let z = coordinate_from_u16(u16_at(&b, 0x34).unwrap());
+        assert!((x - 13.1).abs() < 0.02 && (z + 35.9).abs() < 0.02, "{x} {z}");
+        assert_eq!(&delete_object(3)[..1], &[3]);
+    }
 
     #[test]
     fn init_zone_layout() {

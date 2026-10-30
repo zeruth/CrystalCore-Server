@@ -169,6 +169,15 @@ impl Server {
                         _ => HashMap::new(),
                     };
                     info!(quests = quests.len(), "quest definitions");
+                    // where gathering points stand (server data: the β's layouts have none)
+                    let gathering = match config.data.seed.as_ref().map(|s| s.join(SEED_BUILD).join("gathering.json")) {
+                        Some(file) if file.exists() => crystal_common::gathering::Placements::load(&file)
+                            .map_err(anyhow::Error::msg)
+                            .context("gathering points")?
+                            .points,
+                        _ => Vec::new(),
+                    };
+                    info!(points = gathering.len(), "gathering points");
                     let zone = Arc::new(
                         Zone::new(
                             db.clone(),
@@ -178,7 +187,8 @@ impl Server {
                             commands,
                             config.zone.capture_dir.clone(),
                         )
-                        .with_quests(quests),
+                        .with_quests(quests)
+                        .with_gathering(gathering),
                     );
                     worlds.push(territories);
                     tasks.spawn(crystal_net::serve(listener, shutdown.clone(), move |stream, peer, stop| {

@@ -34,6 +34,7 @@ const PLAYER_ACTOR_BASE: u32 = 0x1000_0000;
 mod coverage;
 mod derive_quests;
 mod exd;
+mod gathering_nodes;
 mod import;
 mod prune;
 mod quest;
@@ -90,6 +91,13 @@ enum Command {
         paths: Vec<String>,
         #[arg(long, default_value = ".")]
         out: PathBuf,
+    },
+    /// A territory's layout files: each layer's objects counted by type, with a few instance ids
+    /// and positions per type (`--kind` lists every object of that type).
+    Layout {
+        territory: u16,
+        #[arg(long)]
+        kind: Option<u32>,
     },
     /// A quest as the β has it: its row's listeners, to-dos and rewards, its script's scenes and
     /// what each calls; `--stats` tallies what every quest script calls.
@@ -164,6 +172,13 @@ enum ImportCommand {
     /// has none yet (tagged `derived`).
     DeriveQuests {
         #[arg(long, default_value = "data/672261/quests")]
+        out: PathBuf,
+    },
+    /// Places the β's gathering points from Teamcraft's `nodes.json` (each base's map
+    /// coordinates; each point within it a guess, tagged so).
+    GatheringNodes {
+        nodes: PathBuf,
+        #[arg(long, default_value = "data/672261/gathering.json")]
         out: PathBuf,
     },
 }
@@ -276,6 +291,9 @@ async fn main() -> anyhow::Result<()> {
                     let written = derive_quests::run(&data, &out)?;
                     println!("{} derived quest definitions written to {}", written.len(), out.display());
                 }
+                ImportCommand::GatheringNodes { nodes, out } => {
+                    gathering_nodes::run(&data, &db, &nodes, &out).await?;
+                }
             }
             db.close().await;
         }
@@ -304,6 +322,28 @@ async fn main() -> anyhow::Result<()> {
             let data = game_data(&config, Some(&db), false).await?;
             coverage::run(&data, &db, &out).await?;
             db.close().await;
+        }
+        Command::Layout { territory, kind } => {
+            let data = game_data(&config, None, true).await?;
+            for (file, layout) in data.layout_files(territory)? {
+                for layer in &layout.layers {
+                    let mut by_kind: std::collections::BTreeMap<u32, Vec<&crystal_data::Object>> = Default::default();
+                    for o in &layer.objects {
+                        by_kind.entry(o.kind).or_default().push(o);
+                    }
+                    let counts: Vec<String> = by_kind.iter().map(|(k, v)| format!("{k}×{}", v.len())).collect();
+                    println!("{file} layer {} \"{}\": {}", layer.id, layer.name, counts.join(" "));
+                    for (k, objects) in &by_kind {
+                        let all = kind == Some(*k);
+                        for o in objects.iter().take(if all { usize::MAX } else { 2 }) {
+                            println!(
+                                "    type {k} id {} \"{}\" at ({:.1}, {:.1}, {:.1})",
+                                o.id, o.name, o.pos[0], o.pos[1], o.pos[2]
+                            );
+                        }
+                    }
+                }
+            }
         }
         Command::File { paths, out } => {
             let data = game_data(&config, None, true).await?;

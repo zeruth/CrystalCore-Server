@@ -25,7 +25,16 @@ source had that the format cannot say is kept in each file's `review`. `crystal-
 quests.rs` runs them; the quest's six variable bytes are kept (`quests.vars`) and sent (0x1e0/
 0x1e1). Only Coming to Gridania has been played through with them.
 
-Next: play the engine (Coming to Gridania again, then a Limsa and an Ul'dah first quest; the
+Research (2026-10-30, local in `.reference/era-2.0/research.md`): Square's 2.1-2.57 patch notes
+saved and read backwards for 2.0's values (checked: the β's recasts are 2.1's "before" ones);
+the β carries 418 of the 1105 quests in its id range (the rest unnamed and scriptless, so not
+playable in this client); `questlines.md` maps its lines (prerequisites `Quest` cols 7-10,
+level col 3, genre col 1384). Gathering points are server objects in the β (down 0x19d kind 6,
+the `GatheringPoint` row; its layouts' gathering layers are empty): 353 placed from Teamcraft's
+areas (`data/672261/gathering.json`, tagged guesses inside each area) and shown in range in the
+40 object slots (`crystal-zone/src/objects.rs`); gathering itself is next.
+
+Next: see a gathering point in the client (Central Shroud), then play the engine (Coming to Gridania again, then a Limsa and an Ul'dah first quest; the
 Ul'dah wall fix, 241ac16, is unseen), the review notes (battle, item and event-action steps),
 the event-action cast bar and the notice packet (both logged only), quest experience (the β's
 formula), the pet hotbar showing for no reason (catch `F_008dc9e0` with `bptrace.py` while

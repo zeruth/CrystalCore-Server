@@ -11,6 +11,7 @@
 //! [`crystal_protocol::zone`] (re-exported as [`ipc`]).
 
 pub mod commands;
+mod objects;
 mod quests;
 
 pub use crystal_protocol::zone as ipc;
@@ -23,6 +24,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use bytes::Bytes;
 use crystal_common::chara::CharaMake;
+use crystal_common::gathering::Placement;
 use crystal_common::quest::QuestDef;
 use crystal_data::WorldData;
 use crystal_db::{Character, Databases, InventoryRow, Position};
@@ -67,6 +69,8 @@ pub struct Zone {
     capture_dir: Option<PathBuf>,
     /// The quest definitions (`data/<build>/quests`), by quest id.
     quests: Arc<HashMap<u32, QuestDef>>,
+    /// Where gathering points stand (`data/<build>/gathering.json`), by territory.
+    gathering: Arc<HashMap<u16, Vec<Placement>>>,
 }
 
 /// How often a moving player's position is written to the database (and once more when the zone
@@ -115,6 +119,10 @@ struct Session {
     quests: Vec<ipc::QuestSlot>,
     /// The quests it has completed.
     completed: Vec<u32>,
+    /// The client's object slots: the gathering point in each.
+    objects: [Option<u32>; ipc::object::SLOTS as usize],
+    /// Where the player stood when the objects were last worked out.
+    objects_at: Option<[f32; 3]>,
 }
 
 impl Session {
@@ -150,6 +158,8 @@ impl Session {
             events: Vec::new(),
             quests: Vec::new(),
             completed: Vec::new(),
+            objects: [None; ipc::object::SLOTS as usize],
+            objects_at: None,
         }
     }
 
@@ -186,7 +196,17 @@ impl Zone {
         commands: Commands,
         capture_dir: Option<PathBuf>,
     ) -> Self {
-        Self { db, state, data, world, commands, capture_dir, quests: Arc::default() }
+        Self { db, state, data, world, commands, capture_dir, quests: Arc::default(), gathering: Arc::default() }
+    }
+
+    /// Where the gathering points the zone shows stand.
+    pub fn with_gathering(mut self, points: Vec<Placement>) -> Self {
+        let mut by_territory: HashMap<u16, Vec<Placement>> = HashMap::new();
+        for p in points {
+            by_territory.entry(p.territory).or_default().push(p);
+        }
+        self.gathering = Arc::new(by_territory);
+        self
     }
 
     /// The quest definitions the zone runs.
@@ -413,6 +433,9 @@ impl Zone {
                     if sess.last_save.elapsed() >= POSITION_SAVE_INTERVAL {
                         self.save_position(sess).await;
                     }
+                    if sess.entry.is_some() {
+                        return self.objects_moved(sess);
+                    }
                 }
                 vec![]
             }
@@ -535,7 +558,9 @@ impl Zone {
                     .await;
                 // An empty block list, for the client's request key 0 (it has made none yet):
                 // without it the client drops everyone's chat as blocked.
-                vec![(opcode::SPAWN, me.to_bytes()), (opcode::BLACKLIST, ipc::blacklist(0, 0))]
+                let mut out = vec![(opcode::SPAWN, me.to_bytes()), (opcode::BLACKLIST, ipc::blacklist(0, 0))];
+                out.extend(self.objects_entered(sess));
+                out
             }
             opcode::BLACKLIST => {
                 let (index, key) = ipc::parse_blacklist_request(body).unwrap_or((0, 0));

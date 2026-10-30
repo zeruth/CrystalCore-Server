@@ -1,0 +1,4245 @@
+{
+  "notes": [
+    "Made by `crystal-tools import gathering-nodes` from Teamcraft's nodes.json (today's client).",
+    "Fact: the points and their bases (the β's GatheringPoint); the base's area (Teamcraft's map x/y and map, through the β's Map row: size factor col 6, territory col 12).",
+    "Guess: each point on a circle of the base's radius around the area's centre; its height from the nearest battle NPC spawn."
+  ],
+  "points": [
+    {
+      "point": 30001,
+      "base": 153,
+      "territory": 141,
+      "pos": [
+        -63.386353,
+        0.108709,
+        208.79614
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30002,
+      "base": 154,
+      "territory": 140,
+      "pos": [
+        320.74536,
+        67.06453,
+        208.79614
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30003,
+      "base": 155,
+      "territory": 141,
+      "pos": [
+        -14.936523,
+        12.51637,
+        53.947266
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30004,
+      "base": 159,
+      "territory": 140,
+      "pos": [
+        206.85657,
+        51.62122,
+        -140.36292
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30005,
+      "base": 11,
+      "territory": 148,
+      "pos": [
+        130.93079,
+        2.679112,
+        -179.32489
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30008,
+      "base": 19,
+      "territory": 148,
+      "pos": [
+        -75.36774,
+        -4.080153,
+        -107.89465
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30009,
+      "base": 21,
+      "territory": 148,
+      "pos": [
+        103.95703,
+        -11.80003,
+        112.39026
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30010,
+      "base": 30,
+      "territory": 134,
+      "pos": [
+        108.44385,
+        64.48271,
+        -118.38446
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30011,
+      "base": 10,
+      "territory": 135,
+      "pos": [
+        573.4762,
+        73.50405,
+        -270.23608
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30012,
+      "base": 11,
+      "territory": 148,
+      "pos": [
+        89.4718,
+        -6.334397,
+        -122.2615
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30013,
+      "base": 11,
+      "territory": 148,
+      "pos": [
+        22.389763,
+        3.373573,
+        -144.05777
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30014,
+      "base": 11,
+      "territory": 148,
+      "pos": [
+        22.38977,
+        6.489012,
+        -214.59201
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30015,
+      "base": 11,
+      "territory": 148,
+      "pos": [
+        89.47182,
+        10.93507,
+        -236.38828
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30016,
+      "base": 12,
+      "territory": 154,
+      "pos": [
+        463.60583,
+        -2.447129,
+        256.74927
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30017,
+      "base": 12,
+      "territory": 154,
+      "pos": [
+        403.60583,
+        -4.161774,
+        316.74927
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30018,
+      "base": 12,
+      "territory": 154,
+      "pos": [
+        343.60583,
+        -6.402293,
+        256.74927
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30019,
+      "base": 13,
+      "territory": 154,
+      "pos": [
+        297.75708,
+        -14.46809,
+        295.21167
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30020,
+      "base": 13,
+      "territory": 154,
+      "pos": [
+        248.75708,
+        -24.67388,
+        344.21167
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30021,
+      "base": 13,
+      "territory": 154,
+      "pos": [
+        199.75708,
+        -26.65499,
+        295.21167
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30022,
+      "base": 10,
+      "territory": 135,
+      "pos": [
+        536.4762,
+        69.671,
+        -233.23608
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30023,
+      "base": 10,
+      "territory": 135,
+      "pos": [
+        499.4762,
+        72.27341,
+        -270.23608
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30024,
+      "base": 15,
+      "territory": 154,
+      "pos": [
+        370.19702,
+        -2.280119,
+        146.85657
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30025,
+      "base": 15,
+      "territory": 154,
+      "pos": [
+        310.19702,
+        -21.74698,
+        206.85657
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30026,
+      "base": 15,
+      "territory": 154,
+      "pos": [
+        250.19702,
+        -27.76764,
+        146.85657
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30027,
+      "base": 16,
+      "territory": 148,
+      "pos": [
+        300.76392,
+        -5.840064,
+        -54.44684
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30028,
+      "base": 16,
+      "territory": 148,
+      "pos": [
+        241.76392,
+        -11.79301,
+        4.5531616
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30029,
+      "base": 16,
+      "territory": 148,
+      "pos": [
+        182.76392,
+        -7.461709,
+        -54.446842
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30030,
+      "base": 16,
+      "territory": 148,
+      "pos": [
+        241.76392,
+        -11.79301,
+        -113.44684
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30031,
+      "base": 17,
+      "territory": 148,
+      "pos": [
+        3.5551758,
+        -11.8,
+        -63.43805
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30032,
+      "base": 17,
+      "territory": 148,
+      "pos": [
+        -56.444828,
+        1.0,
+        -3.4380493
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30033,
+      "base": 17,
+      "territory": 148,
+      "pos": [
+        -116.444824,
+        -3.524223,
+        -63.438053
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30034,
+      "base": 19,
+      "territory": 148,
+      "pos": [
+        -116.82672,
+        2.062697,
+        -50.83126
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30035,
+      "base": 19,
+      "territory": 148,
+      "pos": [
+        -183.90875,
+        2.362727,
+        -72.62754
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30036,
+      "base": 19,
+      "territory": 148,
+      "pos": [
+        -183.90875,
+        46.94487,
+        -143.16177
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30037,
+      "base": 21,
+      "territory": 148,
+      "pos": [
+        62.498047,
+        -11.89312,
+        169.45364
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30038,
+      "base": 36,
+      "territory": 146,
+      "pos": [
+        -117.83801,
+        -14.74468,
+        -151.85175
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30039,
+      "base": 21,
+      "territory": 148,
+      "pos": [
+        -4.583992,
+        -8.102512,
+        147.65738
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30040,
+      "base": 21,
+      "territory": 148,
+      "pos": [
+        -4.5839844,
+        -8.102512,
+        77.12314
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30041,
+      "base": 21,
+      "territory": 148,
+      "pos": [
+        62.49806,
+        -6.089244,
+        55.32687
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30042,
+      "base": 22,
+      "territory": 152,
+      "pos": [
+        -246.7005,
+        0.846183,
+        282.72388
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30043,
+      "base": 22,
+      "territory": 152,
+      "pos": [
+        -306.7005,
+        9.477072,
+        342.72388
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30044,
+      "base": 22,
+      "territory": 152,
+      "pos": [
+        -366.7005,
+        3.784673,
+        282.72388
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30045,
+      "base": 23,
+      "territory": 152,
+      "pos": [
+        -89.354126,
+        0.803288,
+        338.6693
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30046,
+      "base": 23,
+      "territory": 152,
+      "pos": [
+        -149.35413,
+        6.157478,
+        398.6693
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30047,
+      "base": 23,
+      "territory": 152,
+      "pos": [
+        -209.35413,
+        2.72117,
+        338.6693
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30048,
+      "base": 24,
+      "territory": 153,
+      "pos": [
+        143.91809,
+        4.236084,
+        5.9941406
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30049,
+      "base": 24,
+      "territory": 153,
+      "pos": [
+        83.91809,
+        4.16621,
+        65.99414
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30050,
+      "base": 24,
+      "territory": 153,
+      "pos": [
+        23.91809,
+        9.396334,
+        5.9941354
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30051,
+      "base": 10,
+      "territory": 135,
+      "pos": [
+        536.4762,
+        78.84117,
+        -307.23608
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30052,
+      "base": 14,
+      "territory": 140,
+      "pos": [
+        213.84973,
+        63.2486,
+        -134.36884
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30053,
+      "base": 14,
+      "territory": 140,
+      "pos": [
+        153.84973,
+        52.28473,
+        -74.368835
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30054,
+      "base": 26,
+      "territory": 154,
+      "pos": [
+        152.40979,
+        -27.60362,
+        234.27124
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30055,
+      "base": 26,
+      "territory": 154,
+      "pos": [
+        92.40979,
+        -27.05838,
+        294.27124
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30056,
+      "base": 26,
+      "territory": 154,
+      "pos": [
+        32.40979,
+        -39.48562,
+        234.27124
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30057,
+      "base": 27,
+      "territory": 153,
+      "pos": [
+        299.76587,
+        15.22633,
+        -121.38147
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30058,
+      "base": 27,
+      "territory": 153,
+      "pos": [
+        239.76587,
+        9.756709,
+        -61.38147
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30059,
+      "base": 27,
+      "territory": 153,
+      "pos": [
+        179.76587,
+        18.22368,
+        -121.38148
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30060,
+      "base": 28,
+      "territory": 153,
+      "pos": [
+        -183.7619,
+        0.178183,
+        440.0702
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30061,
+      "base": 28,
+      "territory": 153,
+      "pos": [
+        -243.7619,
+        -0.167896,
+        500.0702
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30062,
+      "base": 28,
+      "territory": 153,
+      "pos": [
+        -303.7619,
+        0.279321,
+        440.0702
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30063,
+      "base": 29,
+      "territory": 153,
+      "pos": [
+        -141.30347,
+        0.485998,
+        357.65076
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30064,
+      "base": 29,
+      "territory": 153,
+      "pos": [
+        -201.30347,
+        -0.10686,
+        417.65076
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30065,
+      "base": 29,
+      "territory": 153,
+      "pos": [
+        -261.30347,
+        0.0,
+        357.65076
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30066,
+      "base": 14,
+      "territory": 140,
+      "pos": [
+        93.84973,
+        53.27813,
+        -134.36884
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30067,
+      "base": 14,
+      "territory": 140,
+      "pos": [
+        153.84973,
+        49.84424,
+        -194.36884
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30068,
+      "base": 18,
+      "territory": 140,
+      "pos": [
+        146.40979,
+        16.55982,
+        94.407715
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30069,
+      "base": 18,
+      "territory": 140,
+      "pos": [
+        92.40979,
+        15.05152,
+        148.40771
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30070,
+      "base": 18,
+      "territory": 140,
+      "pos": [
+        38.40979,
+        20.38433,
+        94.40771
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30071,
+      "base": 18,
+      "territory": 140,
+      "pos": [
+        92.40979,
+        58.85611,
+        40.407715
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30072,
+      "base": 25,
+      "territory": 141,
+      "pos": [
+        229.32874,
+        -2.975556,
+        -50.450745
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30073,
+      "base": 25,
+      "territory": 141,
+      "pos": [
+        175.32874,
+        5.398401,
+        3.5492554
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30074,
+      "base": 25,
+      "territory": 141,
+      "pos": [
+        121.328735,
+        28.63317,
+        -50.45075
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30075,
+      "base": 25,
+      "territory": 141,
+      "pos": [
+        175.32874,
+        0.04573,
+        -104.450745
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30076,
+      "base": 30,
+      "territory": 134,
+      "pos": [
+        73.20371,
+        55.375,
+        -69.88058
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30077,
+      "base": 30,
+      "territory": 134,
+      "pos": [
+        16.183979,
+        52.31603,
+        -88.40742
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30078,
+      "base": 30,
+      "territory": 134,
+      "pos": [
+        16.183983,
+        55.24489,
+        -148.36151
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30079,
+      "base": 30,
+      "territory": 134,
+      "pos": [
+        73.20372,
+        64.56079,
+        -166.88834
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30080,
+      "base": 31,
+      "territory": 135,
+      "pos": [
+        318.2478,
+        44.42153,
+        37.96289
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30081,
+      "base": 12,
+      "territory": 154,
+      "pos": [
+        403.60583,
+        0.442465,
+        196.74927
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30082,
+      "base": 13,
+      "territory": 154,
+      "pos": [
+        248.75708,
+        -23.82236,
+        246.21167
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30083,
+      "base": 31,
+      "territory": 135,
+      "pos": [
+        258.2478,
+        36.00556,
+        97.96289
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30084,
+      "base": 31,
+      "territory": 135,
+      "pos": [
+        198.2478,
+        50.18557,
+        37.962887
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30085,
+      "base": 31,
+      "territory": 135,
+      "pos": [
+        258.2478,
+        47.80647,
+        -22.03711
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30087,
+      "base": 175,
+      "territory": 141,
+      "pos": [
+        216.34534,
+        14.21493,
+        459.05176
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30088,
+      "base": 175,
+      "territory": 141,
+      "pos": [
+        100.34534,
+        3.837232,
+        459.05176
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30090,
+      "base": 33,
+      "territory": 141,
+      "pos": [
+        32.526855,
+        0.648601,
+        -66.43512
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30091,
+      "base": 33,
+      "territory": 141,
+      "pos": [
+        -27.473146,
+        -6.175569,
+        -6.4351196
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30092,
+      "base": 33,
+      "territory": 141,
+      "pos": [
+        -87.473145,
+        -12.76843,
+        -66.43513
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30093,
+      "base": 33,
+      "territory": 141,
+      "pos": [
+        -27.473145,
+        -2.337916,
+        -126.43512
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30094,
+      "base": 34,
+      "territory": 135,
+      "pos": [
+        717.85364,
+        64.42724,
+        -220.28485
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30095,
+      "base": 34,
+      "territory": 135,
+      "pos": [
+        661.85364,
+        60.81857,
+        -164.28485
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30096,
+      "base": 34,
+      "territory": 135,
+      "pos": [
+        605.85364,
+        66.24802,
+        -220.28485
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30097,
+      "base": 34,
+      "territory": 135,
+      "pos": [
+        661.85364,
+        67.87291,
+        -276.28485
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30098,
+      "base": 35,
+      "territory": 138,
+      "pos": [
+        338.72778,
+        -5.66225,
+        126.8761
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30099,
+      "base": 35,
+      "territory": 138,
+      "pos": [
+        278.72778,
+        -17.57851,
+        186.8761
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30100,
+      "base": 35,
+      "territory": 138,
+      "pos": [
+        218.72778,
+        -14.93863,
+        126.87609
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30101,
+      "base": 35,
+      "territory": 138,
+      "pos": [
+        278.72778,
+        5.020142,
+        66.8761
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30102,
+      "base": 38,
+      "territory": 145,
+      "pos": [
+        -210.74341,
+        -29.25005,
+        281.22534
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30103,
+      "base": 38,
+      "territory": 145,
+      "pos": [
+        -262.7434,
+        -36.50553,
+        333.22534
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30104,
+      "base": 38,
+      "territory": 145,
+      "pos": [
+        -314.7434,
+        -34.54359,
+        281.22534
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30105,
+      "base": 47,
+      "territory": 153,
+      "pos": [
+        -224.23419,
+        8.309389,
+        -100.40198
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30106,
+      "base": 47,
+      "territory": 153,
+      "pos": [
+        -272.2342,
+        12.80442,
+        -52.401978
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30107,
+      "base": 47,
+      "territory": 153,
+      "pos": [
+        -320.2342,
+        15.48915,
+        -100.401985
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30108,
+      "base": 48,
+      "territory": 153,
+      "pos": [
+        133.42822,
+        4.196184,
+        12.987305
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30109,
+      "base": 48,
+      "territory": 153,
+      "pos": [
+        73.42822,
+        4.16621,
+        72.987305
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30110,
+      "base": 48,
+      "territory": 153,
+      "pos": [
+        13.428223,
+        4.623436,
+        12.987299
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30111,
+      "base": 49,
+      "territory": 153,
+      "pos": [
+        409.65076,
+        -2.278431,
+        68.93262
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30112,
+      "base": 49,
+      "territory": 153,
+      "pos": [
+        357.65076,
+        0.882443,
+        120.93262
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30113,
+      "base": 49,
+      "territory": 153,
+      "pos": [
+        305.65076,
+        3.982544,
+        68.93261
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30114,
+      "base": 38,
+      "territory": 145,
+      "pos": [
+        -262.7434,
+        -25.81465,
+        229.22534
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30115,
+      "base": 39,
+      "territory": 138,
+      "pos": [
+        580.4917,
+        19.87236,
+        383.12585
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30116,
+      "base": 39,
+      "territory": 138,
+      "pos": [
+        520.4917,
+        1.643817,
+        443.12585
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30117,
+      "base": 39,
+      "territory": 138,
+      "pos": [
+        460.4917,
+        9.353733,
+        383.12585
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30118,
+      "base": 39,
+      "territory": 138,
+      "pos": [
+        520.4917,
+        26.19969,
+        323.12585
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30119,
+      "base": 40,
+      "territory": 145,
+      "pos": [
+        -283.67316,
+        -32.28321,
+        -36.464355
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30144,
+      "base": 40,
+      "territory": 145,
+      "pos": [
+        -334.67316,
+        -38.09648,
+        14.535645
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30146,
+      "base": 173,
+      "territory": 148,
+      "pos": [
+        217.84583,
+        -27.56889,
+        469.04187
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30147,
+      "base": 173,
+      "territory": 148,
+      "pos": [
+        97.845825,
+        -21.39026,
+        469.04187
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30148,
+      "base": 40,
+      "territory": 145,
+      "pos": [
+        -385.67316,
+        -21.92377,
+        -36.46436
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30149,
+      "base": 40,
+      "territory": 145,
+      "pos": [
+        -334.67316,
+        -25.819,
+        -87.464355
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30150,
+      "base": 41,
+      "territory": 139,
+      "pos": [
+        -300.15027,
+        -0.654633,
+        157.84583
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30151,
+      "base": 41,
+      "territory": 139,
+      "pos": [
+        -358.15027,
+        0.004147,
+        215.84583
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30308,
+      "base": 41,
+      "territory": 139,
+      "pos": [
+        -416.15027,
+        -3.313842,
+        157.84583
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30309,
+      "base": 15,
+      "territory": 154,
+      "pos": [
+        310.19702,
+        -8.87285,
+        86.85657
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30310,
+      "base": 17,
+      "territory": 148,
+      "pos": [
+        -56.444824,
+        -4.080153,
+        -123.43805
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30311,
+      "base": 22,
+      "territory": 152,
+      "pos": [
+        -306.7005,
+        0.900235,
+        222.72388
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30313,
+      "base": 23,
+      "territory": 152,
+      "pos": [
+        -149.35413,
+        -8.15541,
+        278.6693
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30314,
+      "base": 24,
+      "territory": 153,
+      "pos": [
+        83.91809,
+        6.729181,
+        -54.00586
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30315,
+      "base": 41,
+      "territory": 139,
+      "pos": [
+        -358.15027,
+        -3.1,
+        99.845825
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30316,
+      "base": 26,
+      "territory": 154,
+      "pos": [
+        92.40979,
+        -19.99761,
+        174.27124
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30317,
+      "base": 27,
+      "territory": 153,
+      "pos": [
+        239.76587,
+        9.238781,
+        -181.38147
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30318,
+      "base": 28,
+      "territory": 153,
+      "pos": [
+        -243.7619,
+        0.795779,
+        380.0702
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30319,
+      "base": 29,
+      "territory": 153,
+      "pos": [
+        -201.30347,
+        -0.023275,
+        297.65076
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30320,
+      "base": 19,
+      "territory": 148,
+      "pos": [
+        -116.826706,
+        10.81743,
+        -164.95804
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30321,
+      "base": 139,
+      "territory": 134,
+      "pos": [
+        -186.26923,
+        16.61703,
+        -387.62146
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30324,
+      "base": 139,
+      "territory": 134,
+      "pos": [
+        -286.26923,
+        23.57611,
+        -387.62146
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30327,
+      "base": 165,
+      "territory": 153,
+      "pos": [
+        -149.30145,
+        6.393483,
+        20.47998
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30328,
+      "base": 165,
+      "territory": 153,
+      "pos": [
+        -257.30145,
+        16.09022,
+        20.479977
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30329,
+      "base": 171,
+      "territory": 154,
+      "pos": [
+        306.25366,
+        -6.87574,
+        18.481934
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30331,
+      "base": 171,
+      "territory": 154,
+      "pos": [
+        198.25366,
+        -5.140594,
+        18.48193
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30333,
+      "base": 133,
+      "territory": 146,
+      "pos": [
+        2.048767,
+        4.35082,
+        -645.36975
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30334,
+      "base": 133,
+      "territory": 146,
+      "pos": [
+        -49.951237,
+        4.837097,
+        -593.36975
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30335,
+      "base": 133,
+      "territory": 146,
+      "pos": [
+        -101.95123,
+        11.8123,
+        -645.36975
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30336,
+      "base": 133,
+      "territory": 146,
+      "pos": [
+        -49.951233,
+        10.70019,
+        -697.36975
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30337,
+      "base": 134,
+      "territory": 137,
+      "pos": [
+        297.2527,
+        38.59627,
+        429.58057
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30338,
+      "base": 134,
+      "territory": 137,
+      "pos": [
+        253.25269,
+        60.36326,
+        473.58057
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30339,
+      "base": 134,
+      "territory": 137,
+      "pos": [
+        209.25269,
+        42.49862,
+        429.58057
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30340,
+      "base": 134,
+      "territory": 137,
+      "pos": [
+        253.25269,
+        42.49862,
+        385.58057
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30349,
+      "base": 137,
+      "territory": 137,
+      "pos": [
+        -51.391174,
+        40.84507,
+        201.80298
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30350,
+      "base": 137,
+      "territory": 137,
+      "pos": [
+        -111.391174,
+        47.30101,
+        261.80298
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30351,
+      "base": 137,
+      "territory": 137,
+      "pos": [
+        -171.39117,
+        47.05386,
+        201.80298
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30352,
+      "base": 137,
+      "territory": 137,
+      "pos": [
+        -111.391174,
+        48.51963,
+        141.80298
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30354,
+      "base": 184,
+      "territory": 137,
+      "pos": [
+        376.6908,
+        36.49174,
+        613.4009
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30356,
+      "base": 184,
+      "territory": 137,
+      "pos": [
+        256.6908,
+        53.71814,
+        613.4009
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30357,
+      "base": 140,
+      "territory": 153,
+      "pos": [
+        58.501404,
+        6.188347,
+        357.15125
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30358,
+      "base": 140,
+      "territory": 153,
+      "pos": [
+        -1.4985988,
+        -0.100045,
+        417.15125
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30359,
+      "base": 140,
+      "territory": 153,
+      "pos": [
+        -61.498596,
+        0.839619,
+        357.15125
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30360,
+      "base": 140,
+      "territory": 153,
+      "pos": [
+        -1.4985955,
+        -0.100615,
+        297.15125
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30361,
+      "base": 141,
+      "territory": 137,
+      "pos": [
+        31.520935,
+        40.56209,
+        379.12976
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30362,
+      "base": 141,
+      "territory": 137,
+      "pos": [
+        -21.479067,
+        43.68653,
+        432.12976
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30363,
+      "base": 141,
+      "territory": 137,
+      "pos": [
+        -74.479065,
+        43.68653,
+        379.12976
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30364,
+      "base": 141,
+      "territory": 137,
+      "pos": [
+        -21.479065,
+        40.98111,
+        326.12976
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30365,
+      "base": 142,
+      "territory": 155,
+      "pos": [
+        128.43323,
+        289.4484,
+        -183.32098
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30366,
+      "base": 142,
+      "territory": 155,
+      "pos": [
+        68.43323,
+        292.0375,
+        -123.320984
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30367,
+      "base": 142,
+      "territory": 155,
+      "pos": [
+        8.433228,
+        299.7205,
+        -183.32098
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30368,
+      "base": 142,
+      "territory": 155,
+      "pos": [
+        68.43323,
+        300.4724,
+        -243.32098
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30369,
+      "base": 143,
+      "territory": 139,
+      "pos": [
+        712.36,
+        -0.449296,
+        161.84192
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30370,
+      "base": 143,
+      "territory": 139,
+      "pos": [
+        655.36,
+        -3.1,
+        218.84192
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30371,
+      "base": 143,
+      "territory": 139,
+      "pos": [
+        598.36,
+        -3.1,
+        161.84192
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30372,
+      "base": 143,
+      "territory": 139,
+      "pos": [
+        655.36,
+        -1.47839,
+        104.84192
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30373,
+      "base": 197,
+      "territory": 134,
+      "pos": [
+        -9.931702,
+        48.58014,
+        -6.993164
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30376,
+      "base": 197,
+      "territory": 134,
+      "pos": [
+        -129.9317,
+        42.31323,
+        -6.9931693
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30383,
+      "base": 198,
+      "territory": 137,
+      "pos": [
+        -153.79126,
+        48.12532,
+        538.4741
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30384,
+      "base": 198,
+      "territory": 137,
+      "pos": [
+        -273.79126,
+        45.24295,
+        538.4741
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30385,
+      "base": 147,
+      "territory": 152,
+      "pos": [
+        -191.75421,
+        6.403381,
+        90.41162
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30386,
+      "base": 147,
+      "territory": 152,
+      "pos": [
+        -251.75421,
+        2.939748,
+        150.41162
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30387,
+      "base": 147,
+      "territory": 152,
+      "pos": [
+        -311.7542,
+        7.615899,
+        90.41161
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30388,
+      "base": 147,
+      "territory": 152,
+      "pos": [
+        -251.75421,
+        11.72465,
+        30.411621
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30389,
+      "base": 148,
+      "territory": 141,
+      "pos": [
+        109.95117,
+        6.086327,
+        258.2478
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30390,
+      "base": 148,
+      "territory": 141,
+      "pos": [
+        49.951168,
+        5.294607,
+        318.2478
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30391,
+      "base": 148,
+      "territory": 141,
+      "pos": [
+        -10.048828,
+        0.694751,
+        258.2478
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30392,
+      "base": 148,
+      "territory": 141,
+      "pos": [
+        49.95117,
+        0.19832,
+        198.2478
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30393,
+      "base": 149,
+      "territory": 146,
+      "pos": [
+        -321.1278,
+        7.703974,
+        511.00098
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30394,
+      "base": 149,
+      "territory": 146,
+      "pos": [
+        -381.1278,
+        6.261216,
+        571.001
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30395,
+      "base": 149,
+      "territory": 146,
+      "pos": [
+        -441.1278,
+        7.408978,
+        511.00098
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30396,
+      "base": 149,
+      "territory": 146,
+      "pos": [
+        -381.1278,
+        8.004177,
+        451.00098
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30397,
+      "base": 46,
+      "territory": 139,
+      "pos": [
+        407.161,
+        -3.100016,
+        33.467285
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30398,
+      "base": 46,
+      "territory": 139,
+      "pos": [
+        347.161,
+        -2.517761,
+        93.467285
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30399,
+      "base": 46,
+      "territory": 139,
+      "pos": [
+        287.161,
+        -3.100012,
+        33.46728
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30400,
+      "base": 46,
+      "territory": 139,
+      "pos": [
+        347.161,
+        1.620175,
+        -26.532715
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30401,
+      "base": 151,
+      "territory": 140,
+      "pos": [
+        -97.845825,
+        48.96615,
+        362.64587
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30402,
+      "base": 151,
+      "territory": 140,
+      "pos": [
+        -157.84583,
+        40.4694,
+        422.64587
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30403,
+      "base": 151,
+      "territory": 140,
+      "pos": [
+        -217.84583,
+        31.58282,
+        362.64587
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30404,
+      "base": 151,
+      "territory": 140,
+      "pos": [
+        -157.84583,
+        50.0547,
+        302.64587
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30405,
+      "base": 152,
+      "territory": 154,
+      "pos": [
+        387.64978,
+        1.259356,
+        179.32483
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30406,
+      "base": 152,
+      "territory": 154,
+      "pos": [
+        358.64978,
+        -1.282395,
+        208.32483
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30407,
+      "base": 152,
+      "territory": 154,
+      "pos": [
+        329.64978,
+        -4.191054,
+        179.32483
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30408,
+      "base": 152,
+      "territory": 154,
+      "pos": [
+        358.64978,
+        -2.280119,
+        150.32483
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30409,
+      "base": 153,
+      "territory": 141,
+      "pos": [
+        -100.00845,
+        5.076609,
+        259.20215
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30410,
+      "base": 153,
+      "territory": 141,
+      "pos": [
+        -159.26425,
+        7.549813,
+        239.94876
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30411,
+      "base": 153,
+      "territory": 141,
+      "pos": [
+        -159.26425,
+        2.650075,
+        177.64352
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30412,
+      "base": 153,
+      "territory": 141,
+      "pos": [
+        -100.008446,
+        -6.750033,
+        158.39015
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30413,
+      "base": 154,
+      "territory": 140,
+      "pos": [
+        279.28638,
+        55.68469,
+        265.85953
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30414,
+      "base": 154,
+      "territory": 140,
+      "pos": [
+        212.20435,
+        55.60493,
+        244.06326
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30415,
+      "base": 154,
+      "territory": 140,
+      "pos": [
+        212.20435,
+        52.03804,
+        173.52902
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30416,
+      "base": 154,
+      "territory": 140,
+      "pos": [
+        279.28638,
+        55.42942,
+        151.73276
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30417,
+      "base": 155,
+      "territory": 141,
+      "pos": [
+        -49.485676,
+        0.636424,
+        101.50009
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30418,
+      "base": 155,
+      "territory": 141,
+      "pos": [
+        -105.387375,
+        0.991789,
+        83.336525
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30419,
+      "base": 155,
+      "territory": 141,
+      "pos": [
+        -105.387375,
+        -4.169586,
+        24.557997
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30420,
+      "base": 155,
+      "territory": 141,
+      "pos": [
+        -49.48567,
+        -6.175569,
+        6.3944397
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30421,
+      "base": 156,
+      "territory": 140,
+      "pos": [
+        97.956055,
+        57.28098,
+        360.1482
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30422,
+      "base": 156,
+      "territory": 140,
+      "pos": [
+        44.95605,
+        58.14078,
+        413.1482
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30423,
+      "base": 156,
+      "territory": 140,
+      "pos": [
+        -8.043945,
+        67.3075,
+        360.1482
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30424,
+      "base": 156,
+      "territory": 140,
+      "pos": [
+        44.956055,
+        54.76448,
+        307.1482
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30425,
+      "base": 157,
+      "territory": 141,
+      "pos": [
+        190.8722,
+        14.26587,
+        274.23218
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30426,
+      "base": 157,
+      "territory": 141,
+      "pos": [
+        130.8722,
+        2.27239,
+        334.23218
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30427,
+      "base": 157,
+      "territory": 141,
+      "pos": [
+        70.87219,
+        2.550388,
+        274.23218
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30428,
+      "base": 157,
+      "territory": 141,
+      "pos": [
+        130.8722,
+        6.21622,
+        214.23218
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30429,
+      "base": 158,
+      "territory": 140,
+      "pos": [
+        359.70728,
+        63.98663,
+        -223.78143
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30430,
+      "base": 158,
+      "territory": 140,
+      "pos": [
+        299.70728,
+        62.27636,
+        -163.78143
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30431,
+      "base": 158,
+      "territory": 140,
+      "pos": [
+        239.70728,
+        63.30702,
+        -223.78143
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30432,
+      "base": 158,
+      "territory": 140,
+      "pos": [
+        299.70728,
+        62.73122,
+        -283.78143
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30433,
+      "base": 159,
+      "territory": 140,
+      "pos": [
+        165.39758,
+        52.26727,
+        -83.29952
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30434,
+      "base": 159,
+      "territory": 140,
+      "pos": [
+        98.315544,
+        53.81852,
+        -105.0958
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30435,
+      "base": 159,
+      "territory": 140,
+      "pos": [
+        98.31555,
+        49.84424,
+        -175.63004
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30436,
+      "base": 159,
+      "territory": 140,
+      "pos": [
+        165.3976,
+        51.62122,
+        -197.4263
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30437,
+      "base": 160,
+      "territory": 145,
+      "pos": [
+        -112.83319,
+        -27.42611,
+        -47.953125
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30438,
+      "base": 160,
+      "territory": 145,
+      "pos": [
+        -170.83319,
+        -28.89029,
+        10.046875
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30439,
+      "base": 160,
+      "territory": 145,
+      "pos": [
+        -228.83319,
+        -33.0396,
+        -47.95313
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30440,
+      "base": 160,
+      "territory": 145,
+      "pos": [
+        -170.83319,
+        -33.0396,
+        -105.953125
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30441,
+      "base": 161,
+      "territory": 138,
+      "pos": [
+        420.64783,
+        15.62469,
+        60.94043
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30442,
+      "base": 161,
+      "territory": 138,
+      "pos": [
+        360.64783,
+        -1.370923,
+        120.94043
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30443,
+      "base": 161,
+      "territory": 138,
+      "pos": [
+        300.64783,
+        6.454791,
+        60.940426
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30444,
+      "base": 161,
+      "territory": 138,
+      "pos": [
+        360.64783,
+        15.62469,
+        0.9404297
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30445,
+      "base": 204,
+      "territory": 140,
+      "pos": [
+        156.3999,
+        50.11688,
+        87.41467
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30448,
+      "base": 204,
+      "territory": 140,
+      "pos": [
+        48.399902,
+        22.64004,
+        87.414665
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30449,
+      "base": 208,
+      "territory": 155,
+      "pos": [
+        360.68774,
+        319.1696,
+        -237.76782
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30450,
+      "base": 170,
+      "territory": 155,
+      "pos": [
+        319.74634,
+        302.427,
+        -82.419495
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30451,
+      "base": 208,
+      "territory": 155,
+      "pos": [
+        278.68774,
+        302.6322,
+        -237.76782
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30452,
+      "base": 170,
+      "territory": 155,
+      "pos": [
+        199.74634,
+        284.3418,
+        -82.4195
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30453,
+      "base": 164,
+      "territory": 134,
+      "pos": [
+        -234.71216,
+        29.89663,
+        -577.9356
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30454,
+      "base": 164,
+      "territory": 134,
+      "pos": [
+        -294.71216,
+        24.50067,
+        -517.9356
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30455,
+      "base": 164,
+      "territory": 134,
+      "pos": [
+        -354.71216,
+        32.97361,
+        -577.9356
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30456,
+      "base": 164,
+      "territory": 134,
+      "pos": [
+        -294.71216,
+        35.58919,
+        -637.9356
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30457,
+      "base": 166,
+      "territory": 138,
+      "pos": [
+        305.2605,
+        -13.5348,
+        136.36682
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30458,
+      "base": 166,
+      "territory": 138,
+      "pos": [
+        245.2605,
+        -24.66101,
+        196.36682
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30459,
+      "base": 166,
+      "territory": 138,
+      "pos": [
+        185.2605,
+        -12.76427,
+        136.36682
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30460,
+      "base": 166,
+      "territory": 138,
+      "pos": [
+        245.2605,
+        1.349542,
+        76.36682
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30461,
+      "base": 47,
+      "territory": 153,
+      "pos": [
+        -272.2342,
+        11.69242,
+        -148.40198
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30462,
+      "base": 48,
+      "territory": 153,
+      "pos": [
+        73.42822,
+        3.129161,
+        -47.012695
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30463,
+      "base": 167,
+      "territory": 139,
+      "pos": [
+        -363.08685,
+        -3.1,
+        94.90735
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30464,
+      "base": 167,
+      "territory": 139,
+      "pos": [
+        -423.08685,
+        -1.48406,
+        154.90735
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30465,
+      "base": 167,
+      "territory": 139,
+      "pos": [
+        -483.08685,
+        2.212463,
+        94.90734
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30466,
+      "base": 167,
+      "territory": 139,
+      "pos": [
+        -423.08685,
+        34.00515,
+        34.90735
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30467,
+      "base": 168,
+      "territory": 145,
+      "pos": [
+        304.26147,
+        11.55103,
+        -242.26343
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30468,
+      "base": 168,
+      "territory": 145,
+      "pos": [
+        244.26147,
+        1.112552,
+        -182.26343
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30469,
+      "base": 168,
+      "territory": 145,
+      "pos": [
+        184.26147,
+        4.013123,
+        -242.26343
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30470,
+      "base": 168,
+      "territory": 145,
+      "pos": [
+        244.26147,
+        5.674353,
+        -302.26343
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30471,
+      "base": 169,
+      "territory": 146,
+      "pos": [
+        106.45459,
+        7.071052,
+        402.1073
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30472,
+      "base": 169,
+      "territory": 146,
+      "pos": [
+        46.454586,
+        9.412603,
+        462.1073
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30473,
+      "base": 169,
+      "territory": 146,
+      "pos": [
+        -13.54541,
+        8.163513,
+        402.1073
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30474,
+      "base": 169,
+      "territory": 146,
+      "pos": [
+        46.45459,
+        8.224609,
+        342.1073
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30476,
+      "base": 200,
+      "territory": 152,
+      "pos": [
+        14.040955,
+        -6.047291,
+        296.2107
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30478,
+      "base": 200,
+      "territory": 152,
+      "pos": [
+        -97.959045,
+        -7.421386,
+        296.2107
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30481,
+      "base": 201,
+      "territory": 145,
+      "pos": [
+        196.36194,
+        10.03094,
+        -95.4068
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30482,
+      "base": 201,
+      "territory": 145,
+      "pos": [
+        86.36194,
+        8.227051,
+        -95.40681
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30483,
+      "base": 202,
+      "territory": 146,
+      "pos": [
+        -74.86835,
+        20.76746,
+        -508.50342
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30485,
+      "base": 202,
+      "territory": 146,
+      "pos": [
+        -194.86835,
+        22.71361,
+        -508.50342
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30487,
+      "base": 176,
+      "territory": 139,
+      "pos": [
+        -372.57953,
+        -2.456726,
+        223.28186
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30488,
+      "base": 176,
+      "territory": 139,
+      "pos": [
+        -430.57953,
+        -4.460994,
+        281.28186
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30489,
+      "base": 176,
+      "territory": 139,
+      "pos": [
+        -488.57953,
+        -7.092595,
+        223.28186
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30490,
+      "base": 176,
+      "territory": 139,
+      "pos": [
+        -430.57953,
+        -3.313842,
+        165.28186
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30491,
+      "base": 177,
+      "territory": 146,
+      "pos": [
+        256.30835,
+        4.637394,
+        962.56006
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30492,
+      "base": 177,
+      "territory": 146,
+      "pos": [
+        196.30835,
+        4.637394,
+        1022.56006
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30493,
+      "base": 177,
+      "territory": 146,
+      "pos": [
+        136.30835,
+        3.903357,
+        962.56006
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30494,
+      "base": 177,
+      "territory": 146,
+      "pos": [
+        196.30835,
+        4.637394,
+        902.56006
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30495,
+      "base": 178,
+      "territory": 148,
+      "pos": [
+        -308.64,
+        61.45868,
+        28.97168
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30496,
+      "base": 178,
+      "territory": 148,
+      "pos": [
+        -368.64,
+        56.01582,
+        88.97168
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30497,
+      "base": 178,
+      "territory": 148,
+      "pos": [
+        -428.64,
+        49.31853,
+        28.971674
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30498,
+      "base": 178,
+      "territory": 148,
+      "pos": [
+        -368.64,
+        62.03907,
+        -31.02832
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30499,
+      "base": 179,
+      "territory": 137,
+      "pos": [
+        451.61755,
+        14.13428,
+        286.22046
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30500,
+      "base": 179,
+      "territory": 137,
+      "pos": [
+        391.61755,
+        29.34357,
+        346.22046
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30501,
+      "base": 179,
+      "territory": 137,
+      "pos": [
+        331.61755,
+        38.94139,
+        286.22046
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30502,
+      "base": 179,
+      "territory": 137,
+      "pos": [
+        391.61755,
+        36.1007,
+        226.22046
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30503,
+      "base": 49,
+      "territory": 153,
+      "pos": [
+        357.65076,
+        1.052825,
+        16.932617
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30504,
+      "base": 180,
+      "territory": 155,
+      "pos": [
+        186.36487,
+        284.3418,
+        -78.92291
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30505,
+      "base": 180,
+      "territory": 155,
+      "pos": [
+        138.36487,
+        275.6237,
+        -30.922913
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30506,
+      "base": 180,
+      "territory": 155,
+      "pos": [
+        90.36487,
+        283.4077,
+        -78.92292
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30507,
+      "base": 180,
+      "territory": 155,
+      "pos": [
+        138.36487,
+        299.7559,
+        -126.92291
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30508,
+      "base": 181,
+      "territory": 154,
+      "pos": [
+        257.80676,
+        -8.794817,
+        22.478027
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30509,
+      "base": 206,
+      "territory": 156,
+      "pos": [
+        -232.71411,
+        -4.989685,
+        -324.68292
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30510,
+      "base": 206,
+      "territory": 156,
+      "pos": [
+        -352.7141,
+        -15.47482,
+        -324.68292
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30511,
+      "base": 181,
+      "territory": 154,
+      "pos": [
+        137.80676,
+        -2.180824,
+        22.478022
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30517,
+      "base": 203,
+      "territory": 135,
+      "pos": [
+        296.25952,
+        72.72038,
+        -293.7132
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30518,
+      "base": 203,
+      "territory": 135,
+      "pos": [
+        196.25952,
+        72.7687,
+        -293.7132
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30520,
+      "base": 185,
+      "territory": 145,
+      "pos": [
+        -382.0683,
+        -16.82787,
+        -119.882935
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30521,
+      "base": 185,
+      "territory": 145,
+      "pos": [
+        -442.0683,
+        -8.414806,
+        -59.882935
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30522,
+      "base": 185,
+      "territory": 145,
+      "pos": [
+        -502.0683,
+        -10.57784,
+        -119.88294
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30523,
+      "base": 185,
+      "territory": 145,
+      "pos": [
+        -442.0683,
+        -11.93088,
+        -179.88293
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30524,
+      "base": 186,
+      "territory": 139,
+      "pos": [
+        490.57178,
+        -2.891541,
+        190.31409
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30525,
+      "base": 186,
+      "territory": 139,
+      "pos": [
+        438.57178,
+        -3.1,
+        242.31409
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30526,
+      "base": 186,
+      "territory": 139,
+      "pos": [
+        386.57178,
+        -3.1,
+        190.31409
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30527,
+      "base": 186,
+      "territory": 139,
+      "pos": [
+        438.57178,
+        7.913098,
+        138.31409
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30528,
+      "base": 187,
+      "territory": 135,
+      "pos": [
+        372.6947,
+        71.22884,
+        -144.85852
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30529,
+      "base": 187,
+      "territory": 135,
+      "pos": [
+        312.6947,
+        58.88452,
+        -84.85852
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30530,
+      "base": 187,
+      "territory": 135,
+      "pos": [
+        252.6947,
+        67.35368,
+        -144.85852
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30531,
+      "base": 187,
+      "territory": 135,
+      "pos": [
+        312.6947,
+        73.49883,
+        -204.85852
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30532,
+      "base": 20,
+      "territory": 147,
+      "pos": [
+        69.990234,
+        8.727581,
+        328.17944
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30533,
+      "base": 20,
+      "territory": 147,
+      "pos": [
+        9.9902315,
+        4.091199,
+        388.17944
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30534,
+      "base": 20,
+      "territory": 147,
+      "pos": [
+        -50.009766,
+        4.272492,
+        328.17944
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30535,
+      "base": 20,
+      "territory": 147,
+      "pos": [
+        9.990235,
+        12.44467,
+        268.17944
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30536,
+      "base": 189,
+      "territory": 147,
+      "pos": [
+        152.40979,
+        24.09607,
+        142.36096
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30537,
+      "base": 189,
+      "territory": 147,
+      "pos": [
+        92.40979,
+        17.0128,
+        202.36096
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30538,
+      "base": 189,
+      "territory": 147,
+      "pos": [
+        32.40979,
+        27.17513,
+        142.36096
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30539,
+      "base": 189,
+      "territory": 147,
+      "pos": [
+        92.40979,
+        26.5354,
+        82.36096
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30540,
+      "base": 190,
+      "territory": 154,
+      "pos": [
+        438.11023,
+        -3.646953,
+        80.42151
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30541,
+      "base": 190,
+      "territory": 154,
+      "pos": [
+        399.11023,
+        -4.509761,
+        119.42151
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30542,
+      "base": 190,
+      "territory": 154,
+      "pos": [
+        360.11023,
+        -6.723549,
+        80.42151
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30543,
+      "base": 190,
+      "territory": 154,
+      "pos": [
+        399.11023,
+        -6.91246,
+        41.42151
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30544,
+      "base": 209,
+      "territory": 152,
+      "pos": [
+        -123.83801,
+        0.320392,
+        156.34729
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30547,
+      "base": 209,
+      "territory": 152,
+      "pos": [
+        -207.83801,
+        -0.961365,
+        156.34729
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30548,
+      "base": 210,
+      "territory": 138,
+      "pos": [
+        761.8146,
+        43.8287,
+        401.6079
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30549,
+      "base": 210,
+      "territory": 138,
+      "pos": [
+        641.8146,
+        23.63459,
+        401.6079
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30554,
+      "base": 150,
+      "territory": 135,
+      "pos": [
+        71.98828,
+        42.3063,
+        675.83997
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30555,
+      "base": 150,
+      "territory": 135,
+      "pos": [
+        -48.01172,
+        36.34348,
+        675.83997
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30556,
+      "base": 194,
+      "territory": 141,
+      "pos": [
+        -285.1629,
+        0.923461,
+        54.94641
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30557,
+      "base": 194,
+      "territory": 141,
+      "pos": [
+        -345.1629,
+        5.752604,
+        114.94641
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30558,
+      "base": 194,
+      "territory": 141,
+      "pos": [
+        -405.1629,
+        1.092578,
+        54.946407
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30559,
+      "base": 194,
+      "territory": 141,
+      "pos": [
+        -345.1629,
+        7.751451,
+        -5.053589
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30988,
+      "base": 199,
+      "territory": 141,
+      "pos": [
+        450.11902,
+        -15.57656,
+        -89.91217
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30990,
+      "base": 199,
+      "territory": 141,
+      "pos": [
+        330.11902,
+        -19.71835,
+        -89.91218
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30993,
+      "base": 205,
+      "territory": 138,
+      "pos": [
+        560.5112,
+        28.94632,
+        337.17078
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30995,
+      "base": 205,
+      "territory": 138,
+      "pos": [
+        440.51123,
+        12.71072,
+        337.17078
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30996,
+      "base": 36,
+      "territory": 146,
+      "pos": [
+        -165.83801,
+        3.995618,
+        -103.851746
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30997,
+      "base": 36,
+      "territory": 146,
+      "pos": [
+        -213.83801,
+        5.111694,
+        -151.85175
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30998,
+      "base": 36,
+      "territory": 146,
+      "pos": [
+        -165.83801,
+        3.828144,
+        -199.85175
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 30999,
+      "base": 211,
+      "territory": 155,
+      "pos": [
+        443.12585,
+        341.0242,
+        -435.07513
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 31000,
+      "base": 212,
+      "territory": 155,
+      "pos": [
+        313.2527,
+        256.3823,
+        146.35706
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 31001,
+      "base": 213,
+      "territory": 155,
+      "pos": [
+        -591.3639,
+        206.1585,
+        -407.10242
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 31002,
+      "base": 214,
+      "territory": 137,
+      "pos": [
+        519.5513,
+        9.000001,
+        275.2312
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 31003,
+      "base": 215,
+      "territory": 156,
+      "pos": [
+        589.4829,
+        -2.429443,
+        -397.11218
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 31004,
+      "base": 216,
+      "territory": 152,
+      "pos": [
+        60.975586,
+        -7.492188,
+        248.25757
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 31005,
+      "base": 217,
+      "territory": 152,
+      "pos": [
+        -170.81366,
+        46.46367,
+        -109.39319
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 31006,
+      "base": 218,
+      "territory": 152,
+      "pos": [
+        -344.6244,
+        7.615899,
+        116.885864
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 31007,
+      "base": 219,
+      "territory": 137,
+      "pos": [
+        358.70825,
+        24.94065,
+        563.94934
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 31008,
+      "base": 220,
+      "territory": 137,
+      "pos": [
+        -137.30737,
+        41.00154,
+        304.20288
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 31009,
+      "base": 221,
+      "territory": 145,
+      "pos": [
+        -434.55316,
+        -1.625461,
+        -280.22632
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 31010,
+      "base": 222,
+      "territory": 155,
+      "pos": [
+        326.20288,
+        302.427,
+        -77.92389
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 31011,
+      "base": 223,
+      "territory": 145,
+      "pos": [
+        364.1786,
+        17.28107,
+        11.48877
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 31012,
+      "base": 224,
+      "territory": 137,
+      "pos": [
+        -47.39508,
+        51.857,
+        578.9347
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 31013,
+      "base": 225,
+      "territory": 155,
+      "pos": [
+        154.40771,
+        254.2323,
+        158.84485
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 31014,
+      "base": 226,
+      "territory": 145,
+      "pos": [
+        263.80103,
+        -20.76021,
+        86.91516
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    },
+    {
+      "point": 31015,
+      "base": 227,
+      "territory": 156,
+      "pos": [
+        375.69165,
+        -3.38131,
+        -528.4839
+      ],
+      "rotation": 0.0,
+      "source": "teamcraft-area+guess"
+    }
+  ]
+}
