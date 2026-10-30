@@ -150,8 +150,9 @@ pub async fn run(data: &WorldData, db: &Databases, out: &Path) -> anyhow::Result
         let path = format!("game_script/quest/{:03}/{script}.luab", n / 100);
         let has_script = !script.is_empty() && data.pack().read(&path).is_ok();
         let status = match id {
-            // offered, accepted (scenes 0-2), kept, the opening's walls opened (seen 2026-10-30);
-            // its end at Mother Miounne (scenes 4-5, the reward) not yet
+            // offered, accepted (scenes 0-2), kept, the opening's walls opened, turned in at Mother
+            // Miounne (scenes 4-5: returned [1, 0]), 103 gil paid, completed (seen 2026-10-30);
+            // its experience (col 1333 is a factor; the β's formula not yet known) not paid
             0x10027 => Status::Partial,
             _ if has_script => Status::Pending,
             _ => Status::NoSource,

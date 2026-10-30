@@ -287,6 +287,43 @@ impl Database {
         tx.commit().await.map_err(|e| self.sql(e))
     }
 
+    /// The quests a character has completed.
+    pub async fn completed_quests(&self, character_id: i64) -> Result<Vec<u32>> {
+        let rows = sqlx::query("SELECT quest_id FROM quest_complete WHERE character_id = $1 ORDER BY quest_id")
+            .bind(character_id)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| self.sql(e))?;
+        rows.iter()
+            .map(|r| Ok(r.try_get::<i64, _>(0)? as u32))
+            .collect::<std::result::Result<_, sqlx::Error>>()
+            .map_err(|e| self.sql(e))
+    }
+
+    /// Completes a quest: out of its slot, into the completed ones.
+    pub async fn complete_quest(&self, character_id: i64, slot: u8, quest_id: u32) -> Result<()> {
+        let mut tx = self.pool.begin().await.map_err(|e| self.sql(e))?;
+        sqlx::query("DELETE FROM quests WHERE character_id = $1 AND slot = $2")
+            .bind(character_id)
+            .bind(slot as i32)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| self.sql(e))?;
+        sqlx::query("DELETE FROM quest_complete WHERE character_id = $1 AND quest_id = $2")
+            .bind(character_id)
+            .bind(quest_id as i32)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| self.sql(e))?;
+        sqlx::query("INSERT INTO quest_complete (character_id, quest_id) VALUES ($1, $2)")
+            .bind(character_id)
+            .bind(quest_id as i32)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| self.sql(e))?;
+        tx.commit().await.map_err(|e| self.sql(e))
+    }
+
     /// Sets one class slot's level and experience.
     pub async fn set_class_progress(&self, character_id: i64, slot: u8, level: u8, exp: u32) -> Result<()> {
         let mut tx = self.pool.begin().await.map_err(|e| self.sql(e))?;

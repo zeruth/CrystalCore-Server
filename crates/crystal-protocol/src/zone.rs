@@ -132,6 +132,10 @@ pub mod opcode {
     /// a quest-giver the client places from its layout stays unshown (Bertennant in the Gridania
     /// opening: in the client's object table, never drawn).
     pub const QUEST_COMPLETE_FLAGS: u16 = 0x1e2;
+    /// Down: one quest's completed flag (case 0x6c → @0xa501b0: the quest's index u16 @0, set
+    /// @2, refresh @3: with it the client refreshes its event objects, the quest's handler and its
+    /// UI, @0x6e5ea0); see [`super::quest_complete_flag`].
+    pub const QUEST_COMPLETE_FLAG: u16 = 0x1e3;
     /// Down: the player's conditions; see [`super::conditions`] (case 0x4c → @0xa4f150).
     pub const CONDITIONS: u16 = 0x1a3;
     /// Down: an event starts; see [`super::event_start`] (case 0x65 → @0x6f0be0).
@@ -1019,9 +1023,25 @@ pub fn quest(slot: u8, quest_id: u32, sequence: u8) -> Bytes {
     b.freeze()
 }
 
-/// [`opcode::QUEST_COMPLETE_FLAGS`]: 200 bytes, a bit per quest.
-pub fn quest_complete_flags(flags: &[u8; 200]) -> Bytes {
-    Bytes::copy_from_slice(flags)
+/// [`opcode::QUEST_COMPLETE_FLAGS`]: 200 bytes, a bit per completed quest's index (its id's low 16
+/// bits): byte index >> 3, bit 0x80 >> (index & 7) (@0xa501b0 reads them so).
+pub fn quest_complete_flags(completed: &[u32]) -> Bytes {
+    let mut b = [0u8; 200];
+    for &q in completed {
+        let index = (q & 0xffff) as usize;
+        if index >> 3 < 200 {
+            b[index >> 3] |= 0x80 >> (index & 7);
+        }
+    }
+    Bytes::copy_from_slice(&b)
+}
+
+/// [`opcode::QUEST_COMPLETE_FLAG`]: one quest's flag set or cleared, with the client's refresh.
+pub fn quest_complete_flag(quest_id: u32, complete: bool) -> Bytes {
+    let mut b = BytesMut::zeroed(8);
+    b[0..2].copy_from_slice(&(quest_id as u16).to_le_bytes());
+    (b[2], b[3]) = (complete as u8, 1);
+    b.freeze()
 }
 
 /// A scene's end, as [`opcode::SCENE_RESULT`] carries it.
@@ -1577,6 +1597,10 @@ mod tests {
         assert_eq!((q.len(), q[0], &q[4..7]), (0x10, 0, &[0x27, 0, 255][..]));
         let all = quests(&[(2, 0x10027, 255)]);
         assert_eq!((all.len(), &all[20..23]), (300, &[0x27, 0, 255][..]));
+        // quest 39 completed: byte 39 >> 3 = 4, bit 0x80 >> 7 = 1 (MSB first, @0xa501b0)
+        let flags = quest_complete_flags(&[0x10027]);
+        assert_eq!((flags.len(), flags[4]), (200, 0x01));
+        assert_eq!(&quest_complete_flag(0x10027, true)[..4], &[0x27, 0, 1, 1]);
         // a condition's bit is byte id >> 3, bit id & 7 (@0xa4f150); none set clears 0x10
         assert_eq!(&conditions(&[0x10, 0x2d])[..], &[0, 0, 1, 0, 0, 0x20, 0, 0]);
         assert!(conditions(&[]).iter().all(|&b| b == 0));
