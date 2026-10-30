@@ -119,6 +119,11 @@ async fn exercise(db: &Databases) {
     chars.add_unlock(me, 1).await.unwrap();
     chars.add_unlock(me, 1).await.unwrap();
     assert_eq!(chars.unlocks(me).await.unwrap(), vec![1]);
+    // the home point: one, replaced
+    assert_eq!(chars.home_point(me).await.unwrap(), None);
+    chars.set_home_point(me, 2).await.unwrap();
+    chars.set_home_point(me, 8).await.unwrap();
+    assert_eq!(chars.home_point(me).await.unwrap(), Some(8));
     chars.add_discovery(me, 4, 2).await.unwrap();
     chars.add_discovery(me, 4, 2).await.unwrap();
     chars.add_discovery(me, 4, 1).await.unwrap();

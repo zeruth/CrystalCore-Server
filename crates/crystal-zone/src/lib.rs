@@ -56,6 +56,8 @@ pub const DEFAULT_POSITION: Position = Position { zone_id: 129, x: -62.0, y: 18.
 
 /// The Sprint action (`Action` row 3).
 const SPRINT: u32 = 3;
+/// Return (`Action` row 6): to the home point.
+const RETURN: u32 = 6;
 
 /// Events sent together in one frame, at most.
 const EVENTS_PER_FRAME: usize = 32;
@@ -128,6 +130,8 @@ struct Session {
     /// The aetherytes the character is attuned to, and its unlocks.
     aetherytes: Vec<u32>,
     unlocks: Vec<u32>,
+    /// The aetheryte Return takes it to.
+    home_point: Option<u32>,
     /// The map parts it has revealed: (`Map` row, part).
     discovery: Vec<(u32, u8)>,
     /// A move begun with its effect (order 0xcf), made when its moment comes: (when, territory,
@@ -174,6 +178,7 @@ impl Session {
             completed: Vec::new(),
             aetherytes: Vec::new(),
             unlocks: Vec::new(),
+            home_point: None,
             discovery: Vec::new(),
             pending_move: None,
             objects: [None; ipc::object::SLOTS as usize],
@@ -443,9 +448,17 @@ impl Zone {
                         }
                         None => (vec![], vec![], vec![]),
                     };
+                    let home_point = match &chara {
+                        Some(c) => self.db.characters.home_point(c.id).await.unwrap_or_else(|e| {
+                            warn!("home point: {e}");
+                            None
+                        }),
+                        None => None,
+                    };
                     let mut s =
                         Session::new(actor_id, kind, chara, gm_level, inventory, progress, self.data.as_deref());
                     (s.aetherytes, s.unlocks, s.discovery) = (aetherytes, unlocks, discovery);
+                    s.home_point = home_point;
                     s.quests = quests
                         .into_iter()
                         .map(|q| ipc::QuestSlot { slot: q.slot, quest_id: q.quest_id, sequence: q.sequence, vars: q.vars })
@@ -579,6 +592,10 @@ impl Zone {
             opcode::ITEM_OPERATION_REQUEST => self.item_operation(sess, body).await,
             opcode::COMMAND => self.trigger(sess, body).await,
             opcode::ACTION_REQUEST => {
+                // Return goes from here (a move, not the territory's); the rest to the territory
+                if ipc::ActionRequest::parse(body).is_some_and(|r| r.action == RETURN) {
+                    return self.return_home(sess);
+                }
                 self.action_request(sess, body);
                 vec![]
             }

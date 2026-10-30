@@ -26,6 +26,8 @@ use crate::{Session, Zone, container, finish_event, play_scene, slot_update, sys
 /// Teleport's unlock (Sapphire's `UnlockEntry::Teleport`; the β client tests unlock byte 0's
 /// 0x10 bit).
 const UNLOCK_TELEPORT: u32 = 4;
+/// Return's unlock (Sapphire's `UnlockEntry::Return`), given with the first home point.
+const UNLOCK_RETURN: u32 = 1;
 
 impl Zone {
     /// A talk to an aetheryte or a shard (the event already started).
@@ -64,12 +66,23 @@ impl Zone {
             // the aetheryte's menu: (4, shard) for the aethernet
             (0, [4, d]) if *d != 0 => Some(*d),
             (0, [1]) => {
-                info!(aetheryte = r.event_id & 0xffff, "  home point chosen (not kept yet)");
+                let id = r.event_id & 0xffff;
+                info!(aetheryte = id, "  home point set");
+                sess.home_point = Some(id);
+                if let Some(chara) = &sess.chara
+                    && let Err(e) = self.db.characters.set_home_point(chara.id, id).await
+                {
+                    warn!(character = %chara.name, "home point not saved: {e}");
+                }
                 None
             }
             _ => None,
         };
         let mut out = finish_event(sess);
+        // a home point set: Return usable from then on
+        if sess.home_point.is_some() && !sess.unlocks.contains(&UNLOCK_RETURN) {
+            out.extend(self.unlock(sess, UNLOCK_RETURN).await);
+        }
         if let Some(d) = destination {
             match self.data.as_deref().and_then(|data| data.aetheryte(d)).and_then(|a| a.arrival) {
                 Some(to) if sess.aetherytes.contains(&d) => {
@@ -125,6 +138,23 @@ impl Zone {
             (opcode::CHAT_DOWN, system_message(&format!("You spend {cost} gil."))),
             (opcode::ORDER, ipc::order(order_kind::WARP_START, warp)),
         ]
+    }
+
+    /// Return (Action 6): to the home point's aetheryte, free, with Return's effect (warp type 5),
+    /// the move a second later.
+    pub(crate) fn return_home(&self, sess: &mut Session) -> Vec<(u16, Bytes)> {
+        let Some(home) = sess.home_point else {
+            return vec![(opcode::CHAT_DOWN, system_message("You have no home point set."))];
+        };
+        let Some(arrival) = self.data.as_deref().and_then(|d| d.aetheryte(home)).and_then(|a| a.arrival) else {
+            warn!(home, "  return: no arrival for the home point");
+            return vec![];
+        };
+        info!(home, territory = arrival.territory, "  return");
+        let warp = [ipc::warp_type::RETURN, sess.actor_id, 0, arrival.territory as u32];
+        let at = tokio::time::Instant::now() + std::time::Duration::from_millis(1000);
+        sess.pending_move = Some((at, arrival.territory, arrival.pos, arrival.rotation));
+        vec![(opcode::ORDER, ipc::order(order_kind::WARP_START, warp))]
     }
 
     /// Attunes the character to an aetheryte: kept, saved and told to the client (order 0x1fd).

@@ -360,6 +360,29 @@ impl Database {
         self.id_set_add("unlocks", "unlock_id", character_id, unlock_id).await
     }
 
+    /// A character's home point (the aetheryte Return takes it to), if it chose one.
+    pub async fn home_point(&self, character_id: i64) -> Result<Option<u32>> {
+        let ids = self.id_set("SELECT aetheryte_id FROM home_points WHERE character_id = $1", character_id).await?;
+        Ok(ids.first().copied())
+    }
+
+    /// Sets a character's home point.
+    pub async fn set_home_point(&self, character_id: i64, aetheryte_id: u32) -> Result<()> {
+        let mut tx = self.pool.begin().await.map_err(|e| self.sql(e))?;
+        sqlx::query("DELETE FROM home_points WHERE character_id = $1")
+            .bind(character_id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| self.sql(e))?;
+        sqlx::query("INSERT INTO home_points (character_id, aetheryte_id) VALUES ($1, $2)")
+            .bind(character_id)
+            .bind(aetheryte_id as i32)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| self.sql(e))?;
+        tx.commit().await.map_err(|e| self.sql(e))
+    }
+
     /// The map parts a character has revealed: (`Map` row, part).
     pub async fn discovery(&self, character_id: i64) -> Result<Vec<(u32, u8)>> {
         let rows = sqlx::query("SELECT map_id, part FROM discovery WHERE character_id = $1 ORDER BY map_id, part")
