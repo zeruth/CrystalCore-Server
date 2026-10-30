@@ -38,6 +38,7 @@ pub(crate) enum Request {
     UseAction { id: ActorId, target: ActorId, action: ActionUse },
     Status { target: ActorId, id: u16, param: u16, duration: Option<Duration>, source: ActorId },
     ClearStatuses { target: ActorId },
+    Sprint { id: ActorId },
 }
 
 /// A player's cast: what lands on whom, when, and where it stood when it began.
@@ -268,6 +269,21 @@ impl ZoneState {
             self.tell_hp(target, now);
         }
         changed
+    }
+
+    /// Sprint (action 3): all the player's TP for status 50 ("Sprint", "Movement speed is
+    /// increased." in the β's Status sheet), param 30, a second for every 50 TP spent. The β's
+    /// Action row has no status for it (its cost type 6, cost 0): the status, param and duration
+    /// are Sapphire's (`ActionSprint.cpp`). False when there is no TP to spend.
+    pub fn sprint(&mut self, id: ActorId, now: Instant) -> bool {
+        let Some(m) = self.mana.get_mut(&id) else { return false };
+        let tp = std::mem::take(&mut m.tp);
+        if tp < 50 {
+            m.tp = tp;
+            return false;
+        }
+        let duration = Duration::from_secs((tp / 50) as u64);
+        self.set_status(id, combat::SPRINT_STATUS, combat::SPRINT_PARAM, Some(duration), id, now)
     }
 
     /// Takes every status off `target`.
@@ -850,6 +866,9 @@ impl ZoneState {
                 self.set_status(target, id, param, duration, source, self.now());
             }
             Request::ClearStatuses { target } => self.clear_statuses(target, self.now()),
+            Request::Sprint { id } => {
+                self.sprint(id, self.now());
+            }
             Request::AddBnpc { bnpc, reply } => {
                 let _ = reply.send(self.add_bnpc(bnpc));
             }
@@ -1525,6 +1544,20 @@ mod tests {
             }
             _ => None,
         })
+    }
+
+    #[test]
+    fn sprint_spends_the_tp_for_a_while_of_status_50() {
+        let (mut zone, mut a, _rat, t0) = in_a_fight(tough("Alpha"));
+        assert_eq!(zone.mana_of(A).tp, combat::TP_MAX);
+        assert!(zone.sprint(A, t0));
+        assert_eq!(zone.mana_of(A).tp, 0);
+        assert_eq!(statuses_told(&drain(&mut a), A), Some(vec![combat::SPRINT_STATUS]));
+        let s = zone.statuses(A, t0);
+        assert_eq!(s[0].param, combat::SPRINT_PARAM);
+        assert!((s[0].remaining - 20.0).abs() < 0.01, "1000 TP: 20 s, {}", s[0].remaining);
+        // nothing left to spend
+        assert!(!zone.sprint(A, t0));
     }
 
     #[test]

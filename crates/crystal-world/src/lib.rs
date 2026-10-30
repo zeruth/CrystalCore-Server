@@ -419,6 +419,11 @@ impl ZoneHandle {
         let _ = self.tx.try_send(Request::Status { target, id, param, duration, source });
     }
 
+    /// The player sprints (all its TP for a while of status 50).
+    pub fn sprint(&self, id: ActorId) {
+        let _ = self.tx.try_send(Request::Sprint { id });
+    }
+
     /// Takes every status off `target`.
     pub fn clear_statuses(&self, target: ActorId) {
         let _ = self.tx.try_send(Request::ClearStatuses { target });

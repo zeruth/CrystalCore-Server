@@ -74,7 +74,14 @@ impl Zone {
             match self.data.as_deref().and_then(|data| data.aetheryte(d)).and_then(|a| a.arrival) {
                 Some(to) if sess.aetherytes.contains(&d) => {
                     info!(to = d, territory = to.territory, "  aethernet travel");
-                    out.extend(self.move_to(sess, to.territory, to.pos, to.rotation).await);
+                    // the departure: order 0xcf (case 0x69 → @0xab78d0: warp type 0xe plays the
+                    // teleport effect, 0x70, on the character arg 2, fades out and holds the
+                    // player; arg 4 the destination territory), then the move a second later,
+                    // as Sapphire's move task waits 1000 ms
+                    let warp = [ipc::warp_type::TOWN_TRANSLATE, sess.actor_id, 0, to.territory as u32];
+                    out.push((opcode::ORDER, ipc::order(order_kind::WARP_START, warp)));
+                    let at = tokio::time::Instant::now() + std::time::Duration::from_millis(1000);
+                    sess.pending_move = Some((at, to.territory, to.pos, to.rotation));
                 }
                 Some(_) => warn!(to = d, "  aethernet: not attuned to it"),
                 None => warn!(to = d, "  aethernet: no arrival for it"),

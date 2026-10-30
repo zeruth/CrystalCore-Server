@@ -54,6 +54,9 @@ pub use crystal_world::NPC_ACTOR_BASE;
 /// `crystal_common::chara::start_point(1)`).
 pub const DEFAULT_POSITION: Position = Position { zone_id: 129, x: -62.0, y: 18.0, z: -4.0, rotation: 0.2 };
 
+/// The Sprint action (`Action` row 3).
+const SPRINT: u32 = 3;
+
 /// Events sent together in one frame, at most.
 const EVENTS_PER_FRAME: usize = 32;
 
@@ -125,6 +128,9 @@ struct Session {
     unlocks: Vec<u32>,
     /// The map parts it has revealed: (`Map` row, part).
     discovery: Vec<(u32, u8)>,
+    /// A move begun with its effect (order 0xcf), made when its moment comes: (when, territory,
+    /// position, rotation).
+    pending_move: Option<(tokio::time::Instant, u16, [f32; 3], f32)>,
     /// The client's object slots: the gathering point in each.
     objects: [Option<u32>; ipc::object::SLOTS as usize],
     /// Where the player stood when the objects were last worked out.
@@ -167,6 +173,7 @@ impl Session {
             aetherytes: Vec::new(),
             unlocks: Vec::new(),
             discovery: Vec::new(),
+            pending_move: None,
             objects: [None; ipc::object::SLOTS as usize],
             objects_at: None,
         }
@@ -187,6 +194,15 @@ enum Input {
     Frame(Option<Result<Bytes, crystal_net::CodecError>>),
     /// `None`: the territory dropped the player.
     Event(Option<Event>),
+    /// A move begun earlier is due.
+    Move,
+}
+
+async fn next_move(at: Option<tokio::time::Instant>) {
+    match at {
+        Some(at) => tokio::time::sleep_until(at).await,
+        None => std::future::pending().await,
+    }
 }
 
 async fn next_event(session: &mut Option<Session>) -> Option<Event> {
@@ -232,10 +248,12 @@ impl Zone {
         let mut out = FramedWrite::new(writer, FrameCodec);
         let mut session: Option<Session> = None;
         loop {
+            let move_at = session.as_ref().and_then(|s| s.pending_move).map(|(at, ..)| at);
             let input = tokio::select! {
                 _ = shutdown.cancelled() => break,
                 next = frames.next() => Input::Frame(next),
                 event = next_event(&mut session) => Input::Event(event),
+                _ = next_move(move_at) => Input::Move,
             };
             let mut replies: Vec<Frame> = Vec::new();
             match input {
@@ -256,6 +274,15 @@ impl Zone {
                 Input::Event(None) => {
                     warn!("dropped by its territory");
                     break;
+                }
+                Input::Move => {
+                    let sess = session.as_mut().expect("a move is a session's");
+                    if let Some((_, territory, pos, rotation)) = sess.pending_move.take() {
+                        let packets = self.move_to(sess, territory, pos, rotation).await;
+                        let segments: Vec<Segment> =
+                            packets.iter().map(|(op, body)| sess.segment(sess.actor_id, *op, body)).collect();
+                        replies.push(Frame::new(sess.kind, segments));
+                    }
                 }
                 Input::Event(Some(first)) => {
                     let sess = session.as_mut().expect("events come to a session");
@@ -768,6 +795,11 @@ impl Zone {
         // a class's own (0: any), and learnt
         if (row.class > 0 && row.class as u8 != sess.look.class) || row.level > sess.look.level {
             debug!(class = row.class, level = row.level, "  action: not this class's yet");
+            return;
+        }
+        // Sprint: a status for the TP the player has
+        if req.action == SPRINT {
+            entry.zone.sprint(sess.actor_id);
             return;
         }
         // (a friendly one with a potency heals: Cure; the others, buffs and the like, wait for

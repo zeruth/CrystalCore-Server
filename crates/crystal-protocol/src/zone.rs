@@ -796,6 +796,21 @@ pub mod order_kind {
     /// Attuned (arg 2 non-zero) to the `Aetheryte` row arg 1: the player's bit @0x14b4ed0
     /// (@0xa55f80 case 0xbb → @0xa69ac0; Sapphire's LearnTeleport).
     pub const LEARN_AETHERYTE: u16 = 0x1fd;
+    /// A character leaves by warp (@0xa55f80 case 0x69 → @0xab78d0): arg 1 the warp type (see
+    /// [`super::warp_type`]; it picks the effect), arg 2 the character's actor id, arg 3 flags
+    /// (1: no effect for type 4; 2: ...), arg 4 the destination territory. For the player it
+    /// also fades out and sets condition 0x1d until the move (Sapphire's WarpStart, 0xcf).
+    pub const WARP_START: u16 = 0xcf;
+}
+
+/// Warp types of [`order_kind::WARP_START`] (Sapphire's WarpType numbers; @0xab78d0 plays
+/// effect 0x70 for 4 and 0xe, 0xb5 for 5, 0x71 for 8).
+pub mod warp_type {
+    pub const EXIT_RANGE: u32 = 3;
+    pub const TELEPORT: u32 = 4;
+    pub const RETURN: u32 = 5;
+    pub const HOME_POINT: u32 = 8;
+    pub const TOWN_TRANSLATE: u32 = 0xe;
 }
 
 /// LogMessage rows a cast's end logs.

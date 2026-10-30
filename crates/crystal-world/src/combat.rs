@@ -23,6 +23,9 @@ pub const MP_REGEN_PERCENT: u32 = 6;
 pub const MP_REGEN_FIGHTING_PERCENT: u32 = 2;
 /// TP: 2.x's 1000 at most, 60 back each server tick.
 pub const TP_MAX: u32 = 1000;
+/// Sprint's status (the β's Status row 50) and its param (Sapphire's `ActionSprint.cpp`: 30).
+pub const SPRINT_STATUS: u16 = 50;
+pub const SPRINT_PARAM: u16 = 30;
 pub const TP_REGEN: u32 = 60;
 
 /// An action's MP cost: its cost (`Action` col 28, cost type 3) is that percent of the level's
