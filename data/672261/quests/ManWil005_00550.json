@@ -1,0 +1,125 @@
+{
+  "quest": 66086,
+  "script": "ManWil005_00550",
+  "source": "sapphire",
+  "talks": [
+    {
+      "actor": 1003995,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "scene": 0
+    },
+    {
+      "actor": 1003995,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 0
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 255
+        }
+      ],
+      "scene": 6
+    },
+    {
+      "actor": 1003996,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 1
+        }
+      ],
+      "scene": 2
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "play",
+            "scene": 1
+          }
+        ]
+      }
+    ],
+    "1": [
+      {
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 1
+          }
+        ]
+      }
+    ],
+    "2": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "finish"
+          }
+        ]
+      }
+    ],
+    "5": [
+      {
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 255
+          }
+        ]
+      }
+    ],
+    "6": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "hook onEnterTerritory not run by the engine yet",
+    "statement `auto&pTeriMgr=Common::Service<Sapphire::World::Manager::TerritoryMgr>::ref();`",
+    "statement `pTeriMgr.createAndJoinQuestBattle(player, m_id, Questbattle0)`"
+  ]
+}

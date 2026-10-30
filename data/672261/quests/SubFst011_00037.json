@@ -1,0 +1,48 @@
+{
+  "quest": 65573,
+  "script": "SubFst011_00037",
+  "source": "sapphire",
+  "talks": [],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 1
+          }
+        ]
+      }
+    ],
+    "1": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "hook onBNpcKill not run by the engine yet",
+    "onTalk condition `!player.hasQuest(getId())` not expressible"
+  ]
+}

@@ -1,0 +1,96 @@
+{
+  "quest": 65864,
+  "script": "SubWil080_00328",
+  "source": "sapphire",
+  "talks": [
+    {
+      "actor": 1002065,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "scene": 0
+    },
+    {
+      "actor": 1002061,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 255
+        }
+      ],
+      "scene": 1
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 1,
+              "part": "high"
+            },
+            "value": 1
+          },
+          {
+            "do": "set_seq",
+            "seq": 255
+          }
+        ]
+      }
+    ],
+    "1": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "play",
+            "scene": 2
+          }
+        ]
+      }
+    ],
+    "2": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "hook onEventItem not run by the engine yet"
+  ]
+}

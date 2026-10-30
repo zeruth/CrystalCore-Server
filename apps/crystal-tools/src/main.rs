@@ -32,9 +32,12 @@ use tracing::{info, warn};
 const PLAYER_ACTOR_BASE: u32 = 0x1000_0000;
 
 mod coverage;
+mod derive_quests;
 mod exd;
 mod import;
 mod prune;
+mod quest;
+mod sapphire_quests;
 const BOT_ACCOUNT: &str = "bots";
 
 #[derive(Parser)]
@@ -87,6 +90,15 @@ enum Command {
         paths: Vec<String>,
         #[arg(long, default_value = ".")]
         out: PathBuf,
+    },
+    /// A quest as the β has it: its row's listeners, to-dos and rewards, its script's scenes and
+    /// what each calls; `--stats` tallies what every quest script calls.
+    Quest {
+        /// The quest (`0x10027` or `65575`).
+        #[arg(value_parser = parse_id)]
+        id: Option<u32>,
+        #[arg(long)]
+        stats: bool,
     },
     /// How much of the β the server serves, domain by domain (quests, items, shops, NPCs,
     /// combat, social systems, protocol...), linked to the client's data, as an HTML report.
@@ -141,6 +153,19 @@ enum ImportCommand {
     /// Sapphire's `battlenpc` dump (`sql/migrations/20211217125038_UpdateBattleNpc.sql`), checked
     /// against this build; replaces earlier imports from Sapphire.
     SapphireBnpcs { file: PathBuf },
+    /// Sapphire's quest scripts (`src/scripts/quest`) as quest definitions, for the quests the β
+    /// has (tagged `sapphire`; what the format cannot say goes to each one's `review`).
+    SapphireQuests {
+        dir: PathBuf,
+        #[arg(long, default_value = "data/672261/quests")]
+        out: PathBuf,
+    },
+    /// Quest definitions derived from the β's own data (offer and turn-in), for every quest that
+    /// has none yet (tagged `derived`).
+    DeriveQuests {
+        #[arg(long, default_value = "data/672261/quests")]
+        out: PathBuf,
+    },
 }
 
 /// The game data, with the world database's overrides unless `raw`.
@@ -159,6 +184,14 @@ async fn databases(config: &Config) -> anyhow::Result<Databases> {
     let db = Databases::connect(&config.database).await.context("databases")?;
     db.migrate().await?;
     Ok(db)
+}
+
+fn parse_id(s: &str) -> Result<u32, String> {
+    match s.strip_prefix("0x") {
+        Some(hex) => u32::from_str_radix(hex, 16),
+        None => s.parse(),
+    }
+    .map_err(|e| format!("{s}: {e}"))
 }
 
 fn parse_point(s: &str) -> Result<[f32; 3], String> {
@@ -226,6 +259,23 @@ async fn main() -> anyhow::Result<()> {
             let data = game_data(&config, Some(&db), false).await?;
             match command {
                 ImportCommand::SapphireBnpcs { file } => import::run_sapphire_bnpcs(&db, &data, &file).await?,
+                ImportCommand::SapphireQuests { dir, out } => {
+                    let scripts: std::collections::HashMap<u32, String> = data
+                        .sheet("Quest")?
+                        .rows
+                        .iter()
+                        .filter_map(|(id, r)| {
+                            let s = r.get(1)?.as_str()?;
+                            (!s.is_empty()).then(|| (*id, s.to_owned()))
+                        })
+                        .collect();
+                    let written = sapphire_quests::run(&dir, &out, &scripts)?;
+                    println!("{} quest definitions written to {}", written.len(), out.display());
+                }
+                ImportCommand::DeriveQuests { out } => {
+                    let written = derive_quests::run(&data, &out)?;
+                    println!("{} derived quest definitions written to {}", written.len(), out.display());
+                }
             }
             db.close().await;
         }
@@ -244,6 +294,10 @@ async fn main() -> anyhow::Result<()> {
             let data = game_data(&config, None, true).await?;
             prune::run(&db, &data, apply).await?;
             db.close().await;
+        }
+        Command::Quest { id, stats } => {
+            let data = game_data(&config, None, true).await?;
+            quest::run(&data, id, stats)?;
         }
         Command::Coverage { out } => {
             let db = databases(&config).await?;

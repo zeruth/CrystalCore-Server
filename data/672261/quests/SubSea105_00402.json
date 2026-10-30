@@ -1,0 +1,80 @@
+{
+  "quest": 65938,
+  "script": "SubSea105_00402",
+  "source": "derived",
+  "talks": [
+    {
+      "actor": 1003239,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "scene": 0
+    },
+    {
+      "actor": 1003244,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 255
+        }
+      ],
+      "scene": 90
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 1
+          }
+        ]
+      }
+    ],
+    "90": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "listener 2001255 at sequence 1: which scene it plays is not in the data",
+    "listener 39 at sequence 1: which scene it plays is not in the data",
+    "listener 39 at sequence 1: which scene it plays is not in the data",
+    "listener 2001256 at sequence 1: which scene it plays is not in the data",
+    "listener 2001257 at sequence 1: which scene it plays is not in the data",
+    "listener 2001258 at sequence 1: which scene it plays is not in the data",
+    "listener 2001259 at sequence 1: which scene it plays is not in the data",
+    "listener 2001256 at sequence 255 (not the end ENpc): its scene is not in the data",
+    "listener 2001257 at sequence 255 (not the end ENpc): its scene is not in the data",
+    "listener 2001258 at sequence 255 (not the end ENpc): its scene is not in the data",
+    "listener 2001259 at sequence 255 (not the end ENpc): its scene is not in the data"
+  ]
+}

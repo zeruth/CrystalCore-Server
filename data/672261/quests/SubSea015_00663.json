@@ -1,0 +1,66 @@
+{
+  "quest": 66199,
+  "script": "SubSea015_00663",
+  "source": "sapphire",
+  "talks": [
+    {
+      "actor": 1000981,
+      "scene": 0
+    },
+    {
+      "actor": 1002605,
+      "scene": 2
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "play",
+            "scene": 1
+          }
+        ]
+      }
+    ],
+    "1": [
+      {
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 255
+          }
+        ]
+      }
+    ],
+    "2": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": null
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "hook onEventItem not run by the engine yet"
+  ]
+}

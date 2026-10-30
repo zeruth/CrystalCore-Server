@@ -161,14 +161,25 @@ impl Server {
                     let territories = Arc::new(World::new(npcs, shutdown.child_token()));
                     let mut commands = Commands::default();
                     mod_gm::register(&mut commands);
-                    let zone = Arc::new(Zone::new(
-                        db.clone(),
-                        state.clone(),
-                        world,
-                        territories.clone(),
-                        commands,
-                        config.zone.capture_dir.clone(),
-                    ));
+                    // the quest definitions the zone runs (the repository's, with the seed)
+                    let quests = match config.data.seed.as_ref().map(|s| s.join(SEED_BUILD).join("quests")) {
+                        Some(dir) if dir.exists() => crystal_common::quest::load_dir(&dir)
+                            .map_err(anyhow::Error::msg)
+                            .context("quest definitions")?,
+                        _ => HashMap::new(),
+                    };
+                    info!(quests = quests.len(), "quest definitions");
+                    let zone = Arc::new(
+                        Zone::new(
+                            db.clone(),
+                            state.clone(),
+                            world,
+                            territories.clone(),
+                            commands,
+                            config.zone.capture_dir.clone(),
+                        )
+                        .with_quests(quests),
+                    );
                     worlds.push(territories);
                     tasks.spawn(crystal_net::serve(listener, shutdown.clone(), move |stream, peer, stop| {
                         zone.clone().handle(stream, peer, stop)

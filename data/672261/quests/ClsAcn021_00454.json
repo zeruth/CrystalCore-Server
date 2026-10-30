@@ -1,0 +1,58 @@
+{
+  "quest": 65990,
+  "script": "ClsAcn021_00454",
+  "source": "sapphire",
+  "talks": [],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "play",
+            "scene": 1
+          }
+        ]
+      }
+    ],
+    "1": [
+      {
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 1
+          }
+        ]
+      }
+    ],
+    "5": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "hook onBNpcKill not run by the engine yet",
+    "onTalk switch on `quest.getSeq()`"
+  ]
+}

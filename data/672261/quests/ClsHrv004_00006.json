@@ -1,0 +1,130 @@
+{
+  "quest": 65542,
+  "script": "ClsHrv004_00006",
+  "source": "sapphire",
+  "talks": [
+    {
+      "actor": 1000815,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "scene": 0
+    },
+    {
+      "actor": 1000815,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 0
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 255
+        }
+      ],
+      "scene": 6
+    },
+    {
+      "actor": 1000239,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 1
+        }
+      ],
+      "scene": 2
+    },
+    {
+      "actor": 1000239,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 1
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 2
+        }
+      ],
+      "scene": 3
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 1
+          }
+        ]
+      }
+    ],
+    "2": [
+      {
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 2
+          }
+        ]
+      }
+    ],
+    "3": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 255
+          }
+        ]
+      }
+    ],
+    "6": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "statement `player.collectHandInItems({Ritem0})`"
+  ]
+}

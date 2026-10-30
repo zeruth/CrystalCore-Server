@@ -1,0 +1,191 @@
+{
+  "quest": 65884,
+  "script": "ClsThm100_00348",
+  "source": "sapphire",
+  "talks": [
+    {
+      "actor": 1001708,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "scene": 0
+    },
+    {
+      "actor": 1001710,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 1
+        }
+      ],
+      "scene": 1
+    },
+    {
+      "actor": 1001710,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 3
+        }
+      ],
+      "scene": 2
+    },
+    {
+      "actor": 1001710,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 6
+        }
+      ],
+      "scene": 11
+    },
+    {
+      "actor": 2001511,
+      "scene": 4,
+      "action": 1
+    },
+    {
+      "actor": 2001498,
+      "scene": 6,
+      "action": 1
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 1
+          }
+        ]
+      }
+    ],
+    "1": [
+      {
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 2
+          }
+        ]
+      }
+    ],
+    "2": [
+      {
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 4
+          }
+        ]
+      }
+    ],
+    "4": [
+      {
+        "then": [
+          {
+            "do": "set_flag",
+            "index": 1,
+            "set": true
+          }
+        ]
+      }
+    ],
+    "6": [
+      {
+        "then": [
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 1,
+              "part": "high"
+            },
+            "value": 1
+          },
+          {
+            "do": "set_seq",
+            "seq": 6
+          }
+        ]
+      }
+    ],
+    "11": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "play",
+            "scene": 12
+          }
+        ]
+      }
+    ],
+    "12": [
+      {
+        "then": [
+          {
+            "do": "play",
+            "scene": 16
+          }
+        ]
+      }
+    ],
+    "16": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "hook onBNpcKill not run by the engine yet",
+    "hook onEventItem not run by the engine yet",
+    "hook onPlayerDeath not run by the engine yet",
+    "statement `auto enemy0=instance->createBNpcFromLayoutId(Enemy1,120,Common::BNpcType::Enemy,player.getId());`",
+    "statement `auto enemy1=instance->createBNpcFromLayoutId(Enemy2,120,Common::BNpcType::Enemy,player.getId());`",
+    "statement `auto instance=teriMgr().getTerritoryByGuId(player.getTerritoryId());`",
+    "statement `enemy0.hateListAddDelayed(player.getAsPlayer(), 1)`",
+    "statement `enemy0.setTriggerOwnerId(player.getId())`",
+    "statement `enemy1.hateListAddDelayed(player.getAsPlayer(), 1)`",
+    "statement `enemy1.setTriggerOwnerId(player.getId())`",
+    "statement `eventMgr().sendNotice(player, getId(), 0)`",
+    "statement `eventMgr().sendNotice(player, getId(), 2)`",
+    "statement `eventMgr().sendNotice(player, getId(), 4, {Item2Icon})`"
+  ]
+}

@@ -1,0 +1,121 @@
+{
+  "quest": 65563,
+  "script": "SubFst004_00027",
+  "source": "sapphire",
+  "talks": [
+    {
+      "actor": 1000194,
+      "scene": 0
+    },
+    {
+      "actor": 1000686,
+      "scene": 1
+    },
+    {
+      "actor": 1000789,
+      "scene": 2
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 1
+          }
+        ]
+      }
+    ],
+    "1": [
+      {
+        "then": [
+          {
+            "do": "notice",
+            "index": 0,
+            "values": [
+              2,
+              21002,
+              0
+            ]
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 1,
+              "part": "high"
+            },
+            "value": 1
+          },
+          {
+            "do": "set_seq",
+            "seq": 255
+          }
+        ]
+      }
+    ],
+    "2": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "play",
+            "scene": 100
+          }
+        ]
+      },
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "ne",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "play",
+            "scene": 99
+          }
+        ]
+      }
+    ],
+    "100": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "statement `eventMgr().playScene(player, getId(), 99, 0, 0)`"
+  ]
+}

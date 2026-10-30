@@ -1,0 +1,173 @@
+{
+  "quest": 65603,
+  "script": "ClsArc002_00067",
+  "source": "sapphire",
+  "talks": [
+    {
+      "actor": 1000200,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "scene": 0
+    },
+    {
+      "actor": 1000200,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 0
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 255
+        }
+      ],
+      "scene": 30
+    },
+    {
+      "actor": 1000199,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 1
+        }
+      ],
+      "scene": 1
+    },
+    {
+      "actor": 1000199,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 1
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 3
+        }
+      ],
+      "scene": 26
+    },
+    {
+      "actor": 1000199,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 1
+        },
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 3
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 5
+        }
+      ],
+      "scene": 29
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 1
+          }
+        ]
+      }
+    ],
+    "1": [
+      {
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 2
+          },
+          {
+            "do": "notice",
+            "index": 0,
+            "values": [
+              2,
+              0,
+              0
+            ]
+          }
+        ]
+      }
+    ],
+    "26": [
+      {
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 4
+          }
+        ]
+      }
+    ],
+    "29": [
+      {
+        "then": [
+          {
+            "do": "notice",
+            "index": 5,
+            "values": [
+              2,
+              0,
+              0
+            ]
+          },
+          {
+            "do": "set_seq",
+            "seq": 255
+          }
+        ]
+      }
+    ],
+    "30": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "condition `varIdx == 1` not expressible; its branch dropped",
+    "hook onBNpcKill not run by the engine yet",
+    "hook onEObjHit not run by the engine yet"
+  ]
+}

@@ -1,0 +1,261 @@
+{
+  "quest": 66213,
+  "script": "ManFst204_00677",
+  "source": "sapphire",
+  "talks": [
+    {
+      "actor": 1000100,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "scene": 0
+    },
+    {
+      "actor": 1000100,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 0
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 255
+        }
+      ],
+      "scene": 14
+    },
+    {
+      "actor": 1004612,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 1
+        }
+      ],
+      "scene": 2
+    },
+    {
+      "actor": 1004612,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 1
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 2
+        }
+      ],
+      "scene": 13
+    },
+    {
+      "actor": 1004619,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 1
+        }
+      ],
+      "scene": 3
+    },
+    {
+      "actor": 1004619,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 1
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 2
+        }
+      ],
+      "scene": 8
+    },
+    {
+      "actor": 1004620,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 1
+        }
+      ],
+      "scene": 4
+    },
+    {
+      "actor": 1004620,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 1
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 2
+        }
+      ],
+      "scene": 9
+    },
+    {
+      "actor": 1004613,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 1
+        }
+      ],
+      "scene": 5
+    },
+    {
+      "actor": 1004613,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 1
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 2
+        }
+      ],
+      "scene": 10
+    },
+    {
+      "actor": 1004614,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 1
+        }
+      ],
+      "scene": 6
+    },
+    {
+      "actor": 1004614,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 1
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 2
+        }
+      ],
+      "scene": 11
+    },
+    {
+      "actor": 1004615,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 1
+        }
+      ],
+      "scene": 7
+    },
+    {
+      "actor": 1004615,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 1
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 2
+        }
+      ],
+      "scene": 12
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "play",
+            "scene": 1
+          }
+        ]
+      }
+    ],
+    "1": [
+      {
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 1
+          }
+        ]
+      }
+    ],
+    "2": [
+      {
+        "then": [
+          {
+            "do": "notice",
+            "index": 0,
+            "values": [
+              0
+            ]
+          },
+          {
+            "do": "set_seq",
+            "seq": 2
+          }
+        ]
+      }
+    ],
+    "14": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ]
+  }
+}

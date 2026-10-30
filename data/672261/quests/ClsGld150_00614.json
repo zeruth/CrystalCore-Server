@@ -1,0 +1,72 @@
+{
+  "quest": 66150,
+  "script": "ClsGld150_00614",
+  "source": "derived",
+  "talks": [
+    {
+      "actor": 1004093,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "scene": 0
+    },
+    {
+      "actor": 1004093,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 255
+        }
+      ],
+      "scene": 7
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 1
+          }
+        ]
+      }
+    ],
+    "7": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "listener 1004093 at sequence 1: which scene it plays is not in the data",
+    "listener 1004097 at sequence 2: which scene it plays is not in the data",
+    "listener 1004097 at sequence 255 (not the end ENpc): its scene is not in the data"
+  ]
+}

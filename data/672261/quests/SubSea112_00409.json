@@ -1,0 +1,73 @@
+{
+  "quest": 65945,
+  "script": "SubSea112_00409",
+  "source": "derived",
+  "talks": [
+    {
+      "actor": 1002233,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "scene": 0
+    },
+    {
+      "actor": 1002233,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 255
+        }
+      ],
+      "scene": 96
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 1
+          }
+        ]
+      }
+    ],
+    "96": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "listener 1002453 at sequence 1: which scene it plays is not in the data",
+    "listener 1002455 at sequence 1: which scene it plays is not in the data",
+    "listener 2000762 at sequence 1: which scene it plays is not in the data",
+    "listener 2000763 at sequence 1: which scene it plays is not in the data"
+  ]
+}

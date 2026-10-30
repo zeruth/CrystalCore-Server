@@ -1,0 +1,122 @@
+{
+  "quest": 66082,
+  "script": "ManSea200_00546",
+  "source": "derived",
+  "talks": [
+    {
+      "actor": 1002694,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "scene": 0
+    },
+    {
+      "actor": 1001821,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 255
+        }
+      ],
+      "scene": 44
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "play",
+            "scene": 1
+          }
+        ]
+      }
+    ],
+    "1": [
+      {
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 0
+          }
+        ]
+      }
+    ],
+    "44": [
+      {
+        "then": [
+          {
+            "do": "play",
+            "scene": 45
+          }
+        ]
+      }
+    ],
+    "45": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "listener 1000972 at sequence 1: which scene it plays is not in the data",
+    "listener 1002695 at sequence 2: which scene it plays is not in the data",
+    "listener 2001675 at sequence 2: which scene it plays is not in the data",
+    "listener 2001668 at sequence 3: which scene it plays is not in the data",
+    "listener 1002695 at sequence 3: which scene it plays is not in the data",
+    "listener 2001675 at sequence 3: which scene it plays is not in the data",
+    "listener 1002830 at sequence 4: which scene it plays is not in the data",
+    "listener 1000109 at sequence 4: which scene it plays is not in the data",
+    "listener 2001678 at sequence 4: which scene it plays is not in the data",
+    "listener 1002695 at sequence 4: which scene it plays is not in the data",
+    "listener 1000460 at sequence 5: which scene it plays is not in the data",
+    "listener 1002830 at sequence 5: which scene it plays is not in the data",
+    "listener 2001678 at sequence 5: which scene it plays is not in the data",
+    "listener 1002695 at sequence 5: which scene it plays is not in the data",
+    "listener 1000106 at sequence 6: which scene it plays is not in the data",
+    "listener 2001678 at sequence 6: which scene it plays is not in the data",
+    "listener 1002695 at sequence 6: which scene it plays is not in the data",
+    "listener 2001671 at sequence 7: which scene it plays is not in the data",
+    "listener 1000106 at sequence 7: which scene it plays is not in the data",
+    "listener 2001678 at sequence 7: which scene it plays is not in the data",
+    "listener 1002695 at sequence 7: which scene it plays is not in the data",
+    "listener 1004336 at sequence 8: which scene it plays is not in the data",
+    "listener 1004434 at sequence 8: which scene it plays is not in the data",
+    "listener 2001688 at sequence 8: which scene it plays is not in the data",
+    "listener 1002695 at sequence 8: which scene it plays is not in the data",
+    "listener 1000106 at sequence 8: which scene it plays is not in the data",
+    "listener 1004336 at sequence 255 (not the end ENpc): its scene is not in the data",
+    "listener 2001688 at sequence 255 (not the end ENpc): its scene is not in the data",
+    "listener 1002695 at sequence 255 (not the end ENpc): its scene is not in the data",
+    "listener 1000106 at sequence 255 (not the end ENpc): its scene is not in the data",
+    "listener 2001688 at sequence 255 (not the end ENpc): its scene is not in the data",
+    "listener 1002695 at sequence 255 (not the end ENpc): its scene is not in the data",
+    "listener 1000106 at sequence 255 (not the end ENpc): its scene is not in the data"
+  ]
+}

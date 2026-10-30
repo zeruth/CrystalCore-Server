@@ -1,0 +1,260 @@
+{
+  "quest": 65606,
+  "script": "ClsArc004_00070",
+  "source": "sapphire",
+  "talks": [
+    {
+      "actor": 1000200,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "scene": 0
+    },
+    {
+      "actor": 1000200,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 0
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 255
+        }
+      ],
+      "scene": 21
+    },
+    {
+      "actor": 1000590,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 1
+        }
+      ],
+      "scene": 2
+    },
+    {
+      "actor": 1000590,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 1
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 5
+        }
+      ],
+      "scene": 18
+    },
+    {
+      "actor": 1000731,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 5
+        }
+      ],
+      "scene": 20
+    },
+    {
+      "actor": 1000732,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 5
+        }
+      ],
+      "scene": 19
+    },
+    {
+      "actor": 2000947,
+      "scene": 3,
+      "action": 7
+    },
+    {
+      "actor": 2000948,
+      "scene": 4,
+      "action": 7
+    },
+    {
+      "actor": 2000949,
+      "scene": 5,
+      "action": 7
+    },
+    {
+      "actor": 2001105,
+      "scene": 13,
+      "action": 10
+    },
+    {
+      "actor": 2000136,
+      "scene": 15,
+      "action": 1
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "play",
+            "scene": 1
+          }
+        ]
+      }
+    ],
+    "1": [
+      {
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 1
+          }
+        ]
+      }
+    ],
+    "2": [
+      {
+        "then": [
+          {
+            "do": "notice",
+            "index": 0,
+            "values": [
+              2,
+              0,
+              0
+            ]
+          },
+          {
+            "do": "set_seq",
+            "seq": 2
+          }
+        ]
+      }
+    ],
+    "13": [
+      {
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 4
+          }
+        ]
+      }
+    ],
+    "15": [
+      {
+        "then": [
+          {
+            "do": "play",
+            "scene": 16
+          }
+        ]
+      }
+    ],
+    "16": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "notice",
+            "index": 3,
+            "values": [
+              0
+            ]
+          },
+          {
+            "do": "set_seq",
+            "seq": 5
+          },
+          {
+            "do": "set_flag",
+            "index": 1,
+            "set": false
+          },
+          {
+            "do": "set_flag",
+            "index": 2,
+            "set": false
+          },
+          {
+            "do": "set_flag",
+            "index": 3,
+            "set": false
+          }
+        ]
+      }
+    ],
+    "18": [
+      {
+        "then": [
+          {
+            "do": "notice",
+            "index": 4,
+            "values": [
+              2,
+              0,
+              0
+            ]
+          },
+          {
+            "do": "set_seq",
+            "seq": 255
+          }
+        ]
+      }
+    ],
+    "21": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "condition `currentCC + 1 >= 3` not expressible; its branch dropped",
+    "statement `auto currentCC=quest.getUI8AL();`",
+    "statement `eventMgr().sendEventNotice(player, getId(), 1, 2, currentCC + 1, 3)`",
+    "statement `playerMgr().sendUrgent(player, \"QuestBattle content is currently broken. The fight has been skipped for you.\")`"
+  ]
+}

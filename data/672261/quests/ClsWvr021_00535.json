@@ -1,0 +1,30 @@
+{
+  "quest": 66071,
+  "script": "ClsWvr021_00535",
+  "source": "sapphire",
+  "talks": [],
+  "scenes": {
+    "2": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "hook onEventGroundItem not run by the engine yet",
+    "hook onEventItem not run by the engine yet"
+  ]
+}

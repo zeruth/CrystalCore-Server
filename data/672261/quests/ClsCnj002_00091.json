@@ -1,0 +1,214 @@
+{
+  "quest": 65627,
+  "script": "ClsCnj002_00091",
+  "source": "sapphire",
+  "talks": [
+    {
+      "actor": 1000692,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "scene": 0
+    },
+    {
+      "actor": 1000692,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 0
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 255
+        }
+      ],
+      "scene": 10
+    },
+    {
+      "actor": 1000767,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 1
+        }
+      ],
+      "scene": 2
+    },
+    {
+      "actor": 1000767,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 1
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 3
+        }
+      ],
+      "scene": 6
+    },
+    {
+      "actor": 1000767,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 1
+        },
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 3
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 5
+        }
+      ],
+      "scene": 9
+    },
+    {
+      "actor": 2000885,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 2
+        }
+      ],
+      "scene": 4,
+      "action": 1
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "play",
+            "scene": 1
+          }
+        ]
+      }
+    ],
+    "1": [
+      {
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 1
+          }
+        ]
+      }
+    ],
+    "2": [
+      {
+        "then": [
+          {
+            "do": "notice",
+            "index": 0,
+            "values": [
+              0
+            ]
+          },
+          {
+            "do": "set_seq",
+            "seq": 2
+          }
+        ]
+      }
+    ],
+    "4": [
+      {
+        "then": [
+          {
+            "do": "set_flag",
+            "index": 1,
+            "set": true
+          }
+        ]
+      }
+    ],
+    "6": [
+      {
+        "then": [
+          {
+            "do": "notice",
+            "index": 2,
+            "values": [
+              0
+            ]
+          },
+          {
+            "do": "set_seq",
+            "seq": 4
+          }
+        ]
+      }
+    ],
+    "9": [
+      {
+        "then": [
+          {
+            "do": "notice",
+            "index": 4,
+            "values": [
+              0
+            ]
+          },
+          {
+            "do": "set_seq",
+            "seq": 255
+          }
+        ]
+      }
+    ],
+    "10": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "hook onBNpcKill not run by the engine yet",
+    "onTalk statement `eventMgr().sendEventNotice(player, getId(), 3, 0)`",
+    "onTalk statement `playerMgr().sendUrgent(player, \"QuestBattle content is currently broken. The fight has been skipped for you.\")`",
+    "onTalk statement `quest.setSeq(Seq5)`",
+    "statement `auto enemy=instance->createBNpcFromLayoutId(Enemy0,1220,Common::BNpcType::Enemy);`",
+    "statement `auto instance=teriMgr().getTerritoryByGuId(player.getTerritoryId());`",
+    "statement `enemy.hateListAddDelayed(player.getAsPlayer(), 1)`",
+    "statement `enemy.setTriggerOwnerId(player.getId())`"
+  ]
+}

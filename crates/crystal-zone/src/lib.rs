@@ -11,9 +11,11 @@
 //! [`crystal_protocol::zone`] (re-exported as [`ipc`]).
 
 pub mod commands;
+mod quests;
 
 pub use crystal_protocol::zone as ipc;
 
+use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -21,6 +23,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use bytes::Bytes;
 use crystal_common::chara::CharaMake;
+use crystal_common::quest::QuestDef;
 use crystal_data::WorldData;
 use crystal_db::{Character, Databases, InventoryRow, Position};
 use crystal_net::codec::{FrameCodec, RawFrameCodec, decode_frame};
@@ -62,6 +65,8 @@ pub struct Zone {
     world: Arc<World>,
     commands: Commands,
     capture_dir: Option<PathBuf>,
+    /// The quest definitions (`data/<build>/quests`), by quest id.
+    quests: Arc<HashMap<u32, QuestDef>>,
 }
 
 /// How often a moving player's position is written to the database (and once more when the zone
@@ -106,8 +111,8 @@ struct Session {
     /// repeat the event, kind and argument (@0x6fd010). More than one when an event nests another
     /// (kind 7, which the client starts while one runs: @0x6f0be0).
     events: Vec<RunningEvent>,
-    /// The character's active quests: (slot, quest id, sequence).
-    quests: Vec<(u8, u32, u8)>,
+    /// The character's active quests, as the client keeps them.
+    quests: Vec<ipc::QuestSlot>,
     /// The quests it has completed.
     completed: Vec<u32>,
 }
@@ -181,7 +186,13 @@ impl Zone {
         commands: Commands,
         capture_dir: Option<PathBuf>,
     ) -> Self {
-        Self { db, state, data, world, commands, capture_dir }
+        Self { db, state, data, world, commands, capture_dir, quests: Arc::default() }
+    }
+
+    /// The quest definitions the zone runs.
+    pub fn with_quests(mut self, quests: HashMap<u32, QuestDef>) -> Self {
+        self.quests = Arc::new(quests);
+        self
     }
 
     pub async fn handle(self: Arc<Self>, stream: TcpStream, peer: SocketAddr, shutdown: CancellationToken) {
@@ -342,7 +353,10 @@ impl Zone {
                     };
                     let mut s =
                         Session::new(actor_id, kind, chara, gm_level, inventory, progress, self.data.as_deref());
-                    s.quests = quests;
+                    s.quests = quests
+                        .into_iter()
+                        .map(|q| ipc::QuestSlot { slot: q.slot, quest_id: q.quest_id, sequence: q.sequence, vars: q.vars })
+                        .collect();
                     s.completed = completed;
                     *session = Some(s);
                 }
@@ -923,126 +937,6 @@ impl Zone {
         }
     }
 
-    /// The scene a talk to a quest's event plays: the offer (scene 0) while the quest is neither
-    /// active nor completed (the quest scripts' scene 0 asks, `QuestOffer`, and returns 1 when the
-    /// player accepts: ManFst001_00039's OnScene00000); at `SEQ_FINISH`, talking to the quest's
-    /// end NPC (`Quest` col 29) plays its turn-in. The talked-to NPC is the target's `Level` row
-    /// (a layout NPC's id is its layout id with high half 1, and its `Level` row's col 6 is its
-    /// ENpc: Bertennant 1985150 → 1001148).
-    fn quest_talk(&self, sess: &Session, quest_id: u32, target: u64) -> Option<u16> {
-        if sess.completed.contains(&quest_id) {
-            return None;
-        }
-        let Some(&(_, _, sequence)) = sess.quests.iter().find(|q| q.1 == quest_id) else { return Some(0) };
-        let data = self.data.as_deref()?;
-        let enpc = (target >> 32 == 1)
-            .then(|| data.sheet("Level").ok()?.row(target as u32)?.get(6)?.as_u64())
-            .flatten()?;
-        let quest = data.sheet("Quest").ok()?;
-        let row = quest.row(quest_id)?;
-        let end_npc = row.get(29)?.as_u64()?;
-        let script = row.get(1)?.as_str()?;
-        (sequence == SEQ_FINISH && enpc == end_npc).then(|| turn_in_scenes(script)).flatten().map(|(first, _)| first)
-    }
-
-    /// An offered quest's scenes, as its script has them (ManFst001_00039): scene 0 returns 1 when
-    /// accepted (then scene 1, the quest-giver's lines, and scene 2, `QuestAccepted` and the
-    /// to-do tutorial), 0 when declined (the event ends). After scene 2 the quest is the
-    /// character's at `SEQ_FINISH` (255; the script's `IsAcceptEvent` then hands it to its last
-    /// NPC), told to the client in its slot (down 0x1e1), and a town's opening quest moves the
-    /// opening to `OPENING_SEQ_2`.
-    async fn quest_scene_result(&self, sess: &mut Session, r: &ipc::SceneResult) -> Vec<(u16, Bytes)> {
-        let turn_in = self
-            .data
-            .as_deref()
-            .and_then(|d| d.sheet("Quest").ok()?.row(r.event_id)?.get(1)?.as_str().and_then(turn_in_scenes));
-        match r.scene {
-            0 if r.values.first() == Some(&1) => play_scene(sess, 1, &[]),
-            // the turn-in: its cutscene, then the reward scene; that one returns (accepted, choice)
-            s if turn_in.is_some_and(|(first, _)| s == first) => play_scene(sess, turn_in.unwrap().1, &[]),
-            s if turn_in.is_some_and(|(_, reward)| s == reward) => {
-                let mut out = if r.values.first() == Some(&1) { self.complete_quest(sess, r.event_id).await } else { vec![] };
-                out.extend(finish_event(sess));
-                out
-            }
-            1 => play_scene(sess, 2, &[]),
-            2 => {
-                let (mut out, opening) = self.accept_quest(sess, r.event_id).await;
-                match opening {
-                    // the opening's onQuestAccepted (its scene 30: the way-out ranges off), in an
-                    // event nested in this one on the same NPC, as Sapphire's ManFst001 does it;
-                    // its end ends both (opening_scene_result)
-                    Some(opening) => {
-                        let target = sess.events.last().map_or(sess.actor_id as u64, |e| e.target);
-                        out.extend(start_event(sess, target, opening, ipc::event::NEST, 0));
-                        out.extend(play_scene(sess, 30, &[]));
-                    }
-                    None => out.extend(finish_event(sess)),
-                }
-                out
-            }
-            _ => finish_event(sess),
-        }
-    }
-
-    /// Completes an active quest: its slot emptied (down 0x1e1 with id 0: the client clears the
-    /// slot and counts one quest fewer, @0xa50040), its completed flag set with the client's
-    /// refresh (0x1e3), its gil paid (`Quest` col 1334, 103 for Coming to Gridania, as
-    /// Sapphire's script has it). Experience (col 1333, a factor) waits for the β's formula.
-    async fn complete_quest(&self, sess: &mut Session, quest_id: u32) -> Vec<(u16, Bytes)> {
-        let Some(i) = sess.quests.iter().position(|q| q.1 == quest_id) else { return vec![] };
-        let (slot, _, _) = sess.quests.remove(i);
-        sess.completed.push(quest_id);
-        let gil = self
-            .data
-            .as_deref()
-            .and_then(|d| d.sheet("Quest").ok()?.row(quest_id)?.get(1334)?.as_u64())
-            .unwrap_or(0);
-        info!(quest = format_args!("{quest_id:#x}"), slot, gil, "  quest completed");
-        let mut out = vec![
-            (opcode::QUEST, ipc::quest(slot, 0, 0)),
-            (opcode::QUEST_COMPLETE_FLAG, ipc::quest_complete_flag(quest_id, true)),
-        ];
-        if gil > 0 && sess.inventory.add_gil(gil as i64).is_ok() {
-            out.push((opcode::UPDATE_ITEM, slot_update(&sess.inventory, container::CURRENCY, 0)));
-            out.push((opcode::CHAT_DOWN, system_message(&format!("You obtain {gil} gil."))));
-            self.save_inventory(sess).await;
-        }
-        if let Some(chara) = &sess.chara
-            && let Err(e) = self.db.characters.complete_quest(chara.id, slot, quest_id).await
-        {
-            warn!(character = %chara.name, "quest completion not saved: {e}");
-        }
-        out
-    }
-
-    /// Makes `quest_id` the character's in its first free slot at `SEQ_FINISH`; a town's opening
-    /// quest (the `Opening` row's col 1) moves the opening on and names the opening's event.
-    async fn accept_quest(&self, sess: &mut Session, quest_id: u32) -> (Vec<(u16, Bytes)>, Option<u32>) {
-        let Some(slot) = (0..30u8).find(|s| !sess.quests.iter().any(|q| q.0 == *s)) else {
-            warn!(quest = format_args!("{quest_id:#x}"), "  quest: no free slot");
-            return (vec![], None);
-        };
-        sess.quests.push((slot, quest_id, SEQ_FINISH));
-        info!(quest = format_args!("{quest_id:#x}"), slot, "  quest accepted");
-        let out = vec![(opcode::QUEST, ipc::quest(slot, quest_id, SEQ_FINISH))];
-        let Some(chara) = sess.chara.as_mut() else { return (out, None) };
-        if let Err(e) = self.db.characters.set_quest(chara.id, slot, quest_id, SEQ_FINISH).await {
-            warn!(character = %chara.name, "quest not saved: {e}");
-        }
-        let opening = (0x130001..=0x130003).find(|&event| {
-            self.data.as_deref().and_then(|d| d.sheet("Opening").ok()?.row(event)?.get(1)?.as_u64())
-                == Some(quest_id as u64)
-        });
-        if opening.is_some() && chara.opening < 2 {
-            chara.opening = 2;
-            if let Err(e) = self.db.characters.save_opening(chara.content_id, 2).await {
-                warn!(character = %chara.name, "opening not saved: {e}");
-            }
-        }
-        (out, opening)
-    }
-
     /// An opening's scenes; see [`Self::event_request`] and [`Self::range_event`].
     async fn opening_scene_result(&self, sess: &mut Session, r: &ipc::SceneResult) -> Vec<(u16, Bytes)> {
         match r.scene {
@@ -1176,19 +1070,6 @@ impl Zone {
                 None
             }
         }
-    }
-}
-
-/// A quest's last sequence, as the quest scripts name it (`SEQ_FINISH`, `QuestSystemDefine`).
-const SEQ_FINISH: u8 = 255;
-
-/// A quest's turn-in scenes, from its β script: the scene the end NPC plays, then the one whose
-/// `QuestReward` returns (accepted, reward choice). Per script until the content engine reads
-/// them generically (ManFst001_00039: OnScene00004 the cutscene, OnScene00005 the reward).
-fn turn_in_scenes(script: &str) -> Option<(u16, u16)> {
-    match script {
-        "ManFst001_00039" => Some((4, 5)),
-        _ => None,
     }
 }
 

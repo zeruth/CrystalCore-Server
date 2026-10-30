@@ -1,0 +1,98 @@
+{
+  "quest": 65764,
+  "script": "SubWil036_00228",
+  "source": "derived",
+  "talks": [
+    {
+      "actor": 1002030,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "scene": 0
+    },
+    {
+      "actor": 1002044,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 255
+        }
+      ],
+      "scene": 11
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "play",
+            "scene": 1
+          }
+        ]
+      }
+    ],
+    "1": [
+      {
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 1
+          }
+        ]
+      }
+    ],
+    "11": [
+      {
+        "then": [
+          {
+            "do": "play",
+            "scene": 12
+          }
+        ]
+      }
+    ],
+    "12": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "listener 5000000 at sequence 1: which scene it plays is not in the data",
+    "listener 2001276 at sequence 1: which scene it plays is not in the data",
+    "listener 131 at sequence 1: which scene it plays is not in the data",
+    "listener 5000000 at sequence 1: which scene it plays is not in the data",
+    "listener 2001356 at sequence 1: which scene it plays is not in the data",
+    "listener 131 at sequence 1: which scene it plays is not in the data",
+    "listener 5000000 at sequence 1: which scene it plays is not in the data",
+    "listener 2001357 at sequence 1: which scene it plays is not in the data",
+    "listener 131 at sequence 1: which scene it plays is not in the data"
+  ]
+}

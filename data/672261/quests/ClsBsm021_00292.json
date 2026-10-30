@@ -1,0 +1,26 @@
+{
+  "quest": 65828,
+  "script": "ClsBsm021_00292",
+  "source": "sapphire",
+  "talks": [],
+  "scenes": {
+    "2": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ]
+  }
+}

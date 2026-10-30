@@ -1,0 +1,238 @@
+{
+  "quest": 65604,
+  "script": "ClsArc003_00068",
+  "source": "sapphire",
+  "talks": [
+    {
+      "actor": 1000200,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "scene": 0
+    },
+    {
+      "actor": 1000200,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 0
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 255
+        }
+      ],
+      "scene": 31
+    },
+    {
+      "actor": 1000204,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 1
+        }
+      ],
+      "scene": 1
+    },
+    {
+      "actor": 1000204,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 1
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 3
+        }
+      ],
+      "scene": 26
+    },
+    {
+      "actor": 1000204,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 1
+        },
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 3
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 5
+        }
+      ],
+      "scene": 30
+    },
+    {
+      "actor": 2000962,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 4
+        }
+      ],
+      "scene": 27
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 1
+          }
+        ]
+      }
+    ],
+    "1": [
+      {
+        "then": [
+          {
+            "do": "notice",
+            "index": 0,
+            "values": [
+              2,
+              0,
+              0
+            ]
+          },
+          {
+            "do": "set_seq",
+            "seq": 2
+          }
+        ]
+      }
+    ],
+    "26": [
+      {
+        "then": [
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 0,
+              "part": "low"
+            },
+            "value": 0
+          },
+          {
+            "do": "notice",
+            "index": 2,
+            "values": [
+              2,
+              0,
+              0
+            ]
+          },
+          {
+            "do": "set_seq",
+            "seq": 4
+          }
+        ]
+      }
+    ],
+    "27": [
+      {
+        "then": [
+          {
+            "do": "play",
+            "scene": 28
+          }
+        ]
+      }
+    ],
+    "28": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "notice",
+            "index": 3,
+            "values": [
+              0
+            ]
+          },
+          {
+            "do": "set_seq",
+            "seq": 5
+          }
+        ]
+      }
+    ],
+    "30": [
+      {
+        "then": [
+          {
+            "do": "notice",
+            "index": 4,
+            "values": [
+              2,
+              0,
+              0
+            ]
+          },
+          {
+            "do": "set_seq",
+            "seq": 255
+          }
+        ]
+      }
+    ],
+    "31": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "condition `currentCC + 1 >= 6` not expressible; its branch dropped",
+    "hook onEObjHit not run by the engine yet",
+    "statement `auto currentCC=quest.getUI8AL();`",
+    "statement `eventMgr().sendEventNotice(player, getId(), 1, 2, currentCC + 1, 6)`",
+    "statement `playerMgr().sendUrgent(player, \"QuestBattle content is currently broken. The fight has been skipped for you.\")`"
+  ]
+}

@@ -1,0 +1,156 @@
+{
+  "quest": 65663,
+  "script": "SubFst033_00127",
+  "source": "sapphire",
+  "talks": [
+    {
+      "actor": 1000461,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "scene": 0
+    },
+    {
+      "actor": 1000461,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 0
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 255
+        }
+      ],
+      "scene": 4
+    },
+    {
+      "actor": 2000016,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 1
+        }
+      ],
+      "scene": 1
+    },
+    {
+      "actor": 2000017,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 1
+        }
+      ],
+      "scene": 2
+    },
+    {
+      "actor": 2000018,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 1
+        }
+      ],
+      "scene": 3
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 3,
+              "part": "low"
+            },
+            "value": 1
+          },
+          {
+            "do": "set_seq",
+            "seq": 1
+          }
+        ]
+      }
+    ],
+    "4": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ],
+    "96": [
+      {
+        "then": [
+          {
+            "do": "set_flag",
+            "index": 3,
+            "set": true
+          }
+        ]
+      }
+    ],
+    "98": [
+      {
+        "then": [
+          {
+            "do": "set_flag",
+            "index": 2,
+            "set": true
+          }
+        ]
+      }
+    ],
+    "100": [
+      {
+        "then": [
+          {
+            "do": "set_flag",
+            "index": 1,
+            "set": true
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "hook onBNpcKill not run by the engine yet",
+    "hook onEventItem not run by the engine yet",
+    "hook onPlayerDeath not run by the engine yet",
+    "statement `auto enemy=instance->createBNpcFromLayoutId(Enemy0,1220,Common::BNpcType::Enemy,player.getId());`",
+    "statement `auto enemy=instance->createBNpcFromLayoutId(Enemy1,1220,Common::BNpcType::Enemy,player.getId());`",
+    "statement `auto enemy=instance->createBNpcFromLayoutId(Enemy2,1220,Common::BNpcType::Enemy,player.getId());`",
+    "statement `auto instance=teriMgr().getTerritoryByGuId(player.getTerritoryId());`",
+    "statement `enemy.hateListAddDelayed(player.getAsPlayer(), 1)`"
+  ]
+}

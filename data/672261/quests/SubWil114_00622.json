@@ -1,0 +1,329 @@
+{
+  "quest": 66158,
+  "script": "SubWil114_00622",
+  "source": "sapphire",
+  "talks": [
+    {
+      "actor": 1003929,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "scene": 0
+    },
+    {
+      "actor": 1003929,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 0
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 255
+        }
+      ],
+      "scene": 17
+    },
+    {
+      "actor": 1003977,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 1
+        }
+      ],
+      "scene": 1
+    },
+    {
+      "actor": 1003977,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 1
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 2
+        }
+      ],
+      "scene": 5
+    },
+    {
+      "actor": 1003977,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 1
+        },
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 2
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 3
+        }
+      ],
+      "scene": 6
+    },
+    {
+      "actor": 1004323,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 4
+        }
+      ],
+      "scene": 8
+    },
+    {
+      "actor": 1004323,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 4
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 5
+        }
+      ],
+      "scene": 14
+    },
+    {
+      "actor": 1004323,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 4
+        },
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 5
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 255
+        }
+      ],
+      "scene": 18
+    },
+    {
+      "actor": 1003978,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 4
+        }
+      ],
+      "scene": 10
+    },
+    {
+      "actor": 1003978,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 4
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 5
+        }
+      ],
+      "scene": 13
+    },
+    {
+      "actor": 2001410,
+      "scene": 2,
+      "action": 1
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 1
+          }
+        ]
+      }
+    ],
+    "1": [
+      {
+        "then": [
+          {
+            "do": "notice",
+            "index": 0,
+            "values": [
+              0
+            ]
+          },
+          {
+            "do": "set_seq",
+            "seq": 2
+          }
+        ]
+      }
+    ],
+    "2": [
+      {
+        "then": [
+          {
+            "do": "notice",
+            "index": 1,
+            "values": [
+              0
+            ]
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 1,
+              "part": "high"
+            },
+            "value": 1
+          },
+          {
+            "do": "set_seq",
+            "seq": 3
+          }
+        ]
+      }
+    ],
+    "6": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "play",
+            "scene": 7
+          }
+        ]
+      }
+    ],
+    "7": [
+      {
+        "then": [
+          {
+            "do": "notice",
+            "index": 2,
+            "values": [
+              0
+            ]
+          },
+          {
+            "do": "set_seq",
+            "seq": 4
+          }
+        ]
+      }
+    ],
+    "8": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "play",
+            "scene": 9
+          }
+        ]
+      }
+    ],
+    "9": [
+      {
+        "then": [
+          {
+            "do": "notice",
+            "index": 3,
+            "values": [
+              0
+            ]
+          },
+          {
+            "do": "set_seq",
+            "seq": 5
+          }
+        ]
+      }
+    ],
+    "13": [
+      {
+        "then": [
+          {
+            "do": "notice",
+            "index": 4,
+            "values": [
+              0
+            ]
+          },
+          {
+            "do": "set_seq",
+            "seq": 255
+          }
+        ]
+      }
+    ],
+    "17": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ]
+  }
+}

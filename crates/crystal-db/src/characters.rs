@@ -29,6 +29,15 @@ pub struct Position {
     pub rotation: f64,
 }
 
+/// An active quest (`quests`): its slot (0-29), id, sequence and six variable bytes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct QuestRow {
+    pub slot: u8,
+    pub quest_id: u32,
+    pub sequence: u8,
+    pub vars: [u8; 6],
+}
+
 /// A filled inventory slot (`inventory`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct InventoryRow {
@@ -254,21 +263,36 @@ impl Database {
             .map_err(|e| self.sql(e))
     }
 
-    /// A character's active quests: (slot, quest id, sequence), by slot.
-    pub async fn quests(&self, character_id: i64) -> Result<Vec<(u8, u32, u8)>> {
-        let rows = sqlx::query("SELECT slot, quest_id, sequence FROM quests WHERE character_id = $1 ORDER BY slot")
-            .bind(character_id)
-            .fetch_all(&self.pool)
-            .await
-            .map_err(|e| self.sql(e))?;
+    /// A character's active quests, by slot.
+    pub async fn quests(&self, character_id: i64) -> Result<Vec<QuestRow>> {
+        let rows =
+            sqlx::query("SELECT slot, quest_id, sequence, vars FROM quests WHERE character_id = $1 ORDER BY slot")
+                .bind(character_id)
+                .fetch_all(&self.pool)
+                .await
+                .map_err(|e| self.sql(e))?;
         rows.iter()
-            .map(|r| Ok((r.try_get::<i64, _>(0)? as u8, r.try_get::<i64, _>(1)? as u32, r.try_get::<i64, _>(2)? as u8)))
+            .map(|r| {
+                let packed = r.try_get::<i64, _>(3)? as u64;
+                let mut vars = [0u8; 6];
+                vars.copy_from_slice(&packed.to_le_bytes()[..6]);
+                Ok(QuestRow {
+                    slot: r.try_get::<i64, _>(0)? as u8,
+                    quest_id: r.try_get::<i64, _>(1)? as u32,
+                    sequence: r.try_get::<i64, _>(2)? as u8,
+                    vars,
+                })
+            })
             .collect::<std::result::Result<_, sqlx::Error>>()
             .map_err(|e| self.sql(e))
     }
 
-    /// Puts a quest in a slot at a sequence (replacing what the slot held).
-    pub async fn set_quest(&self, character_id: i64, slot: u8, quest_id: u32, sequence: u8) -> Result<()> {
+    /// Puts a quest in a slot (replacing what the slot held).
+    pub async fn set_quest(&self, character_id: i64, q: &QuestRow) -> Result<()> {
+        let (slot, quest_id, sequence) = (q.slot, q.quest_id, q.sequence);
+        let mut packed = [0u8; 8];
+        packed[..6].copy_from_slice(&q.vars);
+        let vars = u64::from_le_bytes(packed) as i64;
         let mut tx = self.pool.begin().await.map_err(|e| self.sql(e))?;
         sqlx::query("DELETE FROM quests WHERE character_id = $1 AND slot = $2")
             .bind(character_id)
@@ -276,11 +300,12 @@ impl Database {
             .execute(&mut *tx)
             .await
             .map_err(|e| self.sql(e))?;
-        sqlx::query("INSERT INTO quests (character_id, slot, quest_id, sequence) VALUES ($1, $2, $3, $4)")
+        sqlx::query("INSERT INTO quests (character_id, slot, quest_id, sequence, vars) VALUES ($1, $2, $3, $4, $5)")
             .bind(character_id)
             .bind(slot as i32)
             .bind(quest_id as i32)
             .bind(sequence as i32)
+            .bind(vars)
             .execute(&mut *tx)
             .await
             .map_err(|e| self.sql(e))?;

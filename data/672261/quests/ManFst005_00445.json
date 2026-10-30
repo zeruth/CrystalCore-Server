@@ -1,0 +1,125 @@
+{
+  "quest": 65981,
+  "script": "ManFst005_00445",
+  "source": "sapphire",
+  "talks": [
+    {
+      "actor": 1000421,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "scene": 0
+    },
+    {
+      "actor": 1000421,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 0
+        }
+      ],
+      "scene": 9
+    },
+    {
+      "actor": 2000953,
+      "scene": 2
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "play",
+            "scene": 1
+          }
+        ]
+      }
+    ],
+    "1": [
+      {
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 1
+          }
+        ]
+      }
+    ],
+    "3": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "finish"
+          }
+        ]
+      }
+    ],
+    "5": [
+      {
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 3
+          }
+        ]
+      }
+    ],
+    "9": [
+      {
+        "then": [
+          {
+            "do": "play",
+            "scene": 10
+          }
+        ]
+      }
+    ],
+    "10": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "hook onEnterTerritory not run by the engine yet",
+    "onTalk event action `eventMgr().eventActionStart(player, getId(), EventActionProcessShor, , (Entity.Player, player, uint32_t, eventId, uint64_t, additional), {quest.setSeq(SeqFinish), }, nullptr, getId())`",
+    "statement `auto&pTeriMgr=Common::Service<Sapphire::World::Manager::TerritoryMgr>::ref();`",
+    "statement `eventMgr().eventActionStart(player, getId(), EventActionProcessShor, , (Entity.Player, player, uint32_t, eventId, uint64_t, additional), {Scene00003(quest, player), }, nullptr, getId())`",
+    "statement `pTeriMgr.createAndJoinQuestBattle(player, m_id, Questbattle0)`"
+  ]
+}

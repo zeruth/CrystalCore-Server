@@ -1,0 +1,57 @@
+{
+  "quest": 65664,
+  "script": "SubFst034_00128",
+  "source": "sapphire",
+  "talks": [
+    {
+      "actor": 1000421,
+      "scene": 0
+    },
+    {
+      "actor": 1000449,
+      "scene": 100
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 1
+          }
+        ]
+      }
+    ],
+    "100": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "hook onBNpcKill not run by the engine yet",
+    "hook onEventItem not run by the engine yet"
+  ]
+}

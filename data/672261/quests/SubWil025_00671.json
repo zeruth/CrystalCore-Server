@@ -1,0 +1,347 @@
+{
+  "quest": 66207,
+  "script": "SubWil025_00671",
+  "source": "sapphire",
+  "talks": [
+    {
+      "actor": 1003995,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "scene": 0
+    },
+    {
+      "actor": 1003995,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 0
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 255
+        }
+      ],
+      "scene": 10
+    },
+    {
+      "actor": 1004599,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 1
+        },
+        {
+          "if": "var",
+          "var": {
+            "byte": 0,
+            "part": "low"
+          },
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "scene": 1
+    },
+    {
+      "actor": 1004599,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 1
+        },
+        {
+          "if": "var",
+          "var": {
+            "byte": 0,
+            "part": "low"
+          },
+          "op": "ne",
+          "value": 0
+        }
+      ],
+      "scene": 3
+    },
+    {
+      "actor": 1004599,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 1
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 255
+        }
+      ],
+      "scene": 11
+    },
+    {
+      "actor": 1004600,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 1
+        },
+        {
+          "if": "var",
+          "var": {
+            "byte": 1,
+            "part": "high"
+          },
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "scene": 4
+    },
+    {
+      "actor": 1004600,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 1
+        },
+        {
+          "if": "var",
+          "var": {
+            "byte": 1,
+            "part": "high"
+          },
+          "op": "ne",
+          "value": 0
+        }
+      ],
+      "scene": 6
+    },
+    {
+      "actor": 1004600,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 1
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 255
+        }
+      ],
+      "scene": 12
+    },
+    {
+      "actor": 1004601,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 1
+        },
+        {
+          "if": "var",
+          "var": {
+            "byte": 1,
+            "part": "low"
+          },
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "scene": 7
+    },
+    {
+      "actor": 1004601,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 1
+        },
+        {
+          "if": "var",
+          "var": {
+            "byte": 1,
+            "part": "low"
+          },
+          "op": "ne",
+          "value": 0
+        }
+      ],
+      "scene": 9
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 1
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 2,
+              "part": "high"
+            },
+            "value": 3
+          }
+        ]
+      }
+    ],
+    "1": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "play",
+            "scene": 2
+          }
+        ]
+      }
+    ],
+    "2": [
+      {
+        "then": [
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 0,
+              "part": "low"
+            },
+            "value": 1
+          },
+          {
+            "do": "set_flag",
+            "index": 1,
+            "set": true
+          }
+        ]
+      }
+    ],
+    "4": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "play",
+            "scene": 5
+          }
+        ]
+      }
+    ],
+    "5": [
+      {
+        "then": [
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 1,
+              "part": "high"
+            },
+            "value": 1
+          },
+          {
+            "do": "set_flag",
+            "index": 2,
+            "set": true
+          }
+        ]
+      }
+    ],
+    "7": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "play",
+            "scene": 8
+          }
+        ]
+      }
+    ],
+    "8": [
+      {
+        "then": [
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 1,
+              "part": "low"
+            },
+            "value": 1
+          },
+          {
+            "do": "set_flag",
+            "index": 3,
+            "set": true
+          }
+        ]
+      }
+    ],
+    "10": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "condition `varIdx == 1` not expressible; its branch dropped",
+    "hook onEventItem not run by the engine yet"
+  ]
+}

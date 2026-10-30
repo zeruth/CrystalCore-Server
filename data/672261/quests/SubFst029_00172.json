@@ -1,0 +1,48 @@
+{
+  "quest": 65708,
+  "script": "SubFst029_00172",
+  "source": "sapphire",
+  "talks": [],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 255
+          }
+        ]
+      }
+    ],
+    "100": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "condition `result.getResult(0) == 1 && player.collectHandInItems({Ritem0})` not expressible; its branch dropped",
+    "onTalk condition `!player.hasQuest(getId())` not expressible"
+  ]
+}

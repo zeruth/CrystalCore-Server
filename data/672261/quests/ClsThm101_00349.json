@@ -1,0 +1,89 @@
+{
+  "quest": 65885,
+  "script": "ClsThm101_00349",
+  "source": "derived",
+  "talks": [
+    {
+      "actor": 1001708,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "scene": 0
+    },
+    {
+      "actor": 1001710,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 255
+        }
+      ],
+      "scene": 11
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 1
+          }
+        ]
+      }
+    ],
+    "11": [
+      {
+        "then": [
+          {
+            "do": "play",
+            "scene": 12
+          }
+        ]
+      }
+    ],
+    "12": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "listener 1001710 at sequence 1: which scene it plays is not in the data",
+    "listener 160 at sequence 2: which scene it plays is not in the data",
+    "listener 1001710 at sequence 3: which scene it plays is not in the data",
+    "listener 2001512 at sequence 4: which scene it plays is not in the data",
+    "listener 166 at sequence 4: which scene it plays is not in the data",
+    "listener 1238 at sequence 4: which scene it plays is not in the data",
+    "listener 2001760 at sequence 4: which scene it plays is not in the data",
+    "listener 2001499 at sequence 5: which scene it plays is not in the data",
+    "listener 2001760 at sequence 5: which scene it plays is not in the data",
+    "listener 2001760 at sequence 255 (not the end ENpc): its scene is not in the data"
+  ]
+}

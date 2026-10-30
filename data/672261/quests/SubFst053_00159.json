@@ -1,0 +1,117 @@
+{
+  "quest": 65695,
+  "script": "SubFst053_00159",
+  "source": "sapphire",
+  "talks": [
+    {
+      "actor": 1000503,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "scene": 0
+    },
+    {
+      "actor": 1000503,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 0
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 255
+        }
+      ],
+      "scene": 2
+    },
+    {
+      "actor": 2000042,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 1
+        }
+      ],
+      "scene": 1
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 1
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 1,
+              "part": "low"
+            },
+            "value": 1
+          }
+        ]
+      }
+    ],
+    "2": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ],
+    "100": [
+      {
+        "then": [
+          {
+            "do": "set_flag",
+            "index": 1,
+            "set": true
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "hook onBNpcKill not run by the engine yet",
+    "hook onEventItem not run by the engine yet",
+    "hook onTriggerOwnerDeaggro not run by the engine yet",
+    "statement `auto enemy0=instance->createBNpcFromLayoutId(Enemy0,413,Common::BNpcType::Enemy);`",
+    "statement `auto enemy1=instance->createBNpcFromLayoutId(Enemy1,413,Common::BNpcType::Enemy);`",
+    "statement `auto enemy2=instance->createBNpcFromLayoutId(Enemy2,413,Common::BNpcType::Enemy);`",
+    "statement `auto instance=teriMgr().getTerritoryByGuId(player.getTerritoryId());`",
+    "statement `enemy0.hateListAddDelayed(player.getAsPlayer(), 1)`",
+    "statement `enemy0.setTriggerOwnerId(player.getId())`",
+    "statement `enemy1.hateListAddDelayed(player.getAsPlayer(), 1)`",
+    "statement `enemy1.setTriggerOwnerId(player.getId())`",
+    "statement `enemy2.hateListAddDelayed(player.getAsPlayer(), 1)`",
+    "statement `enemy2.setTriggerOwnerId(player.getId())`"
+  ]
+}

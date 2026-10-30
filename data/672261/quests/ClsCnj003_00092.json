@@ -1,0 +1,319 @@
+{
+  "quest": 65628,
+  "script": "ClsCnj003_00092",
+  "source": "sapphire",
+  "talks": [
+    {
+      "actor": 1000692,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "scene": 0
+    },
+    {
+      "actor": 1000692,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 0
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 255
+        }
+      ],
+      "scene": 36
+    },
+    {
+      "actor": 1000561,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 2
+        }
+      ],
+      "scene": 7
+    },
+    {
+      "actor": 1000619,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 3
+        }
+      ],
+      "scene": 8
+    },
+    {
+      "actor": 1003001,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 4
+        }
+      ],
+      "scene": 9
+    },
+    {
+      "actor": 1003001,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 4
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 5
+        }
+      ],
+      "scene": 10
+    },
+    {
+      "actor": 1003057,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 4
+        }
+      ],
+      "scene": 13
+    },
+    {
+      "actor": 1003057,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 4
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 5
+        }
+      ],
+      "scene": 14
+    },
+    {
+      "actor": 1003057,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 4
+        },
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 5
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 6
+        }
+      ],
+      "scene": 21
+    },
+    {
+      "actor": 1001213,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 6
+        }
+      ],
+      "scene": 17
+    },
+    {
+      "actor": 1002960,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 6
+        }
+      ],
+      "scene": 18
+    },
+    {
+      "actor": 1003006,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 7
+        }
+      ],
+      "scene": 35
+    },
+    {
+      "actor": 2000889,
+      "scene": 1
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "play",
+            "scene": 1
+          }
+        ]
+      }
+    ],
+    "1": [
+      {
+        "then": [
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 1,
+              "part": "high"
+            },
+            "value": 1
+          },
+          {
+            "do": "set_seq",
+            "seq": 1
+          }
+        ]
+      }
+    ],
+    "7": [
+      {
+        "then": [
+          {
+            "do": "notice",
+            "index": 1,
+            "values": [
+              0
+            ]
+          },
+          {
+            "do": "set_seq",
+            "seq": 3
+          }
+        ]
+      }
+    ],
+    "8": [
+      {
+        "then": [
+          {
+            "do": "notice",
+            "index": 2,
+            "values": [
+              0
+            ]
+          },
+          {
+            "do": "set_seq",
+            "seq": 4
+          }
+        ]
+      }
+    ],
+    "14": [
+      {
+        "then": [
+          {
+            "do": "notice",
+            "index": 4,
+            "values": [
+              0
+            ]
+          },
+          {
+            "do": "set_seq",
+            "seq": 6
+          }
+        ]
+      }
+    ],
+    "17": [
+      {
+        "then": [
+          {
+            "do": "notice",
+            "index": 5,
+            "values": [
+              0
+            ]
+          },
+          {
+            "do": "set_seq",
+            "seq": 7
+          }
+        ]
+      }
+    ],
+    "35": [
+      {
+        "then": [
+          {
+            "do": "notice",
+            "index": 6,
+            "values": [
+              0
+            ]
+          },
+          {
+            "do": "set_seq",
+            "seq": 255
+          }
+        ]
+      }
+    ],
+    "36": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "hook onBNpcKill not run by the engine yet",
+    "hook onEObjHit not run by the engine yet",
+    "hook onEventItem not run by the engine yet",
+    "statement `auto enemy=instance->createBNpcFromLayoutId(Enemy0,319,Common::BNpcType::Enemy);`",
+    "statement `auto instance=teriMgr().getTerritoryByGuId(player.getTerritoryId());`",
+    "statement `enemy.hateListAddDelayed(player.getAsPlayer(), 1)`",
+    "statement `enemy.setTriggerOwnerId(player.getId())`",
+    "statement `playerMgr().sendUrgent(player, \"QuestBattle content is currently broken. The fight has been skipped for you.\")`"
+  ]
+}

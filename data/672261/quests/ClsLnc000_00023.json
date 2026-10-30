@@ -1,0 +1,55 @@
+{
+  "quest": 65559,
+  "script": "ClsLnc000_00023",
+  "source": "derived",
+  "talks": [
+    {
+      "actor": 1000254,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 255
+        }
+      ],
+      "scene": 1
+    }
+  ],
+  "scenes": {
+    "1": [
+      {
+        "then": [
+          {
+            "do": "play",
+            "scene": 2
+          }
+        ]
+      }
+    ],
+    "2": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "no QuestOffer/QuestAccepted scene pair: the offer not derived",
+    "listener 1000254 at sequence 1: which scene it plays is not in the data",
+    "listener 37 at sequence 2: which scene it plays is not in the data",
+    "listener 49 at sequence 2: which scene it plays is not in the data",
+    "listener 47 at sequence 2: which scene it plays is not in the data"
+  ]
+}

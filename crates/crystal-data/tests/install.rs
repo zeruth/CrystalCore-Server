@@ -54,6 +54,22 @@ fn classes_start_in_their_towns() {
 }
 
 #[test]
+fn quest_scripts_read() {
+    let Some(game) = game() else { return };
+    let world = WorldData::open(&game).unwrap();
+    // Coming to Gridania's script, as unluac decompiles it
+    let script = world.quest_script(0x10027).unwrap();
+    let scenes = script.scenes();
+    assert_eq!(scenes.keys().copied().collect::<Vec<_>>(), (0..=9).collect::<Vec<u16>>());
+    let uses = |s: u16, what: &str| scenes[&s].uses.iter().any(|u| u == what);
+    assert!(uses(0, "QuestOffer") && uses(2, "QuestAccepted") && uses(4, "PlayCutScene") && uses(5, "QuestReward"));
+    assert_eq!(scenes[&0].returns, [1.0, 0.0]);
+    assert_eq!(scenes[&2].returns, [1.0]);
+    assert!(scenes[&6].uses.is_empty(), "6-9 are empty");
+    assert!(script.functions.contains_key("IsAcceptEvent"));
+}
+
+#[test]
 fn lower_decks_npcs() {
     let Some(game) = game() else { return };
     let world = WorldData::open(&game).unwrap();

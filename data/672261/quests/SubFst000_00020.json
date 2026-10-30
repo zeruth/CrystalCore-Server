@@ -1,0 +1,312 @@
+{
+  "quest": 65556,
+  "script": "SubFst000_00020",
+  "source": "sapphire",
+  "talks": [
+    {
+      "actor": 1000786,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "scene": 0
+    },
+    {
+      "actor": 1000705,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 1
+        }
+      ],
+      "scene": 1
+    },
+    {
+      "actor": 1000705,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 1
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 255
+        }
+      ],
+      "scene": 4
+    },
+    {
+      "actor": 2000070,
+      "scene": 2
+    },
+    {
+      "actor": 2000071,
+      "scene": 3
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 1
+          }
+        ]
+      }
+    ],
+    "1": [
+      {
+        "then": [
+          {
+            "do": "notice",
+            "index": 0,
+            "values": [
+              0
+            ]
+          },
+          {
+            "do": "set_seq",
+            "seq": 2
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 1,
+              "part": "high"
+            },
+            "value": 2
+          }
+        ]
+      }
+    ],
+    "4": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ],
+    "98": [
+      {
+        "when": [
+          {
+            "if": "var",
+            "var": {
+              "byte": 0,
+              "part": "low"
+            },
+            "op": "ge",
+            "value": 2
+          }
+        ],
+        "then": [
+          {
+            "do": "set_flag",
+            "index": 2,
+            "set": true
+          },
+          {
+            "do": "add_var",
+            "var": {
+              "byte": 0,
+              "part": "low"
+            },
+            "delta": 1
+          },
+          {
+            "do": "add_var",
+            "var": {
+              "byte": 1,
+              "part": "high"
+            },
+            "delta": -1
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 0,
+              "part": "low"
+            },
+            "value": 0
+          },
+          {
+            "do": "set_flag",
+            "index": 1,
+            "set": false
+          },
+          {
+            "do": "set_flag",
+            "index": 2,
+            "set": false
+          },
+          {
+            "do": "set_seq",
+            "seq": 255
+          }
+        ]
+      },
+      {
+        "when": [
+          {
+            "if": "var",
+            "var": {
+              "byte": 0,
+              "part": "low"
+            },
+            "op": "lt",
+            "value": 2
+          }
+        ],
+        "then": [
+          {
+            "do": "set_flag",
+            "index": 2,
+            "set": true
+          },
+          {
+            "do": "add_var",
+            "var": {
+              "byte": 0,
+              "part": "low"
+            },
+            "delta": 1
+          },
+          {
+            "do": "add_var",
+            "var": {
+              "byte": 1,
+              "part": "high"
+            },
+            "delta": -1
+          }
+        ]
+      }
+    ],
+    "100": [
+      {
+        "when": [
+          {
+            "if": "var",
+            "var": {
+              "byte": 0,
+              "part": "low"
+            },
+            "op": "ge",
+            "value": 2
+          }
+        ],
+        "then": [
+          {
+            "do": "set_flag",
+            "index": 1,
+            "set": true
+          },
+          {
+            "do": "add_var",
+            "var": {
+              "byte": 0,
+              "part": "low"
+            },
+            "delta": 1
+          },
+          {
+            "do": "add_var",
+            "var": {
+              "byte": 1,
+              "part": "high"
+            },
+            "delta": -1
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 0,
+              "part": "low"
+            },
+            "value": 0
+          },
+          {
+            "do": "set_flag",
+            "index": 1,
+            "set": false
+          },
+          {
+            "do": "set_flag",
+            "index": 2,
+            "set": false
+          },
+          {
+            "do": "set_seq",
+            "seq": 255
+          }
+        ]
+      },
+      {
+        "when": [
+          {
+            "if": "var",
+            "var": {
+              "byte": 0,
+              "part": "low"
+            },
+            "op": "lt",
+            "value": 2
+          }
+        ],
+        "then": [
+          {
+            "do": "set_flag",
+            "index": 1,
+            "set": true
+          },
+          {
+            "do": "add_var",
+            "var": {
+              "byte": 0,
+              "part": "low"
+            },
+            "delta": 1
+          },
+          {
+            "do": "add_var",
+            "var": {
+              "byte": 1,
+              "part": "high"
+            },
+            "delta": -1
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "hook onEventItem not run by the engine yet",
+    "statement `eventMgr().sendEventNotice(player, getId(), 1, 2, quest.getUI8AL(), 2)`"
+  ]
+}

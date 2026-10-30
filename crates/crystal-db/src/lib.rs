@@ -236,7 +236,7 @@ impl Database {
 pub mod characters;
 pub mod seed;
 pub mod world;
-pub use characters::{Character, InventoryRow, Position};
+pub use characters::{Character, InventoryRow, Position, QuestRow};
 pub use world::{BETA_PATCH, BnpcSpawn, ExdOverride};
 
 #[cfg(test)]

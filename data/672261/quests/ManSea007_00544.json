@@ -1,0 +1,96 @@
+{
+  "quest": 66080,
+  "script": "ManSea007_00544",
+  "source": "derived",
+  "talks": [
+    {
+      "actor": 1000972,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "scene": 0
+    },
+    {
+      "actor": 1003282,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 255
+        }
+      ],
+      "scene": 11
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "play",
+            "scene": 1
+          }
+        ]
+      }
+    ],
+    "1": [
+      {
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 1
+          }
+        ]
+      }
+    ],
+    "11": [
+      {
+        "then": [
+          {
+            "do": "play",
+            "scene": 12
+          }
+        ]
+      }
+    ],
+    "12": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "listener 1003282 at sequence 1: which scene it plays is not in the data",
+    "listener 1003283 at sequence 2: which scene it plays is not in the data",
+    "listener 1003284 at sequence 2: which scene it plays is not in the data",
+    "listener 1003285 at sequence 2: which scene it plays is not in the data",
+    "listener 1003286 at sequence 2: which scene it plays is not in the data",
+    "listener 2001739 at sequence 2: which scene it plays is not in the data",
+    "listener 5020000 at sequence 3: which scene it plays is not in the data"
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "quest": 66235,
+  "script": "SubSea921_00699",
+  "source": "sapphire",
+  "talks": [
+    {
+      "actor": 1004990,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "scene": 0
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 255
+          }
+        ]
+      }
+    ],
+    "1": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "play",
+            "scene": 2
+          }
+        ]
+      }
+    ],
+    "2": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": null
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "onTalk condition `player.findFirstItemWithId(Ritem0, pair)` not expressible",
+    "onTalk statement `Inventory::InventoryContainerPair pair;`",
+    "statement `player.collectHandInItems({Ritem0})`",
+    "statement `player.setRewardFlag(Common.UnlockEntry.Dye)`"
+  ]
+}

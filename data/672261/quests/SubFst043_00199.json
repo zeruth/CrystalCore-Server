@@ -1,0 +1,94 @@
+{
+  "quest": 65735,
+  "script": "SubFst043_00199",
+  "source": "sapphire",
+  "talks": [
+    {
+      "actor": 1000172,
+      "scene": 0
+    },
+    {
+      "actor": 1000627,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 255
+        }
+      ],
+      "scene": 3
+    },
+    {
+      "actor": 2000143,
+      "scene": 1,
+      "action": 16
+    },
+    {
+      "actor": 2000144,
+      "scene": 2,
+      "action": 16
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 1
+          }
+        ]
+      }
+    ],
+    "1": [
+      {
+        "then": [
+          {
+            "do": "play",
+            "scene": 100
+          }
+        ]
+      }
+    ],
+    "2": [
+      {
+        "then": [
+          {
+            "do": "play",
+            "scene": 98
+          }
+        ]
+      }
+    ],
+    "3": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "condition `credit + 1 >= 2` not expressible; its branch dropped",
+    "statement `auto credit=quest.getUI8AL();`"
+  ]
+}

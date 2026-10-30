@@ -1,0 +1,131 @@
+{
+  "quest": 65991,
+  "script": "ClsAcn050_00455",
+  "source": "sapphire",
+  "talks": [],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "play",
+            "scene": 1
+          }
+        ]
+      }
+    ],
+    "1": [
+      {
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 1
+          }
+        ]
+      }
+    ],
+    "2": [
+      {
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 3
+          }
+        ]
+      }
+    ],
+    "4": [
+      {
+        "then": [
+          {
+            "do": "set_flag",
+            "index": 1,
+            "set": true
+          }
+        ]
+      }
+    ],
+    "9": [
+      {
+        "then": [
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 1,
+              "part": "high"
+            },
+            "value": 1
+          },
+          {
+            "do": "notice",
+            "index": 4,
+            "values": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "do": "set_seq",
+            "seq": 255
+          }
+        ]
+      }
+    ],
+    "12": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "play",
+            "scene": 13
+          }
+        ]
+      }
+    ],
+    "13": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "hook onBNpcKill not run by the engine yet",
+    "onTalk case `Eobject0.id`",
+    "onTalk case `Eobject2.id`",
+    "onTalk switch on `quest.getSeq()`",
+    "statement `auto enemy0=instance->createBNpcFromLayoutId(Enemy2,1220,Common::BNpcType::Enemy,player.getId());`",
+    "statement `auto enemy1=instance->createBNpcFromLayoutId(Enemy3,1220,Common::BNpcType::Enemy,player.getId());`",
+    "statement `auto instance=teriMgr().getTerritoryByGuId(player.getTerritoryId());`",
+    "statement `enemy0.hateListAdd(player.getAsPlayer(), 1)`",
+    "statement `enemy1.hateListAdd(player.getAsPlayer(), 1)`"
+  ]
+}

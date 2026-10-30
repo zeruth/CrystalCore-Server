@@ -1,0 +1,124 @@
+{
+  "quest": 66064,
+  "script": "ManWil200_00528",
+  "source": "derived",
+  "talks": [
+    {
+      "actor": 1004004,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "scene": 0
+    },
+    {
+      "actor": 1000460,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 255
+        }
+      ],
+      "scene": 44
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "play",
+            "scene": 1
+          }
+        ]
+      }
+    ],
+    "1": [
+      {
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 1
+          }
+        ]
+      }
+    ],
+    "44": [
+      {
+        "then": [
+          {
+            "do": "play",
+            "scene": 45
+          }
+        ]
+      }
+    ],
+    "45": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "listener 1001353 at sequence 1: which scene it plays is not in the data",
+    "listener 1004004 at sequence 1: which scene it plays is not in the data",
+    "listener 1004433 at sequence 2: which scene it plays is not in the data",
+    "listener 2001673 at sequence 2: which scene it plays is not in the data",
+    "listener 2001667 at sequence 3: which scene it plays is not in the data",
+    "listener 1004433 at sequence 3: which scene it plays is not in the data",
+    "listener 2001673 at sequence 3: which scene it plays is not in the data",
+    "listener 1002693 at sequence 4: which scene it plays is not in the data",
+    "listener 1002703 at sequence 4: which scene it plays is not in the data",
+    "listener 2001676 at sequence 4: which scene it plays is not in the data",
+    "listener 1004433 at sequence 4: which scene it plays is not in the data",
+    "listener 1001029 at sequence 5: which scene it plays is not in the data",
+    "listener 1002693 at sequence 5: which scene it plays is not in the data",
+    "listener 2001676 at sequence 5: which scene it plays is not in the data",
+    "listener 1004433 at sequence 5: which scene it plays is not in the data",
+    "listener 1002695 at sequence 6: which scene it plays is not in the data",
+    "listener 2001676 at sequence 6: which scene it plays is not in the data",
+    "listener 1004433 at sequence 6: which scene it plays is not in the data",
+    "listener 2001670 at sequence 7: which scene it plays is not in the data",
+    "listener 1002695 at sequence 7: which scene it plays is not in the data",
+    "listener 2001676 at sequence 7: which scene it plays is not in the data",
+    "listener 1004433 at sequence 7: which scene it plays is not in the data",
+    "listener 1002830 at sequence 8: which scene it plays is not in the data",
+    "listener 2001686 at sequence 8: which scene it plays is not in the data",
+    "listener 1000109 at sequence 8: which scene it plays is not in the data",
+    "listener 1004433 at sequence 8: which scene it plays is not in the data",
+    "listener 1002695 at sequence 8: which scene it plays is not in the data",
+    "listener 1002830 at sequence 255 (not the end ENpc): its scene is not in the data",
+    "listener 2001686 at sequence 255 (not the end ENpc): its scene is not in the data",
+    "listener 1004433 at sequence 255 (not the end ENpc): its scene is not in the data",
+    "listener 1002695 at sequence 255 (not the end ENpc): its scene is not in the data",
+    "listener 1002830 at sequence 255 (not the end ENpc): its scene is not in the data",
+    "listener 2001686 at sequence 255 (not the end ENpc): its scene is not in the data",
+    "listener 1004433 at sequence 255 (not the end ENpc): its scene is not in the data",
+    "listener 1002695 at sequence 255 (not the end ENpc): its scene is not in the data"
+  ]
+}

@@ -1,0 +1,62 @@
+{
+  "quest": 65746,
+  "script": "SubFst046_00210",
+  "source": "sapphire",
+  "talks": [
+    {
+      "actor": 1000792,
+      "scene": 1
+    },
+    {
+      "actor": 1000793,
+      "scene": 2
+    },
+    {
+      "actor": 1000794,
+      "scene": 3
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 1
+          }
+        ]
+      }
+    ],
+    "4": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "condition `credit + 1 >= 3` not expressible; its branch dropped",
+    "onTalk condition `!player.hasQuest(getId())` not expressible",
+    "statement `auto credit=quest.getUI8AL();`"
+  ]
+}

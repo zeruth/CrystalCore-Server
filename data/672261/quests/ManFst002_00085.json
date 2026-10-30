@@ -1,0 +1,117 @@
+{
+  "quest": 65621,
+  "script": "ManFst002_00085",
+  "source": "sapphire",
+  "talks": [
+    {
+      "actor": 1001140,
+      "scene": 0
+    },
+    {
+      "actor": 2,
+      "scene": 51
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "play",
+            "scene": 50
+          }
+        ]
+      }
+    ],
+    "3": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "play",
+            "scene": 100
+          }
+        ]
+      },
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "ne",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "play",
+            "scene": 99
+          }
+        ]
+      }
+    ],
+    "5": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ],
+    "50": [
+      {
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 1
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 2,
+              "part": "high"
+            },
+            "value": 1
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "condition `varIdx == 3` not expressible; its branch dropped",
+    "condition `var_attuned == 1 && var_class == 1 && var_trade == 1` not expressible; its branch dropped",
+    "onTalk statement `;eventMgr().eventActionStart(player,327682,19,event,nullptr,327682);`",
+    "onTalk statement `auto event=[&](Entity::Player&player,uint32_t eventId,uint64_t additional){eventMgr().sendEventNotice(player,327682,0,1,0,0);`",
+    "onTalk statement `player.registerAetheryte(2)`",
+    "onTalk statement `player.setRewardFlag(Common.UnlockEntry.Return)`",
+    "statement `auto var_attuned=quest.getUI8AL();`",
+    "statement `auto var_class=quest.getUI8BH();`",
+    "statement `auto var_trade=quest.getUI8BL();`",
+    "statement `warpMgr().requestMoveTerritoryType(player, Common.WarpType.WARP_TYPE_NORMAL, TERRITORYTYPE0)`"
+  ]
+}

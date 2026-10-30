@@ -1,0 +1,693 @@
+{
+  "quest": 66043,
+  "script": "ManFst200_00507",
+  "source": "sapphire",
+  "talks": [
+    {
+      "actor": 1003027,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "scene": 0
+    },
+    {
+      "actor": 1000460,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "scene": 2
+    },
+    {
+      "actor": 1000100,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 1
+        }
+      ],
+      "scene": 3
+    },
+    {
+      "actor": 1000106,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 2
+        }
+      ],
+      "scene": 4
+    },
+    {
+      "actor": 1000106,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 2
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 3
+        }
+      ],
+      "scene": 9
+    },
+    {
+      "actor": 1000106,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 2
+        },
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 3
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 4
+        }
+      ],
+      "scene": 14
+    },
+    {
+      "actor": 1000106,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 2
+        },
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 3
+        },
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 4
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 5
+        }
+      ],
+      "scene": 22
+    },
+    {
+      "actor": 1000106,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 2
+        },
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 3
+        },
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 4
+        },
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 5
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 6
+        }
+      ],
+      "scene": 26
+    },
+    {
+      "actor": 1000106,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 2
+        },
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 3
+        },
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 4
+        },
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 5
+        },
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 6
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 7
+        }
+      ],
+      "scene": 33
+    },
+    {
+      "actor": 1000106,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 2
+        },
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 3
+        },
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 4
+        },
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 5
+        },
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 6
+        },
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 7
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 8
+        }
+      ],
+      "scene": 38
+    },
+    {
+      "actor": 1000106,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 2
+        },
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 3
+        },
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 4
+        },
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 5
+        },
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 6
+        },
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 7
+        },
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 8
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 255
+        }
+      ],
+      "scene": 49
+    },
+    {
+      "actor": 1002693,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 4
+        }
+      ],
+      "scene": 11
+    },
+    {
+      "actor": 1002693,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 4
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 5
+        }
+      ],
+      "scene": 20
+    },
+    {
+      "actor": 1002703,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 4
+        }
+      ],
+      "scene": 12
+    },
+    {
+      "actor": 1001029,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 5
+        }
+      ],
+      "scene": 16
+    },
+    {
+      "actor": 1002695,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 6
+        }
+      ],
+      "scene": 24
+    },
+    {
+      "actor": 1002695,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 6
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 7
+        }
+      ],
+      "scene": 31
+    },
+    {
+      "actor": 1002695,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 6
+        },
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 7
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 8
+        }
+      ],
+      "scene": 40
+    },
+    {
+      "actor": 1002695,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 6
+        },
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 7
+        },
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 8
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 255
+        }
+      ],
+      "scene": 51
+    },
+    {
+      "actor": 1004336,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 8
+        }
+      ],
+      "scene": 35
+    },
+    {
+      "actor": 1004336,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 8
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 255
+        }
+      ],
+      "scene": 47
+    },
+    {
+      "actor": 1004434,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 8
+        }
+      ],
+      "scene": 36
+    },
+    {
+      "actor": 1001821,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 255
+        }
+      ],
+      "scene": 42
+    },
+    {
+      "actor": 2001666,
+      "scene": 7,
+      "action": 10
+    },
+    {
+      "actor": 2001669,
+      "scene": 29,
+      "action": 10
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "play",
+            "scene": 1
+          }
+        ]
+      }
+    ],
+    "1": [
+      {
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 1
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 1,
+              "part": "high"
+            },
+            "value": 1
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 1,
+              "part": "low"
+            },
+            "value": 1
+          }
+        ]
+      }
+    ],
+    "3": [
+      {
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 2
+          },
+          {
+            "do": "notice",
+            "index": 0,
+            "values": [
+              0
+            ]
+          }
+        ]
+      }
+    ],
+    "8": [
+      {
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 4
+          },
+          {
+            "do": "notice",
+            "index": 2,
+            "values": [
+              0
+            ]
+          }
+        ]
+      }
+    ],
+    "11": [
+      {
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 5
+          },
+          {
+            "do": "notice",
+            "index": 3,
+            "values": [
+              0
+            ]
+          }
+        ]
+      }
+    ],
+    "16": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "play",
+            "scene": 17
+          }
+        ]
+      }
+    ],
+    "17": [
+      {
+        "then": [
+          {
+            "do": "play",
+            "scene": 18
+          }
+        ]
+      }
+    ],
+    "18": [
+      {
+        "then": [
+          {
+            "do": "notice",
+            "index": 3,
+            "values": [
+              0
+            ]
+          },
+          {
+            "do": "set_seq",
+            "seq": 6
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 1,
+              "part": "low"
+            },
+            "value": 0
+          }
+        ]
+      }
+    ],
+    "30": [
+      {
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 8
+          },
+          {
+            "do": "notice",
+            "index": 2,
+            "values": [
+              0
+            ]
+          }
+        ]
+      }
+    ],
+    "35": [
+      {
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 255
+          }
+        ]
+      }
+    ],
+    "42": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "play",
+            "scene": 43
+          }
+        ]
+      }
+    ],
+    "43": [
+      {
+        "then": [
+          {
+            "do": "play",
+            "scene": 44
+          }
+        ]
+      }
+    ],
+    "44": [
+      {
+        "then": [
+          {
+            "do": "play",
+            "scene": 45
+          }
+        ]
+      }
+    ],
+    "45": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": null
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "condition `result.errorCode != 50` not expressible; its branch dropped",
+    "hook onEventItem not run by the engine yet",
+    "statement `auto dest=teriMgr().getTerritoryByTypeId(Territorytype2);`",
+    "statement `auto dest=teriMgr().getTerritoryByTypeId(Territorytype3);`",
+    "statement `auto instance=teriMgr().createTerritoryInstance(Territorytype0);`",
+    "statement `warpMgr().requestMoveTerritory(player, Common.WarpType.WARP_TYPE_NORMAL, dest.getGuId(), {-11.86, 92, 17}, -1.95)`",
+    "statement `warpMgr().requestMoveTerritory(player, Common.WarpType.WARP_TYPE_NORMAL, dest.getGuId(), {-44.14, 84, -0.47}, 1.3)`",
+    "statement `warpMgr().requestMoveTerritory(player, Common.WarpType.WARP_TYPE_NORMAL, instance.getGuId(), {31, 1.6, 25.5}, -2.68533)`"
+  ]
+}

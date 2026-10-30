@@ -132,6 +132,9 @@ fn named_rows(data: &WorldData, sheet: &str, name_col: Option<usize>) -> Vec<(u3
         .collect()
 }
 
+/// The quest definitions, from the repository's root.
+const QUEST_DEFS: &str = "data/672261/quests";
+
 pub async fn run(data: &WorldData, db: &Databases, out: &Path) -> anyhow::Result<()> {
     let mut domains = Vec::new();
     let items: HashMap<u32, String> =
@@ -144,21 +147,33 @@ pub async fn run(data: &WorldData, db: &Databases, out: &Path) -> anyhow::Result
         "Quests",
         "β Quest sheet (col 0 name, col 1 script, col 27 start ENpc, col 29 end ENpc, col 1333 exp factor, col 1334 gil) and its game_script/quest Lua",
     );
+    // the definitions the zone runs (crystal-tools runs from the repository's root)
+    let defs = crystal_common::quest::load_dir(Path::new(QUEST_DEFS)).unwrap_or_default();
     for (id, name, r) in named_rows(data, "Quest", Some(0)) {
         let script = str_at(&r, 1).to_owned();
         let n = id.saturating_sub(0x10000);
         let path = format!("game_script/quest/{:03}/{script}.luab", n / 100);
         let has_script = !script.is_empty() && data.pack().read(&path).is_ok();
-        let status = match id {
+        let def = defs.get(&id);
+        let status = match (id, def) {
             // offered, accepted (scenes 0-2), kept, the opening's walls opened, turned in at Mother
             // Miounne (scenes 4-5: returned [1, 0]), 103 gil paid, completed (seen 2026-10-30);
             // its experience (col 1333 is a factor; the β's formula not yet known) not paid
-            0x10027 => Status::Partial,
+            (0x10027, _) => Status::Partial,
+            // run by the engine from a definition with nothing left to review
+            (_, Some(d)) if has_script && d.review.is_empty() => Status::Implemented,
+            // a definition with steps it cannot express yet
+            (_, Some(_)) if has_script => Status::Partial,
             _ if has_script => Status::Pending,
             _ => Status::NoSource,
         };
+        let defined = match def {
+            Some(d) if d.review.is_empty() => format!(" · {:?} definition", d.source).to_lowercase(),
+            Some(d) => format!(" · {:?} definition, {} to review", d.source, d.review.len()).to_lowercase(),
+            None => " · no definition".to_owned(),
+        };
         let detail = format!(
-            "{script}{} · start ENpc {} · end ENpc {} · {} gil · exp factor {}",
+            "{script}{}{defined} · start ENpc {} · end ENpc {} · {} gil · exp factor {}",
             if has_script { "" } else { " (no script in the install)" },
             u64_at(&r, 27),
             u64_at(&r, 29),
@@ -168,7 +183,7 @@ pub async fn run(data: &WorldData, db: &Databases, out: &Path) -> anyhow::Result
         quests.add(format!("{id:#x}"), name, status, detail);
     }
     quests.plan = vec![
-        "Quest engine: run each quest from its β script's scenes and the Quest row (sequences, ACTOR/EOBJECT/ENEMY variables at cols 32-131, todos); one Rust or Lua module per script family (Man, Cls, Sub, Gai, Job), never per-quest guesses",
+        "Quest definitions (data/672261/quests, run by crystal-zone's engine): resolve each one's review notes (battle, item and event-action steps the format cannot say yet), then derive the quests that still have none",
         "Rewards: pin the item-reward columns near cols 1335-1389 against known 2.0 rewards (Coming to Gridania: 103 gil, exp factor 50 already match), then pay gil, exp and items on QuestReward",
         "Quest state packets: Quest (0x1e1) per change, QuestCompleteFlags (0x1e2) kept per character, the tracker; LegacyQuest flags (0x1f0)",
         "Battle and gathering steps: quest-owned BNpcs (IsBattleNpcTriggerOwner), EObjects (EOBJECT*), QuestBattle duties",

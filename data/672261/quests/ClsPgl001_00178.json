@@ -1,0 +1,11 @@
+{
+  "quest": 65714,
+  "script": "ClsPgl001_00178",
+  "source": "derived",
+  "talks": [],
+  "scenes": {},
+  "review": [
+    "no QuestOffer/QuestAccepted scene pair: the offer not derived",
+    "no QuestReward scene: the turn-in not derived"
+  ]
+}

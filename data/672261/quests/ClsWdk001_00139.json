@@ -1,0 +1,31 @@
+{
+  "quest": 65675,
+  "script": "ClsWdk001_00139",
+  "source": "sapphire",
+  "talks": [
+    {
+      "actor": 1000153,
+      "scene": 0
+    }
+  ],
+  "scenes": {
+    "3": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ]
+  }
+}

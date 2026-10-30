@@ -1,0 +1,18 @@
+{
+  "quest": 65998,
+  "script": "SubSea050_00462",
+  "source": "sapphire",
+  "talks": [],
+  "scenes": {},
+  "review": [
+    "hook onBNpcKill not run by the engine yet",
+    "hook onEObjHit not run by the engine yet",
+    "hook onEmote not run by the engine yet",
+    "hook onEnterTerritory not run by the engine yet",
+    "hook onEventItem not run by the engine yet",
+    "hook onProgress not run by the engine yet",
+    "hook onSay not run by the engine yet",
+    "hook onWithinRange not run by the engine yet",
+    "onTalk statement `onProgress(quest, player, EVENT_ON_TALK, actorId, 0, 0)`"
+  ]
+}

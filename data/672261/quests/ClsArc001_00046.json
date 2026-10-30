@@ -1,0 +1,98 @@
+{
+  "quest": 65582,
+  "script": "ClsArc001_00046",
+  "source": "sapphire",
+  "talks": [
+    {
+      "actor": 1000200,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "scene": 0
+    },
+    {
+      "actor": 1000200,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 2
+        }
+      ],
+      "scene": 25
+    },
+    {
+      "actor": 1000200,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 255
+        }
+      ],
+      "scene": 28
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 1
+          }
+        ]
+      }
+    ],
+    "25": [
+      {
+        "then": [
+          {
+            "do": "notice",
+            "index": 1,
+            "values": []
+          },
+          {
+            "do": "set_seq",
+            "seq": 3
+          }
+        ]
+      }
+    ],
+    "28": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "condition `varIdx == 1` not expressible; its branch dropped",
+    "hook onBNpcKill not run by the engine yet",
+    "hook onEObjHit not run by the engine yet"
+  ]
+}

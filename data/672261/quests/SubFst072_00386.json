@@ -1,0 +1,1665 @@
+{
+  "quest": 65922,
+  "script": "SubFst072_00386",
+  "source": "sapphire",
+  "talks": [
+    {
+      "actor": 1000501,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "scene": 0
+    },
+    {
+      "actor": 1000501,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 0
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 255
+        }
+      ],
+      "scene": 7
+    },
+    {
+      "actor": 1000502,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 2
+        }
+      ],
+      "scene": 4
+    },
+    {
+      "actor": 1000507,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 2
+        }
+      ],
+      "scene": 5
+    },
+    {
+      "actor": 1000505,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 2
+        }
+      ],
+      "scene": 6
+    },
+    {
+      "actor": 2001013,
+      "scene": 100,
+      "action": 1
+    },
+    {
+      "actor": 2001014,
+      "scene": 98,
+      "action": 1
+    },
+    {
+      "actor": 2001015,
+      "scene": 96,
+      "action": 1
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 1
+          }
+        ]
+      }
+    ],
+    "4": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "play",
+            "scene": 94
+          }
+        ]
+      }
+    ],
+    "5": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "play",
+            "scene": 92
+          }
+        ]
+      }
+    ],
+    "6": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "play",
+            "scene": 90
+          }
+        ]
+      }
+    ],
+    "7": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ],
+    "90": [
+      {
+        "when": [
+          {
+            "if": "var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "op": "ge",
+            "value": 3
+          },
+          {
+            "if": "seq",
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "add_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "delta": 1
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 3,
+              "part": "high"
+            },
+            "value": 0
+          },
+          {
+            "do": "set_flag",
+            "index": 3,
+            "set": true
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "value": 0
+          },
+          {
+            "do": "set_flag",
+            "index": 1,
+            "set": false
+          },
+          {
+            "do": "set_flag",
+            "index": 2,
+            "set": false
+          },
+          {
+            "do": "set_flag",
+            "index": 3,
+            "set": false
+          },
+          {
+            "do": "set_seq",
+            "seq": 2
+          }
+        ]
+      },
+      {
+        "when": [
+          {
+            "if": "var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "op": "ge",
+            "value": 3
+          },
+          {
+            "if": "seq",
+            "op": "ne",
+            "value": 1
+          },
+          {
+            "if": "seq",
+            "op": "eq",
+            "value": 2
+          }
+        ],
+        "then": [
+          {
+            "do": "add_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "delta": 1
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 3,
+              "part": "high"
+            },
+            "value": 0
+          },
+          {
+            "do": "set_flag",
+            "index": 3,
+            "set": true
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "value": 0
+          },
+          {
+            "do": "set_flag",
+            "index": 1,
+            "set": false
+          },
+          {
+            "do": "set_flag",
+            "index": 2,
+            "set": false
+          },
+          {
+            "do": "set_flag",
+            "index": 3,
+            "set": false
+          },
+          {
+            "do": "set_seq",
+            "seq": 255
+          }
+        ]
+      },
+      {
+        "when": [
+          {
+            "if": "var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "op": "ge",
+            "value": 3
+          },
+          {
+            "if": "seq",
+            "op": "ne",
+            "value": 1
+          },
+          {
+            "if": "seq",
+            "op": "ne",
+            "value": 2
+          }
+        ],
+        "then": [
+          {
+            "do": "add_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "delta": 1
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 3,
+              "part": "high"
+            },
+            "value": 0
+          },
+          {
+            "do": "set_flag",
+            "index": 3,
+            "set": true
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "value": 0
+          },
+          {
+            "do": "set_flag",
+            "index": 1,
+            "set": false
+          },
+          {
+            "do": "set_flag",
+            "index": 2,
+            "set": false
+          },
+          {
+            "do": "set_flag",
+            "index": 3,
+            "set": false
+          }
+        ]
+      },
+      {
+        "when": [
+          {
+            "if": "var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "op": "lt",
+            "value": 3
+          }
+        ],
+        "then": [
+          {
+            "do": "add_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "delta": 1
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 3,
+              "part": "high"
+            },
+            "value": 0
+          },
+          {
+            "do": "set_flag",
+            "index": 3,
+            "set": true
+          }
+        ]
+      }
+    ],
+    "92": [
+      {
+        "when": [
+          {
+            "if": "var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "op": "ge",
+            "value": 3
+          },
+          {
+            "if": "seq",
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "add_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "delta": 1
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 2,
+              "part": "low"
+            },
+            "value": 0
+          },
+          {
+            "do": "set_flag",
+            "index": 2,
+            "set": true
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "value": 0
+          },
+          {
+            "do": "set_flag",
+            "index": 1,
+            "set": false
+          },
+          {
+            "do": "set_flag",
+            "index": 2,
+            "set": false
+          },
+          {
+            "do": "set_flag",
+            "index": 3,
+            "set": false
+          },
+          {
+            "do": "set_seq",
+            "seq": 2
+          }
+        ]
+      },
+      {
+        "when": [
+          {
+            "if": "var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "op": "ge",
+            "value": 3
+          },
+          {
+            "if": "seq",
+            "op": "ne",
+            "value": 1
+          },
+          {
+            "if": "seq",
+            "op": "eq",
+            "value": 2
+          }
+        ],
+        "then": [
+          {
+            "do": "add_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "delta": 1
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 2,
+              "part": "low"
+            },
+            "value": 0
+          },
+          {
+            "do": "set_flag",
+            "index": 2,
+            "set": true
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "value": 0
+          },
+          {
+            "do": "set_flag",
+            "index": 1,
+            "set": false
+          },
+          {
+            "do": "set_flag",
+            "index": 2,
+            "set": false
+          },
+          {
+            "do": "set_flag",
+            "index": 3,
+            "set": false
+          },
+          {
+            "do": "set_seq",
+            "seq": 255
+          }
+        ]
+      },
+      {
+        "when": [
+          {
+            "if": "var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "op": "ge",
+            "value": 3
+          },
+          {
+            "if": "seq",
+            "op": "ne",
+            "value": 1
+          },
+          {
+            "if": "seq",
+            "op": "ne",
+            "value": 2
+          }
+        ],
+        "then": [
+          {
+            "do": "add_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "delta": 1
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 2,
+              "part": "low"
+            },
+            "value": 0
+          },
+          {
+            "do": "set_flag",
+            "index": 2,
+            "set": true
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "value": 0
+          },
+          {
+            "do": "set_flag",
+            "index": 1,
+            "set": false
+          },
+          {
+            "do": "set_flag",
+            "index": 2,
+            "set": false
+          },
+          {
+            "do": "set_flag",
+            "index": 3,
+            "set": false
+          }
+        ]
+      },
+      {
+        "when": [
+          {
+            "if": "var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "op": "lt",
+            "value": 3
+          }
+        ],
+        "then": [
+          {
+            "do": "add_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "delta": 1
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 2,
+              "part": "low"
+            },
+            "value": 0
+          },
+          {
+            "do": "set_flag",
+            "index": 2,
+            "set": true
+          }
+        ]
+      }
+    ],
+    "94": [
+      {
+        "when": [
+          {
+            "if": "var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "op": "ge",
+            "value": 3
+          },
+          {
+            "if": "seq",
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "add_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "delta": 1
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 2,
+              "part": "high"
+            },
+            "value": 0
+          },
+          {
+            "do": "set_flag",
+            "index": 1,
+            "set": true
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "value": 0
+          },
+          {
+            "do": "set_flag",
+            "index": 1,
+            "set": false
+          },
+          {
+            "do": "set_flag",
+            "index": 2,
+            "set": false
+          },
+          {
+            "do": "set_flag",
+            "index": 3,
+            "set": false
+          },
+          {
+            "do": "set_seq",
+            "seq": 2
+          }
+        ]
+      },
+      {
+        "when": [
+          {
+            "if": "var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "op": "ge",
+            "value": 3
+          },
+          {
+            "if": "seq",
+            "op": "ne",
+            "value": 1
+          },
+          {
+            "if": "seq",
+            "op": "eq",
+            "value": 2
+          }
+        ],
+        "then": [
+          {
+            "do": "add_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "delta": 1
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 2,
+              "part": "high"
+            },
+            "value": 0
+          },
+          {
+            "do": "set_flag",
+            "index": 1,
+            "set": true
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "value": 0
+          },
+          {
+            "do": "set_flag",
+            "index": 1,
+            "set": false
+          },
+          {
+            "do": "set_flag",
+            "index": 2,
+            "set": false
+          },
+          {
+            "do": "set_flag",
+            "index": 3,
+            "set": false
+          },
+          {
+            "do": "set_seq",
+            "seq": 255
+          }
+        ]
+      },
+      {
+        "when": [
+          {
+            "if": "var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "op": "ge",
+            "value": 3
+          },
+          {
+            "if": "seq",
+            "op": "ne",
+            "value": 1
+          },
+          {
+            "if": "seq",
+            "op": "ne",
+            "value": 2
+          }
+        ],
+        "then": [
+          {
+            "do": "add_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "delta": 1
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 2,
+              "part": "high"
+            },
+            "value": 0
+          },
+          {
+            "do": "set_flag",
+            "index": 1,
+            "set": true
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "value": 0
+          },
+          {
+            "do": "set_flag",
+            "index": 1,
+            "set": false
+          },
+          {
+            "do": "set_flag",
+            "index": 2,
+            "set": false
+          },
+          {
+            "do": "set_flag",
+            "index": 3,
+            "set": false
+          }
+        ]
+      },
+      {
+        "when": [
+          {
+            "if": "var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "op": "lt",
+            "value": 3
+          }
+        ],
+        "then": [
+          {
+            "do": "add_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "delta": 1
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 2,
+              "part": "high"
+            },
+            "value": 0
+          },
+          {
+            "do": "set_flag",
+            "index": 1,
+            "set": true
+          }
+        ]
+      }
+    ],
+    "96": [
+      {
+        "when": [
+          {
+            "if": "var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "op": "ge",
+            "value": 3
+          },
+          {
+            "if": "seq",
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "add_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "delta": 1
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 3,
+              "part": "high"
+            },
+            "value": 1
+          },
+          {
+            "do": "set_flag",
+            "index": 3,
+            "set": true
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "value": 0
+          },
+          {
+            "do": "set_flag",
+            "index": 1,
+            "set": false
+          },
+          {
+            "do": "set_flag",
+            "index": 2,
+            "set": false
+          },
+          {
+            "do": "set_flag",
+            "index": 3,
+            "set": false
+          },
+          {
+            "do": "set_seq",
+            "seq": 2
+          }
+        ]
+      },
+      {
+        "when": [
+          {
+            "if": "var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "op": "ge",
+            "value": 3
+          },
+          {
+            "if": "seq",
+            "op": "ne",
+            "value": 1
+          },
+          {
+            "if": "seq",
+            "op": "eq",
+            "value": 2
+          }
+        ],
+        "then": [
+          {
+            "do": "add_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "delta": 1
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 3,
+              "part": "high"
+            },
+            "value": 1
+          },
+          {
+            "do": "set_flag",
+            "index": 3,
+            "set": true
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "value": 0
+          },
+          {
+            "do": "set_flag",
+            "index": 1,
+            "set": false
+          },
+          {
+            "do": "set_flag",
+            "index": 2,
+            "set": false
+          },
+          {
+            "do": "set_flag",
+            "index": 3,
+            "set": false
+          },
+          {
+            "do": "set_seq",
+            "seq": 255
+          }
+        ]
+      },
+      {
+        "when": [
+          {
+            "if": "var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "op": "ge",
+            "value": 3
+          },
+          {
+            "if": "seq",
+            "op": "ne",
+            "value": 1
+          },
+          {
+            "if": "seq",
+            "op": "ne",
+            "value": 2
+          }
+        ],
+        "then": [
+          {
+            "do": "add_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "delta": 1
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 3,
+              "part": "high"
+            },
+            "value": 1
+          },
+          {
+            "do": "set_flag",
+            "index": 3,
+            "set": true
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "value": 0
+          },
+          {
+            "do": "set_flag",
+            "index": 1,
+            "set": false
+          },
+          {
+            "do": "set_flag",
+            "index": 2,
+            "set": false
+          },
+          {
+            "do": "set_flag",
+            "index": 3,
+            "set": false
+          }
+        ]
+      },
+      {
+        "when": [
+          {
+            "if": "var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "op": "lt",
+            "value": 3
+          }
+        ],
+        "then": [
+          {
+            "do": "add_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "delta": 1
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 3,
+              "part": "high"
+            },
+            "value": 1
+          },
+          {
+            "do": "set_flag",
+            "index": 3,
+            "set": true
+          }
+        ]
+      }
+    ],
+    "98": [
+      {
+        "when": [
+          {
+            "if": "var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "op": "ge",
+            "value": 3
+          },
+          {
+            "if": "seq",
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "add_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "delta": 1
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 2,
+              "part": "low"
+            },
+            "value": 1
+          },
+          {
+            "do": "set_flag",
+            "index": 2,
+            "set": true
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "value": 0
+          },
+          {
+            "do": "set_flag",
+            "index": 1,
+            "set": false
+          },
+          {
+            "do": "set_flag",
+            "index": 2,
+            "set": false
+          },
+          {
+            "do": "set_flag",
+            "index": 3,
+            "set": false
+          },
+          {
+            "do": "set_seq",
+            "seq": 2
+          }
+        ]
+      },
+      {
+        "when": [
+          {
+            "if": "var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "op": "ge",
+            "value": 3
+          },
+          {
+            "if": "seq",
+            "op": "ne",
+            "value": 1
+          },
+          {
+            "if": "seq",
+            "op": "eq",
+            "value": 2
+          }
+        ],
+        "then": [
+          {
+            "do": "add_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "delta": 1
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 2,
+              "part": "low"
+            },
+            "value": 1
+          },
+          {
+            "do": "set_flag",
+            "index": 2,
+            "set": true
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "value": 0
+          },
+          {
+            "do": "set_flag",
+            "index": 1,
+            "set": false
+          },
+          {
+            "do": "set_flag",
+            "index": 2,
+            "set": false
+          },
+          {
+            "do": "set_flag",
+            "index": 3,
+            "set": false
+          },
+          {
+            "do": "set_seq",
+            "seq": 255
+          }
+        ]
+      },
+      {
+        "when": [
+          {
+            "if": "var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "op": "ge",
+            "value": 3
+          },
+          {
+            "if": "seq",
+            "op": "ne",
+            "value": 1
+          },
+          {
+            "if": "seq",
+            "op": "ne",
+            "value": 2
+          }
+        ],
+        "then": [
+          {
+            "do": "add_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "delta": 1
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 2,
+              "part": "low"
+            },
+            "value": 1
+          },
+          {
+            "do": "set_flag",
+            "index": 2,
+            "set": true
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "value": 0
+          },
+          {
+            "do": "set_flag",
+            "index": 1,
+            "set": false
+          },
+          {
+            "do": "set_flag",
+            "index": 2,
+            "set": false
+          },
+          {
+            "do": "set_flag",
+            "index": 3,
+            "set": false
+          }
+        ]
+      },
+      {
+        "when": [
+          {
+            "if": "var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "op": "lt",
+            "value": 3
+          }
+        ],
+        "then": [
+          {
+            "do": "add_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "delta": 1
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 2,
+              "part": "low"
+            },
+            "value": 1
+          },
+          {
+            "do": "set_flag",
+            "index": 2,
+            "set": true
+          }
+        ]
+      }
+    ],
+    "100": [
+      {
+        "when": [
+          {
+            "if": "var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "op": "ge",
+            "value": 3
+          },
+          {
+            "if": "seq",
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "add_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "delta": 1
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 2,
+              "part": "high"
+            },
+            "value": 1
+          },
+          {
+            "do": "set_flag",
+            "index": 1,
+            "set": true
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "value": 0
+          },
+          {
+            "do": "set_flag",
+            "index": 1,
+            "set": false
+          },
+          {
+            "do": "set_flag",
+            "index": 2,
+            "set": false
+          },
+          {
+            "do": "set_flag",
+            "index": 3,
+            "set": false
+          },
+          {
+            "do": "set_seq",
+            "seq": 2
+          }
+        ]
+      },
+      {
+        "when": [
+          {
+            "if": "var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "op": "ge",
+            "value": 3
+          },
+          {
+            "if": "seq",
+            "op": "ne",
+            "value": 1
+          },
+          {
+            "if": "seq",
+            "op": "eq",
+            "value": 2
+          }
+        ],
+        "then": [
+          {
+            "do": "add_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "delta": 1
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 2,
+              "part": "high"
+            },
+            "value": 1
+          },
+          {
+            "do": "set_flag",
+            "index": 1,
+            "set": true
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "value": 0
+          },
+          {
+            "do": "set_flag",
+            "index": 1,
+            "set": false
+          },
+          {
+            "do": "set_flag",
+            "index": 2,
+            "set": false
+          },
+          {
+            "do": "set_flag",
+            "index": 3,
+            "set": false
+          },
+          {
+            "do": "set_seq",
+            "seq": 255
+          }
+        ]
+      },
+      {
+        "when": [
+          {
+            "if": "var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "op": "ge",
+            "value": 3
+          },
+          {
+            "if": "seq",
+            "op": "ne",
+            "value": 1
+          },
+          {
+            "if": "seq",
+            "op": "ne",
+            "value": 2
+          }
+        ],
+        "then": [
+          {
+            "do": "add_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "delta": 1
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 2,
+              "part": "high"
+            },
+            "value": 1
+          },
+          {
+            "do": "set_flag",
+            "index": 1,
+            "set": true
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "value": 0
+          },
+          {
+            "do": "set_flag",
+            "index": 1,
+            "set": false
+          },
+          {
+            "do": "set_flag",
+            "index": 2,
+            "set": false
+          },
+          {
+            "do": "set_flag",
+            "index": 3,
+            "set": false
+          }
+        ]
+      },
+      {
+        "when": [
+          {
+            "if": "var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "op": "lt",
+            "value": 3
+          }
+        ],
+        "then": [
+          {
+            "do": "add_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "delta": 1
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 2,
+              "part": "high"
+            },
+            "value": 1
+          },
+          {
+            "do": "set_flag",
+            "index": 1,
+            "set": true
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "statement `eventMgr().sendEventNotice(player, getId(), quest.getSeq() == Seq1, 0, , 1, 2, quest.getUI8AH(), 3)`"
+  ]
+}

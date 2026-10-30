@@ -6,6 +6,7 @@
 
 pub mod exd;
 pub mod lgb;
+pub mod luac;
 pub mod sqpack;
 pub mod world;
 

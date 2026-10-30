@@ -1,0 +1,96 @@
+{
+  "quest": 65887,
+  "script": "ClsThm200_00351",
+  "source": "derived",
+  "talks": [
+    {
+      "actor": 1001708,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "scene": 0
+    },
+    {
+      "actor": 1001708,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 255
+        }
+      ],
+      "scene": 26
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 1
+          }
+        ]
+      }
+    ],
+    "26": [
+      {
+        "then": [
+          {
+            "do": "play",
+            "scene": 27
+          }
+        ]
+      }
+    ],
+    "27": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "listener 1001712 at sequence 1: which scene it plays is not in the data",
+    "listener 1002305 at sequence 2: which scene it plays is not in the data",
+    "listener 1002306 at sequence 2: which scene it plays is not in the data",
+    "listener 1002322 at sequence 3: which scene it plays is not in the data",
+    "listener 1002323 at sequence 3: which scene it plays is not in the data",
+    "listener 1002324 at sequence 3: which scene it plays is not in the data",
+    "listener 1002305 at sequence 3: which scene it plays is not in the data",
+    "listener 1002306 at sequence 3: which scene it plays is not in the data",
+    "listener 1002305 at sequence 4: which scene it plays is not in the data",
+    "listener 1002306 at sequence 4: which scene it plays is not in the data",
+    "listener 2001472 at sequence 5: which scene it plays is not in the data",
+    "listener 1002306 at sequence 5: which scene it plays is not in the data",
+    "listener 1002305 at sequence 5: which scene it plays is not in the data",
+    "listener 1002305 at sequence 6: which scene it plays is not in the data",
+    "listener 2001474 at sequence 7: which scene it plays is not in the data",
+    "listener 1002305 at sequence 7: which scene it plays is not in the data",
+    "listener 1001712 at sequence 8: which scene it plays is not in the data"
+  ]
+}

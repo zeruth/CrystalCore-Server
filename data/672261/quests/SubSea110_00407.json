@@ -1,0 +1,104 @@
+{
+  "quest": 65943,
+  "script": "SubSea110_00407",
+  "source": "derived",
+  "talks": [
+    {
+      "actor": 1002231,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "scene": 0
+    },
+    {
+      "actor": 1002231,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 255
+        }
+      ],
+      "scene": 46
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 1
+          }
+        ]
+      }
+    ],
+    "46": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "listener 1002447 at sequence 1: which scene it plays is not in the data",
+    "listener 1002448 at sequence 1: which scene it plays is not in the data",
+    "listener 1002449 at sequence 1: which scene it plays is not in the data",
+    "listener 1002450 at sequence 1: which scene it plays is not in the data",
+    "listener 1002451 at sequence 1: which scene it plays is not in the data",
+    "listener 1002452 at sequence 1: which scene it plays is not in the data",
+    "listener 1003493 at sequence 1: which scene it plays is not in the data",
+    "listener 1003494 at sequence 1: which scene it plays is not in the data",
+    "listener 1003495 at sequence 1: which scene it plays is not in the data",
+    "listener 1003496 at sequence 1: which scene it plays is not in the data",
+    "listener 2000756 at sequence 1: which scene it plays is not in the data",
+    "listener 1002449 at sequence 2: which scene it plays is not in the data",
+    "listener 1002449 at sequence 2: which scene it plays is not in the data",
+    "listener 1002450 at sequence 2: which scene it plays is not in the data",
+    "listener 1002450 at sequence 2: which scene it plays is not in the data",
+    "listener 1002447 at sequence 2: which scene it plays is not in the data",
+    "listener 1002448 at sequence 2: which scene it plays is not in the data",
+    "listener 1002451 at sequence 2: which scene it plays is not in the data",
+    "listener 1002452 at sequence 2: which scene it plays is not in the data",
+    "listener 1003493 at sequence 2: which scene it plays is not in the data",
+    "listener 1003494 at sequence 2: which scene it plays is not in the data",
+    "listener 1003495 at sequence 2: which scene it plays is not in the data",
+    "listener 1003496 at sequence 2: which scene it plays is not in the data",
+    "listener 2000756 at sequence 2: which scene it plays is not in the data",
+    "listener 1002447 at sequence 3: which scene it plays is not in the data",
+    "listener 1002448 at sequence 3: which scene it plays is not in the data",
+    "listener 1002449 at sequence 3: which scene it plays is not in the data",
+    "listener 1002450 at sequence 3: which scene it plays is not in the data",
+    "listener 1002451 at sequence 3: which scene it plays is not in the data",
+    "listener 1002452 at sequence 3: which scene it plays is not in the data",
+    "listener 1003493 at sequence 3: which scene it plays is not in the data",
+    "listener 1003494 at sequence 3: which scene it plays is not in the data",
+    "listener 1003495 at sequence 3: which scene it plays is not in the data",
+    "listener 1003496 at sequence 3: which scene it plays is not in the data",
+    "listener 2000756 at sequence 3: which scene it plays is not in the data"
+  ]
+}

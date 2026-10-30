@@ -1,0 +1,155 @@
+{
+  "quest": 66157,
+  "script": "SubWil113_00621",
+  "source": "sapphire",
+  "talks": [
+    {
+      "actor": 1003929,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "scene": 0
+    },
+    {
+      "actor": 1003929,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 0
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 255
+        }
+      ],
+      "scene": 17
+    },
+    {
+      "actor": 1003976,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 1
+        }
+      ],
+      "scene": 2
+    },
+    {
+      "actor": 1003976,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 1
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 2
+        }
+      ],
+      "scene": 10
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "play",
+            "scene": 1
+          }
+        ]
+      }
+    ],
+    "1": [
+      {
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 1
+          }
+        ]
+      }
+    ],
+    "2": [
+      {
+        "then": [
+          {
+            "do": "notice",
+            "index": 0,
+            "values": [
+              0
+            ]
+          },
+          {
+            "do": "set_seq",
+            "seq": 2
+          }
+        ]
+      }
+    ],
+    "9": [
+      {
+        "then": [
+          {
+            "do": "notice",
+            "index": 1,
+            "values": [
+              0
+            ]
+          },
+          {
+            "do": "set_seq",
+            "seq": 255
+          }
+        ]
+      }
+    ],
+    "17": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "condition `!enemy0Spawned && !enemy1Spawned` not expressible; its branch dropped",
+    "hook onBNpcKill not run by the engine yet",
+    "hook onWithinRange not run by the engine yet",
+    "onTalk condition `enemy0Spawned || enemy1Spawned` not expressible",
+    "onTalk statement `auto enemy0Spawned=instance->getActiveBNpcByLayoutIdAndTriggerOwner(Enemy0,player.getId());`",
+    "onTalk statement `auto enemy1Spawned=instance->getActiveBNpcByLayoutIdAndTriggerOwner(Enemy1,player.getId());`",
+    "onTalk statement `auto instance=teriMgr().getTerritoryByGuId(player.getTerritoryId());`",
+    "statement `auto enemy0Spawned=instance->getActiveBNpcByLayoutIdAndTriggerOwner(Enemy0,player.getId());`",
+    "statement `auto enemy1Spawned=instance->getActiveBNpcByLayoutIdAndTriggerOwner(Enemy1,player.getId());`",
+    "statement `auto instance=teriMgr().getTerritoryByGuId(player.getTerritoryId());`"
+  ]
+}

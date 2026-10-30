@@ -1002,30 +1002,41 @@ pub fn conditions(set: &[u8]) -> Bytes {
     b.freeze()
 }
 
-/// One quest slot's 10 bytes as [`opcode::QUESTS`] and [`opcode::QUEST`] carry them: the id's low
-/// 16 bits @0 (the client compares them as a short: 39 for quest 0x10027) and its sequence @2,
-/// which the client keeps at slot +6 and its scripts read through `GetQuestSequence` (@0x6cc000);
-/// the other 7 bytes (slot +7.., +8 holding `GetQuestUI8AL`'s nibble) left 0.
-fn quest_entry(b: &mut [u8], quest_id: u32, sequence: u8) {
-    b[0..2].copy_from_slice(&(quest_id as u16).to_le_bytes());
-    b[2] = sequence;
+/// One quest slot as the client keeps it (@0xa50040): its id, sequence and six variable bytes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct QuestSlot {
+    pub slot: u8,
+    pub quest_id: u32,
+    pub sequence: u8,
+    /// `UI8A`-`UI8F` (slot +8 - +0xd: the scripts' `GetQuestUI8A`.. @0x734ad0.., the `H`/`L`
+    /// nibbles, `BitFlag8` in F).
+    pub vars: [u8; 6],
 }
 
-/// [`opcode::QUESTS`]: the 30 slots, each (slot, quest id, sequence); the rest empty.
-pub fn quests(active: &[(u8, u32, u8)]) -> Bytes {
+/// One quest slot's 10 bytes as [`opcode::QUESTS`] and [`opcode::QUEST`] carry them: the id's low
+/// 16 bits @0 (the client compares them as a short: 39 for quest 0x10027), its sequence @2 (slot
+/// +6, `GetQuestSequence` @0x6cc000), a byte @3 (slot +7, left 0) and the variables @4-@9.
+fn quest_entry(b: &mut [u8], q: &QuestSlot) {
+    b[0..2].copy_from_slice(&(q.quest_id as u16).to_le_bytes());
+    b[2] = q.sequence;
+    b[4..10].copy_from_slice(&q.vars);
+}
+
+/// [`opcode::QUESTS`]: the 30 slots; the rest empty.
+pub fn quests(active: &[QuestSlot]) -> Bytes {
     let mut b = BytesMut::zeroed(30 * 10);
-    for &(slot, quest_id, sequence) in active.iter().filter(|q| q.0 < 30) {
-        let at = slot as usize * 10;
-        quest_entry(&mut b[at..at + 10], quest_id, sequence);
+    for q in active.iter().filter(|q| q.slot < 30) {
+        let at = q.slot as usize * 10;
+        quest_entry(&mut b[at..at + 10], q);
     }
     b.freeze()
 }
 
-/// [`opcode::QUEST`]: one slot's quest.
-pub fn quest(slot: u8, quest_id: u32, sequence: u8) -> Bytes {
+/// [`opcode::QUEST`]: one slot's quest (quest id 0 empties the slot).
+pub fn quest(q: &QuestSlot) -> Bytes {
     let mut b = BytesMut::zeroed(0x10);
-    b[0] = slot;
-    quest_entry(&mut b[4..0xe], quest_id, sequence);
+    b[0] = q.slot;
+    quest_entry(&mut b[4..0xe], q);
     b.freeze()
 }
 
@@ -1599,9 +1610,11 @@ mod tests {
         assert_eq!((range, event_id), (2351918, 0x0013_0002), "ERANGE_SEQ_1_CLOSED_1, as the script names it");
         assert!((pos[0] - 114.6).abs() < 0.1 && (pos[2] - 139.6).abs() < 0.1);
         // a quest slot: the id's low 16 bits @0, the sequence @2 (the client's slot +4, +6)
-        let q = quest(0, 0x10027, 255);
+        let s = QuestSlot { slot: 0, quest_id: 0x10027, sequence: 255, vars: [0x31, 0, 0, 0, 0, 0x80] };
+        let q = quest(&s);
         assert_eq!((q.len(), q[0], &q[4..7]), (0x10, 0, &[0x27, 0, 255][..]));
-        let all = quests(&[(2, 0x10027, 255)]);
+        assert_eq!((q[8], q[13]), (0x31, 0x80), "UI8A @4 and UI8F @9 of the entry");
+        let all = quests(&[QuestSlot { slot: 2, ..s }]);
         assert_eq!((all.len(), &all[20..23]), (300, &[0x27, 0, 255][..]));
         // quest 39 completed: byte 39 >> 3 = 4, bit 0x80 >> 7 = 1 (MSB first, @0xa501b0)
         let flags = quest_complete_flags(&[0x10027]);

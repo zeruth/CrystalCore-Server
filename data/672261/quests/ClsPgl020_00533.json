@@ -1,0 +1,83 @@
+{
+  "quest": 66069,
+  "script": "ClsPgl020_00533",
+  "source": "derived",
+  "talks": [
+    {
+      "actor": 1001286,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "scene": 0
+    },
+    {
+      "actor": 1003817,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 255
+        }
+      ],
+      "scene": 2
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 1
+          }
+        ]
+      }
+    ],
+    "2": [
+      {
+        "then": [
+          {
+            "do": "play",
+            "scene": 3
+          }
+        ]
+      }
+    ],
+    "3": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "listener 1003817 at sequence 1: which scene it plays is not in the data",
+    "listener 351 at sequence 2: which scene it plays is not in the data",
+    "listener 385 at sequence 2: which scene it plays is not in the data",
+    "listener 205 at sequence 2: which scene it plays is not in the data"
+  ]
+}

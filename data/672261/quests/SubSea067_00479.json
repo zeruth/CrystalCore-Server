@@ -1,0 +1,163 @@
+{
+  "quest": 66015,
+  "script": "SubSea067_00479",
+  "source": "derived",
+  "talks": [
+    {
+      "actor": 1002571,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "scene": 0
+    },
+    {
+      "actor": 1000972,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 255
+        }
+      ],
+      "scene": 15
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "play",
+            "scene": 2
+          }
+        ]
+      }
+    ],
+    "2": [
+      {
+        "then": [
+          {
+            "do": "play",
+            "scene": 3
+          }
+        ]
+      }
+    ],
+    "3": [
+      {
+        "then": [
+          {
+            "do": "play",
+            "scene": 4
+          }
+        ]
+      }
+    ],
+    "4": [
+      {
+        "then": [
+          {
+            "do": "play",
+            "scene": 5
+          }
+        ]
+      }
+    ],
+    "5": [
+      {
+        "then": [
+          {
+            "do": "play",
+            "scene": 6
+          }
+        ]
+      }
+    ],
+    "6": [
+      {
+        "then": [
+          {
+            "do": "play",
+            "scene": 9
+          }
+        ]
+      }
+    ],
+    "9": [
+      {
+        "then": [
+          {
+            "do": "play",
+            "scene": 12
+          }
+        ]
+      }
+    ],
+    "12": [
+      {
+        "then": [
+          {
+            "do": "play",
+            "scene": 15
+          }
+        ]
+      }
+    ],
+    "15": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ],
+    "90": [
+      {
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 1
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "listener 1002659 at sequence 1: which scene it plays is not in the data",
+    "listener 1002571 at sequence 2: which scene it plays is not in the data",
+    "listener 1002591 at sequence 3: which scene it plays is not in the data",
+    "listener 1002221 at sequence 4: which scene it plays is not in the data",
+    "listener 2001491 at sequence 5: which scene it plays is not in the data",
+    "listener 2001491 at sequence 5: which scene it plays is not in the data",
+    "listener 2001492 at sequence 6: which scene it plays is not in the data",
+    "listener 331 at sequence 6: which scene it plays is not in the data",
+    "listener 329 at sequence 6: which scene it plays is not in the data",
+    "listener 329 at sequence 6: which scene it plays is not in the data",
+    "listener 2001491 at sequence 6: which scene it plays is not in the data",
+    "listener 1002571 at sequence 7: which scene it plays is not in the data",
+    "listener 2001491 at sequence 7: which scene it plays is not in the data",
+    "listener 2001491 at sequence 255 (not the end ENpc): its scene is not in the data"
+  ]
+}

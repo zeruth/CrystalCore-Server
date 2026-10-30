@@ -1,0 +1,232 @@
+{
+  "quest": 65929,
+  "script": "SubWil020_00393",
+  "source": "sapphire",
+  "talks": [
+    {
+      "actor": 1001685,
+      "scene": 0
+    },
+    {
+      "actor": 1001940,
+      "when": [
+        {
+          "if": "flag",
+          "index": 1,
+          "set": false
+        }
+      ],
+      "scene": 1
+    },
+    {
+      "actor": 1001940,
+      "when": [
+        {
+          "if": "flag",
+          "index": 1,
+          "set": true
+        }
+      ],
+      "scene": 2
+    },
+    {
+      "actor": 1001937,
+      "when": [
+        {
+          "if": "flag",
+          "index": 2,
+          "set": false
+        }
+      ],
+      "scene": 3
+    },
+    {
+      "actor": 1001937,
+      "when": [
+        {
+          "if": "flag",
+          "index": 2,
+          "set": true
+        }
+      ],
+      "scene": 4
+    },
+    {
+      "actor": 1001939,
+      "when": [
+        {
+          "if": "flag",
+          "index": 3,
+          "set": false
+        }
+      ],
+      "scene": 5
+    },
+    {
+      "actor": 1001939,
+      "when": [
+        {
+          "if": "flag",
+          "index": 3,
+          "set": true
+        }
+      ],
+      "scene": 6
+    },
+    {
+      "actor": 1001942,
+      "when": [
+        {
+          "if": "flag",
+          "index": 4,
+          "set": false
+        }
+      ],
+      "scene": 7
+    },
+    {
+      "actor": 1001942,
+      "when": [
+        {
+          "if": "flag",
+          "index": 4,
+          "set": true
+        }
+      ],
+      "scene": 8
+    },
+    {
+      "actor": 1001949,
+      "when": [
+        {
+          "if": "flag",
+          "index": 5,
+          "set": false
+        }
+      ],
+      "scene": 9
+    },
+    {
+      "actor": 1001949,
+      "when": [
+        {
+          "if": "flag",
+          "index": 5,
+          "set": true
+        }
+      ],
+      "scene": 10
+    },
+    {
+      "actor": 1003902,
+      "when": [
+        {
+          "if": "flag",
+          "index": 6,
+          "set": false
+        }
+      ],
+      "scene": 11
+    },
+    {
+      "actor": 1003902,
+      "when": [
+        {
+          "if": "flag",
+          "index": 6,
+          "set": true
+        }
+      ],
+      "scene": 12
+    },
+    {
+      "actor": 1001914,
+      "when": [
+        {
+          "if": "flag",
+          "index": 7,
+          "set": false
+        }
+      ],
+      "scene": 13
+    },
+    {
+      "actor": 1001914,
+      "when": [
+        {
+          "if": "flag",
+          "index": 7,
+          "set": true
+        }
+      ],
+      "scene": 14
+    },
+    {
+      "actor": 1003899,
+      "when": [
+        {
+          "if": "flag",
+          "index": 8,
+          "set": false
+        }
+      ],
+      "scene": 15
+    },
+    {
+      "actor": 1003899,
+      "when": [
+        {
+          "if": "flag",
+          "index": 8,
+          "set": true
+        }
+      ],
+      "scene": 16
+    },
+    {
+      "actor": 1001945,
+      "scene": 17
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 1
+          }
+        ]
+      }
+    ],
+    "17": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "condition `!quest.getBitFlag8(index)` not expressible; its branch dropped"
+  ]
+}

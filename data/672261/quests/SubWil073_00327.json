@@ -1,0 +1,157 @@
+{
+  "quest": 65863,
+  "script": "SubWil073_00327",
+  "source": "sapphire",
+  "talks": [
+    {
+      "actor": 1001447,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "scene": 0
+    },
+    {
+      "actor": 1001447,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 0
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 255
+        }
+      ],
+      "scene": 5
+    },
+    {
+      "actor": 2000377,
+      "scene": 94,
+      "action": 1
+    },
+    {
+      "actor": 2000378,
+      "scene": 95,
+      "action": 1
+    },
+    {
+      "actor": 2000379,
+      "scene": 96,
+      "action": 1
+    },
+    {
+      "actor": 2000380,
+      "scene": 97,
+      "action": 1
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "play",
+            "scene": 1
+          }
+        ]
+      }
+    ],
+    "1": [
+      {
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 1
+          }
+        ]
+      }
+    ],
+    "5": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ],
+    "94": [
+      {
+        "then": [
+          {
+            "do": "set_flag",
+            "index": 1,
+            "set": true
+          }
+        ]
+      }
+    ],
+    "95": [
+      {
+        "then": [
+          {
+            "do": "set_flag",
+            "index": 2,
+            "set": true
+          }
+        ]
+      }
+    ],
+    "96": [
+      {
+        "then": [
+          {
+            "do": "set_flag",
+            "index": 3,
+            "set": true
+          }
+        ]
+      }
+    ],
+    "97": [
+      {
+        "then": [
+          {
+            "do": "set_flag",
+            "index": 4,
+            "set": true
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "hook onBNpcKill not run by the engine yet",
+    "hook onEventItem not run by the engine yet",
+    "statement `auto enemy=instance->createBNpcFromLayoutId(Enemy0,1220,Common::BNpcType::Enemy);`",
+    "statement `auto enemy=instance->createBNpcFromLayoutId(Enemy1,1220,Common::BNpcType::Enemy);`",
+    "statement `auto enemy=instance->createBNpcFromLayoutId(Enemy2,1220,Common::BNpcType::Enemy);`",
+    "statement `auto enemy=instance->createBNpcFromLayoutId(Enemy3,1220,Common::BNpcType::Enemy);`",
+    "statement `auto instance=teriMgr().getTerritoryByGuId(player.getTerritoryId());`",
+    "statement `enemy.hateListAddDelayed(player.getAsPlayer(), 1)`",
+    "statement `enemy.setTriggerOwnerId(player.getId())`"
+  ]
+}

@@ -540,6 +540,17 @@ impl WorldData {
         (v > 0).then_some(v as u32)
     }
 
+    /// A quest's script (`game_script/quest/NNN/<Quest col 1>.luab`, NNN its index / 100), read for
+    /// its scene functions; `None` when the quest names no script or the install lacks it.
+    pub fn quest_script(&self, quest_id: u32) -> Option<crate::luac::Script> {
+        let script = self.sheet("Quest").ok()?.row(quest_id)?.get(1)?.as_str()?.to_owned();
+        if script.is_empty() {
+            return None;
+        }
+        let path = format!("game_script/quest/{:03}/{script}.luab", (quest_id & 0xffff) / 100);
+        crate::luac::Script::parse(&self.pack.read(&path).ok()?).ok()
+    }
+
     /// A variable of an opening's script, from its `Opening` row (0x130001-0x130003): the names
     /// are cols 2-41, each value 40 columns on (`ERANGE_SEQ_1_CLOSED_1`, `POS_START`, ...).
     pub fn opening_value(&self, event_id: u32, name: &str) -> Option<u32> {

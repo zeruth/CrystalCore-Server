@@ -1,0 +1,353 @@
+{
+  "quest": 66154,
+  "script": "SubWil110_00618",
+  "source": "sapphire",
+  "talks": [
+    {
+      "actor": 1003929,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "scene": 0
+    },
+    {
+      "actor": 1003929,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 0
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 255
+        }
+      ],
+      "scene": 19
+    },
+    {
+      "actor": 1003942,
+      "scene": 2,
+      "action": 6
+    },
+    {
+      "actor": 1003943,
+      "scene": 3,
+      "action": 6
+    },
+    {
+      "actor": 1003944,
+      "scene": 4,
+      "action": 6
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "play",
+            "scene": 1
+          }
+        ]
+      }
+    ],
+    "1": [
+      {
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 1
+          }
+        ]
+      }
+    ],
+    "2": [
+      {
+        "when": [
+          {
+            "if": "var",
+            "var": {
+              "byte": 2,
+              "part": "high"
+            },
+            "op": "ge",
+            "value": 3
+          },
+          {
+            "if": "var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "op": "ge",
+            "value": 3
+          }
+        ],
+        "then": [
+          {
+            "do": "add_var",
+            "var": {
+              "byte": 2,
+              "part": "high"
+            },
+            "delta": 1
+          },
+          {
+            "do": "add_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "delta": 1
+          },
+          {
+            "do": "set_flag",
+            "index": 1,
+            "set": true
+          },
+          {
+            "do": "set_seq",
+            "seq": 255
+          }
+        ]
+      },
+      {
+        "then": [
+          {
+            "do": "add_var",
+            "var": {
+              "byte": 2,
+              "part": "high"
+            },
+            "delta": 1
+          },
+          {
+            "do": "add_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "delta": 1
+          },
+          {
+            "do": "set_flag",
+            "index": 1,
+            "set": true
+          }
+        ]
+      }
+    ],
+    "3": [
+      {
+        "when": [
+          {
+            "if": "var",
+            "var": {
+              "byte": 2,
+              "part": "high"
+            },
+            "op": "ge",
+            "value": 3
+          },
+          {
+            "if": "var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "op": "ge",
+            "value": 3
+          }
+        ],
+        "then": [
+          {
+            "do": "add_var",
+            "var": {
+              "byte": 2,
+              "part": "high"
+            },
+            "delta": 1
+          },
+          {
+            "do": "add_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "delta": 1
+          },
+          {
+            "do": "set_flag",
+            "index": 2,
+            "set": true
+          },
+          {
+            "do": "set_seq",
+            "seq": 255
+          }
+        ]
+      },
+      {
+        "then": [
+          {
+            "do": "add_var",
+            "var": {
+              "byte": 2,
+              "part": "high"
+            },
+            "delta": 1
+          },
+          {
+            "do": "add_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "delta": 1
+          },
+          {
+            "do": "set_flag",
+            "index": 2,
+            "set": true
+          }
+        ]
+      }
+    ],
+    "4": [
+      {
+        "when": [
+          {
+            "if": "var",
+            "var": {
+              "byte": 2,
+              "part": "high"
+            },
+            "op": "ge",
+            "value": 3
+          },
+          {
+            "if": "var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "op": "ge",
+            "value": 3
+          }
+        ],
+        "then": [
+          {
+            "do": "add_var",
+            "var": {
+              "byte": 2,
+              "part": "high"
+            },
+            "delta": 1
+          },
+          {
+            "do": "add_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "delta": 1
+          },
+          {
+            "do": "set_flag",
+            "index": 3,
+            "set": true
+          },
+          {
+            "do": "set_seq",
+            "seq": 255
+          }
+        ]
+      },
+      {
+        "then": [
+          {
+            "do": "add_var",
+            "var": {
+              "byte": 2,
+              "part": "high"
+            },
+            "delta": 1
+          },
+          {
+            "do": "add_var",
+            "var": {
+              "byte": 0,
+              "part": "high"
+            },
+            "delta": 1
+          },
+          {
+            "do": "set_flag",
+            "index": 3,
+            "set": true
+          }
+        ]
+      }
+    ],
+    "19": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "play",
+            "scene": 20
+          }
+        ]
+      }
+    ],
+    "20": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": null
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "condition `!enemy0Spawned && !enemy1Spawned` not expressible; its branch dropped",
+    "hook onBNpcKill not run by the engine yet",
+    "hook onWithinRange not run by the engine yet",
+    "statement `auto enemy0Spawned=instance->getActiveBNpcByLayoutIdAndTriggerOwner(Enemy0,player.getId());`",
+    "statement `auto enemy1Spawned=instance->getActiveBNpcByLayoutIdAndTriggerOwner(Enemy1,player.getId());`",
+    "statement `auto instance=teriMgr().getTerritoryByGuId(player.getTerritoryId());`",
+    "statement `eventMgr().sendEventNotice(player, getId(), 0, 2, quest.getUI8AH(), 3)`",
+    "statement `quest.setUI8BH(quest.getUI8CH())`"
+  ]
+}

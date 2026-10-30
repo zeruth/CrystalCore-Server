@@ -1,0 +1,213 @@
+{
+  "quest": 65644,
+  "script": "ManSea002_00108",
+  "source": "sapphire",
+  "talks": [
+    {
+      "actor": 1002697,
+      "scene": 0
+    },
+    {
+      "actor": 1001217,
+      "scene": 4
+    },
+    {
+      "actor": 1000926,
+      "scene": 6
+    },
+    {
+      "actor": 1000972,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "scene": 0
+    },
+    {
+      "actor": 1000972,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 0
+        }
+      ],
+      "scene": 7
+    },
+    {
+      "actor": 8,
+      "scene": 2,
+      "action": 19
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "play",
+            "scene": 1
+          }
+        ]
+      }
+    ],
+    "1": [
+      {
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 1
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 2,
+              "part": "high"
+            },
+            "value": 1
+          }
+        ]
+      }
+    ],
+    "2": [
+      {
+        "then": [
+          {
+            "do": "play",
+            "scene": 3
+          }
+        ]
+      }
+    ],
+    "3": [
+      {
+        "then": [
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 1,
+              "part": "low"
+            },
+            "value": 1
+          },
+          {
+            "do": "notice",
+            "index": 0,
+            "values": [
+              0,
+              0,
+              0
+            ]
+          }
+        ]
+      }
+    ],
+    "4": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 2,
+              "part": "high"
+            },
+            "value": 0
+          },
+          {
+            "do": "play",
+            "scene": 5
+          }
+        ]
+      }
+    ],
+    "5": [
+      {
+        "then": [
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 1,
+              "part": "high"
+            },
+            "value": 1
+          },
+          {
+            "do": "notice",
+            "index": 1,
+            "values": [
+              0,
+              0,
+              0
+            ]
+          }
+        ]
+      }
+    ],
+    "6": [
+      {
+        "then": [
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 0,
+              "part": "low"
+            },
+            "value": 1
+          },
+          {
+            "do": "notice",
+            "index": 2,
+            "values": [
+              0,
+              0,
+              0
+            ]
+          }
+        ]
+      }
+    ],
+    "7": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "condition `var_Attune == 1 && var_Class == 1 && var_Trade == 1` not expressible; its branch dropped",
+    "statement `auto var_Attune=quest.getUI8AL();`",
+    "statement `auto var_Class=quest.getUI8BH();`",
+    "statement `auto var_Trade=quest.getUI8BL();`"
+  ]
+}

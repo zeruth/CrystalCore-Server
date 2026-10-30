@@ -1,0 +1,323 @@
+{
+  "quest": 65879,
+  "script": "ManFst209_00343",
+  "source": "sapphire",
+  "talks": [
+    {
+      "actor": 1005116,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "scene": 0
+    },
+    {
+      "actor": 1004584,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 1
+        }
+      ],
+      "scene": 2
+    },
+    {
+      "actor": 1005017,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 3
+        }
+      ],
+      "scene": 14
+    },
+    {
+      "actor": 1005017,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 3
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 4
+        }
+      ],
+      "scene": 32
+    },
+    {
+      "actor": 1004605,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 3
+        }
+      ],
+      "scene": 17
+    },
+    {
+      "actor": 1004605,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 3
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 4
+        }
+      ],
+      "scene": 29
+    },
+    {
+      "actor": 1004608,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 3
+        }
+      ],
+      "scene": 15
+    },
+    {
+      "actor": 1004608,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 3
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 4
+        }
+      ],
+      "scene": 27
+    },
+    {
+      "actor": 1004610,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 3
+        }
+      ],
+      "scene": 18
+    },
+    {
+      "actor": 1004610,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 3
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 4
+        }
+      ],
+      "scene": 30
+    },
+    {
+      "actor": 1005018,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 3
+        }
+      ],
+      "scene": 26
+    },
+    {
+      "actor": 1005018,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 3
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 4
+        }
+      ],
+      "scene": 39
+    },
+    {
+      "actor": 1005156,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 5
+        }
+      ],
+      "scene": 40
+    },
+    {
+      "actor": 1005012,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 255
+        }
+      ],
+      "scene": 51
+    },
+    {
+      "actor": 2001592,
+      "scene": 8,
+      "action": 11
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "play",
+            "scene": 1
+          }
+        ]
+      }
+    ],
+    "1": [
+      {
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 1
+          }
+        ]
+      }
+    ],
+    "2": [
+      {
+        "then": [
+          {
+            "do": "notice",
+            "index": 0,
+            "values": [
+              0
+            ]
+          },
+          {
+            "do": "set_seq",
+            "seq": 2
+          }
+        ]
+      }
+    ],
+    "8": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "finish"
+          }
+        ]
+      }
+    ],
+    "14": [
+      {
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 4
+          },
+          {
+            "do": "notice",
+            "index": 2,
+            "values": [
+              0
+            ]
+          }
+        ]
+      }
+    ],
+    "40": [
+      {
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 255
+          },
+          {
+            "do": "notice",
+            "index": 4,
+            "values": [
+              0
+            ]
+          }
+        ]
+      }
+    ],
+    "51": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "play",
+            "scene": 52
+          }
+        ]
+      }
+    ],
+    "52": [
+      {
+        "then": [
+          {
+            "do": "complete",
+            "choice": null
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "statement `auto dest=teriMgr().getTerritoryByTypeId(Territorytype1);`",
+    "statement `auto&pTeriMgr=Common::Service<Sapphire::World::Manager::TerritoryMgr>::ref();`",
+    "statement `pTeriMgr.createAndJoinQuestBattle(player, m_id, Questbattle0)`",
+    "statement `warpMgr().requestMoveTerritory(player, Common.WarpType.WARP_TYPE_NORMAL, dest.getGuId(), {-53.4502, -24.0946, -567.494}, -0.550531)`"
+  ]
+}

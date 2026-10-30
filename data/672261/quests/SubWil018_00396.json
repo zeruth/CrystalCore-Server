@@ -1,0 +1,155 @@
+{
+  "quest": 65932,
+  "script": "SubWil018_00396",
+  "source": "sapphire",
+  "talks": [
+    {
+      "actor": 2000695,
+      "scene": 1
+    },
+    {
+      "actor": 2000696,
+      "scene": 4
+    },
+    {
+      "actor": 2000697,
+      "scene": 7
+    },
+    {
+      "actor": 2001089,
+      "scene": 10
+    },
+    {
+      "actor": 2001090,
+      "scene": 13
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 1
+          }
+        ]
+      }
+    ],
+    "1": [
+      {
+        "then": [
+          {
+            "do": "play",
+            "scene": 2
+          }
+        ]
+      }
+    ],
+    "4": [
+      {
+        "then": [
+          {
+            "do": "play",
+            "scene": 5
+          }
+        ]
+      }
+    ],
+    "7": [
+      {
+        "then": [
+          {
+            "do": "play",
+            "scene": 8
+          }
+        ]
+      }
+    ],
+    "10": [
+      {
+        "then": [
+          {
+            "do": "play",
+            "scene": 11
+          }
+        ]
+      }
+    ],
+    "13": [
+      {
+        "then": [
+          {
+            "do": "play",
+            "scene": 14
+          }
+        ]
+      }
+    ],
+    "16": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "play",
+            "scene": 17
+          }
+        ]
+      },
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "ne",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "play",
+            "scene": 18
+          }
+        ]
+      }
+    ],
+    "17": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "condition `currentCC + 1 >= 5` not expressible; its branch dropped",
+    "onTalk condition `!player.hasQuest(getId())` not expressible",
+    "statement `auto currentCC=quest.getUI8AL();`",
+    "statement `eventMgr().sendEventNotice(player, getId(), 0, 3, currentCC + 1, 5)`"
+  ]
+}

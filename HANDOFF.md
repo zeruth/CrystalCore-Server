@@ -16,10 +16,20 @@ names.json`: the event, condition, range and quest functions). Starting gear is 
 weapon and the race's set (`Race` cols 2-9). `crystal-tools coverage` writes `var/coverage.html`,
 the β domain by domain against the server; ROADMAP's "road to 100%" is the plan.
 
-Next: the content engine (scenes and variables read from each quest's script and `Quest` row
-instead of per-quest tables like `turn_in_scenes`), quest experience (the β's formula), the
-Limsa and Ul'dah openings played through, the pet hotbar showing for no reason (catch
-`F_008dc9e0` with `bptrace.py` while logging in), the InfoProxy list requests (up 0xcb).
+Quests are data (2026-10-30): `data/672261/quests/<script>.json`, one definition per β quest
+(`crystal_common::quest`): which talk plays which scene, what each scene's result does (play,
+sequence, variables, flags, complete, the opening's sequence and nested scene, finish, warp).
+203 come from Sapphire's scripts (`crystal-tools import sapphire-quests`), 215 are derived from
+the β's own `Quest` row and script (`import derive-quests`: the offer and turn-in chains); what a
+source had that the format cannot say is kept in each file's `review`. `crystal-zone/src/
+quests.rs` runs them; the quest's six variable bytes are kept (`quests.vars`) and sent (0x1e0/
+0x1e1). Only Coming to Gridania has been played through with them.
+
+Next: play the engine (Coming to Gridania again, then a Limsa and an Ul'dah first quest; the
+Ul'dah wall fix, 241ac16, is unseen), the review notes (battle, item and event-action steps),
+the event-action cast bar and the notice packet (both logged only), quest experience (the β's
+formula), the pet hotbar showing for no reason (catch `F_008dc9e0` with `bptrace.py` while
+logging in), the InfoProxy list requests (up 0xcb).
 
 ## Where it stood before Phase 6 (2026-10-30)
 

@@ -1,0 +1,26 @@
+{
+  "quest": 65642,
+  "script": "ClsTan001_00106",
+  "source": "sapphire",
+  "talks": [],
+  "scenes": {
+    "3": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ]
+  }
+}

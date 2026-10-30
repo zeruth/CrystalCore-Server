@@ -1,0 +1,94 @@
+{
+  "quest": 65917,
+  "script": "SubFst060_00381",
+  "source": "sapphire",
+  "talks": [
+    {
+      "actor": 1000741,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "scene": 0
+    },
+    {
+      "actor": 1000491,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 255
+        }
+      ],
+      "scene": 2
+    },
+    {
+      "actor": 2001006,
+      "scene": 100,
+      "action": 2
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 1
+          }
+        ]
+      }
+    ],
+    "2": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ],
+    "100": [
+      {
+        "then": [
+          {
+            "do": "set_flag",
+            "index": 1,
+            "set": true
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "hook onBNpcKill not run by the engine yet",
+    "hook onEventItem not run by the engine yet",
+    "statement `auto enemy0=instance->createBNpcFromLayoutId(Enemy0,413,Common::BNpcType::Enemy);`",
+    "statement `auto enemy1=instance->createBNpcFromLayoutId(Enemy1,413,Common::BNpcType::Enemy);`",
+    "statement `auto instance=teriMgr().getTerritoryByGuId(player.getTerritoryId());`",
+    "statement `enemy0.hateListAddDelayed(player.getAsPlayer(), 1)`",
+    "statement `enemy0.setTriggerOwnerId(player.getId())`",
+    "statement `enemy1.hateListAddDelayed(player.getAsPlayer(), 1)`",
+    "statement `enemy1.setTriggerOwnerId(player.getId())`"
+  ]
+}

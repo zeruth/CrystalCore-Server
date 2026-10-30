@@ -1,0 +1,81 @@
+{
+  "quest": 65799,
+  "script": "ClsGla200_00263",
+  "source": "derived",
+  "talks": [
+    {
+      "actor": 1001739,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "scene": 0
+    },
+    {
+      "actor": 1001739,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 255
+        }
+      ],
+      "scene": 22
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 1
+          }
+        ]
+      }
+    ],
+    "22": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "listener 1004140 at sequence 1: which scene it plays is not in the data",
+    "listener 1001438 at sequence 2: which scene it plays is not in the data",
+    "listener 1001462 at sequence 2: which scene it plays is not in the data",
+    "listener 2001434 at sequence 2: which scene it plays is not in the data",
+    "listener 1004140 at sequence 2: which scene it plays is not in the data",
+    "listener 1004140 at sequence 3: which scene it plays is not in the data",
+    "listener 1001285 at sequence 4: which scene it plays is not in the data",
+    "listener 1004140 at sequence 4: which scene it plays is not in the data",
+    "listener 1001739 at sequence 5: which scene it plays is not in the data",
+    "listener 1004092 at sequence 6: which scene it plays is not in the data",
+    "listener 1001739 at sequence 6: which scene it plays is not in the data",
+    "listener 2001726 at sequence 6: which scene it plays is not in the data"
+  ]
+}

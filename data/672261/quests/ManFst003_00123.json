@@ -1,0 +1,147 @@
+{
+  "quest": 65659,
+  "script": "ManFst003_00123",
+  "source": "sapphire",
+  "talks": [
+    {
+      "actor": 1001140,
+      "scene": 0
+    },
+    {
+      "actor": 2,
+      "scene": 51,
+      "action": 19
+    },
+    {
+      "actor": 1000197,
+      "scene": 2
+    },
+    {
+      "actor": 1000768,
+      "scene": 3
+    },
+    {
+      "actor": 1000100,
+      "scene": 5
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "play",
+            "scene": 50
+          }
+        ]
+      }
+    ],
+    "3": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "play",
+            "scene": 100
+          }
+        ]
+      },
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "ne",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "play",
+            "scene": 99
+          }
+        ]
+      }
+    ],
+    "5": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ],
+    "50": [
+      {
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 1
+          },
+          {
+            "do": "set_var",
+            "var": {
+              "byte": 2,
+              "part": "high"
+            },
+            "value": 1
+          }
+        ]
+      }
+    ],
+    "51": [
+      {
+        "then": [
+          {
+            "do": "play",
+            "scene": 1
+          }
+        ]
+      }
+    ],
+    "99": [
+      {
+        "then": [
+          {
+            "do": "play",
+            "scene": 4
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "condition `QUEST_VAR_ATTUNE == 1 && QUEST_VAR_CLASS == 1 && QUEST_VAR_TRADE == 1` not expressible; its branch dropped",
+    "condition `varIdx == 3` not expressible; its branch dropped",
+    "statement `auto QUEST_VAR_ATTUNE=quest.getUI8AL();`",
+    "statement `auto QUEST_VAR_CLASS=quest.getUI8BH();`",
+    "statement `auto QUEST_VAR_TRADE=quest.getUI8BL();`",
+    "statement `eventMgr().playQuestScene(player, getId(), 4, 0)`",
+    "statement `warpMgr().requestMoveTerritoryType(player, Common.WarpType.WARP_TYPE_NORMAL, 132)`"
+  ]
+}

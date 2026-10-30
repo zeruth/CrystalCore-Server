@@ -1,0 +1,85 @@
+{
+  "quest": 66165,
+  "script": "SubWil119_00629",
+  "source": "derived",
+  "talks": [
+    {
+      "actor": 1003937,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "scene": 0
+    },
+    {
+      "actor": 1003937,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 255
+        }
+      ],
+      "scene": 8
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 1
+          }
+        ]
+      }
+    ],
+    "8": [
+      {
+        "then": [
+          {
+            "do": "play",
+            "scene": 9
+          }
+        ]
+      }
+    ],
+    "9": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "listener 5000000 at sequence 1: which scene it plays is not in the data",
+    "listener 2001418 at sequence 1: which scene it plays is not in the data",
+    "listener 206 at sequence 1: which scene it plays is not in the data",
+    "listener 206 at sequence 1: which scene it plays is not in the data",
+    "listener 2001867 at sequence 1: which scene it plays is not in the data",
+    "listener 1003946 at sequence 2: which scene it plays is not in the data"
+  ]
+}

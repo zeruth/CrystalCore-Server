@@ -1,0 +1,194 @@
+{
+  "quest": 65576,
+  "script": "SubFst013_00040",
+  "source": "sapphire",
+  "talks": [
+    {
+      "actor": 1000162,
+      "when": [
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 0
+        }
+      ],
+      "scene": 0
+    },
+    {
+      "actor": 1000162,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 0
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 2
+        }
+      ],
+      "scene": 2
+    },
+    {
+      "actor": 1000162,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 0
+        },
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 2
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 4
+        }
+      ],
+      "scene": 4
+    },
+    {
+      "actor": 1000162,
+      "when": [
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 0
+        },
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 2
+        },
+        {
+          "if": "seq",
+          "op": "ne",
+          "value": 4
+        },
+        {
+          "if": "seq",
+          "op": "eq",
+          "value": 255
+        }
+      ],
+      "scene": 6
+    },
+    {
+      "actor": 1000161,
+      "scene": 3
+    }
+  ],
+  "scenes": {
+    "0": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 1
+          }
+        ]
+      }
+    ],
+    "2": [
+      {
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 3
+          }
+        ]
+      }
+    ],
+    "4": [
+      {
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 5
+          }
+        ]
+      }
+    ],
+    "6": [
+      {
+        "when": [
+          {
+            "if": "result",
+            "index": 0,
+            "op": "eq",
+            "value": 1
+          }
+        ],
+        "then": [
+          {
+            "do": "complete",
+            "choice": 1
+          }
+        ]
+      }
+    ],
+    "96": [
+      {
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 255
+          },
+          {
+            "do": "notice",
+            "index": 4,
+            "values": [
+              2,
+              0,
+              0
+            ]
+          }
+        ]
+      }
+    ],
+    "98": [
+      {
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 4
+          }
+        ]
+      }
+    ],
+    "100": [
+      {
+        "then": [
+          {
+            "do": "set_seq",
+            "seq": 2
+          },
+          {
+            "do": "notice",
+            "index": 0,
+            "values": [
+              2,
+              0,
+              0
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "review": [
+    "hook onEmote not run by the engine yet"
+  ]
+}
