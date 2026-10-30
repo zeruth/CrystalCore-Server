@@ -63,15 +63,20 @@ pub struct ActionRow {
     pub potency: u32,
 }
 
-/// The number after "potency of" in an action's description.
+/// The number after "potency of" in an action's description, or after "Potency:" (a spell's
+/// "Cure Potency: 400", the colour markup between: `Potency:\x02\x13\x02..\x03 400`).
 pub fn potency_in(description: &str) -> u32 {
-    let Some(at) = description.find("potency of ") else { return 0 };
-    description[at + "potency of ".len()..]
+    let after = ["potency of ", "Potency:"]
+        .iter()
+        .find_map(|marker| description.find(marker).map(|at| &description[at + marker.len()..]));
+    let Some(after) = after else { return 0 };
+    // (past the markup, spaces and punctuation to the number; a word first means it names none)
+    let digits: String = after
         .chars()
+        .skip_while(|c| !c.is_ascii_alphanumeric())
         .take_while(|c| c.is_ascii_digit())
-        .collect::<String>()
-        .parse()
-        .unwrap_or(0)
+        .collect();
+    digits.parse().unwrap_or(0)
 }
 
 /// What the server reads of an `Item` row.
@@ -493,7 +498,11 @@ impl WorldData {
     /// ([`MAIN_BASE`], Sapphire's table: the β's `ParamGrow` does not carry it) times the class's
     /// modifier (`ClassJob` cols 5-12: HP, MP, STR, VIT, DEX, INT, MND, PIE) over 100, plus the
     /// tribe's bonus (`Tribe` cols 4-9: STR, DEX, VIT, INT, MND, PIE); HP and MP from
-    /// `ParamGrow`'s bases (cols 5 and 4) by the class's modifiers.
+    /// `ParamGrow`'s bases by the class's modifiers. MP's base is col 5 ([`Self::mp_base`]): 2.x's
+    /// level-50 healers and casters (WHM `7.90 PIE + 1596`, SCH `7.57 PIE + 1530`, BLM
+    /// `8.23 PIE + 1662`, measured in June 2014) are all `(1330 + 6.58 PIE) * MP modifier / 100`,
+    /// that is `2660 * (202 + PIE) / (2 x 202)`: col 5's 2660 and the main base 202. HP's (col 5
+    /// too, as yet) is unverified.
     pub fn base_stats(&self, class: u8, tribe: u8, level: u8) -> Option<Stats> {
         let cj = self.sheet("ClassJob").ok()?;
         let class_row = cj.row(class as u32)?;
@@ -504,16 +513,29 @@ impl WorldData {
         let g = |i: usize| grow.row(level as u32).and_then(|r| r.get(i)).and_then(|v| v.as_i64()).unwrap_or(0);
         let main = MAIN_BASE[(level as usize).min(MAIN_BASE.len() - 1)];
         let attr = |modifier: i64, bonus: i64| (main * modifier / 100 + bonus).max(1) as u32;
+        let piety = attr(m(12), t(9));
+        // (MP from the MP base and piety: `base * (main + PIE) / (2 main)`, each piety point above
+        // the main base worth base / (2 main), 6.58 at level 50 as 2014's measured lines have it;
+        // the other levels by the same rule, unmeasured)
+        let mp = g(5) * (main + piety as i64) / (2 * main) * m(6) / 100;
         Some(Stats {
             strength: attr(m(7), t(4)),
             dexterity: attr(m(9), t(5)),
             vitality: attr(m(8), t(6)),
             intelligence: attr(m(10), t(7)),
             mind: attr(m(11), t(8)),
-            piety: attr(m(12), t(9)),
+            piety,
             hp: (g(5) * m(5) / 100).max(1) as u32,
-            mp: (g(4) * m(6) / 100).max(0) as u32,
+            mp: mp.max(0) as u32,
         })
+    }
+
+    /// The level's MP base (`ParamGrow` col 5: 104 at level 1, 2660 at 50), which max MP and an
+    /// action's MP cost scale from: a cost of N (`Action` col 28, cost type 3) is N% of it
+    /// (Sapphire's `calculateMpCost`), Cure's 5 133 MP at level 50, about 4% of a white mage's MP.
+    pub fn mp_base(&self, level: u8) -> Option<u32> {
+        let v = self.sheet("ParamGrow").ok()?.row(level as u32)?.get(5)?.as_i64()?;
+        (v > 0).then_some(v as u32)
     }
 
     /// The experience a level needs to reach the next (`ParamGrow` col 0); `None` past the table.
@@ -572,5 +594,21 @@ impl WorldData {
             DataError::NotFound(format!("pop range {} in territory {}", range.destination, range.territory))
         })?;
         Ok(Arrival { territory: range.territory, pos: pop.pos, rotation: pop.rot[1] })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn potencies_as_weaponskills_and_spells_write_them() {
+        assert_eq!(potency_in("Delivers an attack with a potency of 150."), 150);
+        // Cure (Action 120) as the β's sheet has it, the colour markup decoded lossily
+        let cure = "Restores target's HP.  \u{2}\u{13}\u{5}\u{fffd}\u{fffd}\u{fffd}\"\u{3}Cure Potency:\u{2}\u{13}\u{2}\u{fffd}\u{3} 400\u{2}";
+        assert_eq!(potency_in(cure), 400);
+        assert_eq!(potency_in("Increases your defense. Duration: 20s"), 0);
+        // a number far past the marker is not its potency
+        assert_eq!(potency_in("Potency: none here, but 30 yalms away"), 0);
     }
 }

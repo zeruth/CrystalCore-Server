@@ -58,6 +58,11 @@ pub mod opcode {
     /// Down: a character's HP, MP, TP and statuses (sent as that character); see
     /// [`super::hud_param`] (case 0x31 → @0xa555b0).
     pub const HUD_PARAM: u16 = 0x140;
+    /// Down: the player's own statuses; see [`super::status_list`] (case 0x39 → @0xa4e4b0 →
+    /// @0xb7ba00, on the player's own character).
+    pub const STATUS: u16 = 0x148;
+    /// Down: a character starts casting; see [`super::RequestCast`] (case 0x41 → @0xa52d10).
+    pub const REQUEST_CAST: u16 = 0x196;
     /// Down: an action's result on one target (sent as whoever acted); see
     /// [`super::ActionResult`] (case 0x37 → @0xa4e520, which widens it to 0x147's layout for
     /// @0xac9b30).
@@ -567,8 +572,20 @@ pub fn parse_equip(b: &[u8]) -> Option<(u64, u64, [u32; 10])> {
 /// [`opcode::HUD_PARAM`] (0x17c bytes, as @0xa555b0 reads it; the spawn's fields): class @0,
 /// level @1, HP u32 @4, max HP @8, MP u16 @0xc and max @0xe (GP or CP for gatherers and crafters,
 /// by ClassJobCategory), TP @0x10, then 30 statuses of 12 bytes @0x14 (id u16, param u16, time
-/// f32, source u32), none here.
-pub fn hud_param(class: u8, level: u8, hp: u32, hp_max: u32, mp: u16, mp_max: u16, tp: u16) -> Bytes {
+/// f32, source u32). The client replaces all 30 of the character's with each (@0xb7b840 per slot;
+/// its own character's through @0xb7b8e0, unless @0xa9f620 says otherwise), so each carries all
+/// of them.
+#[allow(clippy::too_many_arguments)]
+pub fn hud_param(
+    class: u8,
+    level: u8,
+    hp: u32,
+    hp_max: u32,
+    mp: u16,
+    mp_max: u16,
+    tp: u16,
+    statuses: &[StatusEntry],
+) -> Bytes {
     let mut b = BytesMut::zeroed(0x17c);
     (b[0], b[1]) = (class, level);
     b[4..8].copy_from_slice(&hp.to_le_bytes());
@@ -576,7 +593,71 @@ pub fn hud_param(class: u8, level: u8, hp: u32, hp_max: u32, mp: u16, mp_max: u1
     b[0xc..0xe].copy_from_slice(&mp.to_le_bytes());
     b[0xe..0x10].copy_from_slice(&mp_max.to_le_bytes());
     b[0x10..0x12].copy_from_slice(&tp.to_le_bytes());
+    write_statuses(&mut b[0x14..], statuses);
     b.freeze()
+}
+
+/// The most statuses a character has: the client's slots.
+pub const STATUS_SLOTS: usize = 30;
+
+/// One status slot of [`hud_param`] and [`status_list`] (12 bytes): the Status row u16 @0, its
+/// parameter u16 @2, the seconds left f32 @4, who put it there u32 @8 (@0xa555b0 hands
+/// @0xb7b840 them as id, time, param, source). An id of 0 is an empty slot.
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct StatusEntry {
+    pub id: u16,
+    pub param: u16,
+    pub remaining: f32,
+    pub source: u32,
+}
+
+impl StatusEntry {
+    pub const SIZE: usize = 12;
+}
+
+/// `statuses` into the slots of `b` (the rest left empty; more than [`STATUS_SLOTS`] left out).
+fn write_statuses(b: &mut [u8], statuses: &[StatusEntry]) {
+    for (s, slot) in statuses.iter().take(STATUS_SLOTS).zip(b.as_chunks_mut::<{ StatusEntry::SIZE }>().0) {
+        slot[0..2].copy_from_slice(&s.id.to_le_bytes());
+        slot[2..4].copy_from_slice(&s.param.to_le_bytes());
+        slot[4..8].copy_from_slice(&s.remaining.to_le_bytes());
+        slot[8..12].copy_from_slice(&s.source.to_le_bytes());
+    }
+}
+
+/// The statuses in the slots of `b`, empty slots left out.
+fn read_statuses(b: &[u8]) -> Vec<StatusEntry> {
+    b.as_chunks::<{ StatusEntry::SIZE }>()
+        .0
+        .iter()
+        .take(STATUS_SLOTS)
+        .map(|s| StatusEntry {
+            id: u16::from_le_bytes([s[0], s[1]]),
+            param: u16::from_le_bytes([s[2], s[3]]),
+            remaining: f32::from_le_bytes([s[4], s[5], s[6], s[7]]),
+            source: u32::from_le_bytes([s[8], s[9], s[10], s[11]]),
+        })
+        .filter(|s| s.id != 0)
+        .collect()
+}
+
+/// [`opcode::STATUS`]'s body (0x168 bytes): the player's 30 status slots as [`hud_param`]'s.
+/// @0xb7ba00 copies each into the character, and takes off the effects of the ids that are no
+/// longer there.
+pub fn status_list(statuses: &[StatusEntry]) -> Bytes {
+    let mut b = BytesMut::zeroed(STATUS_SLOTS * StatusEntry::SIZE);
+    write_statuses(&mut b, statuses);
+    b.freeze()
+}
+
+/// The statuses of a [`hud_param`] body.
+pub fn parse_hud_statuses(b: &[u8]) -> Vec<StatusEntry> {
+    read_statuses(b.get(0x14..).unwrap_or_default())
+}
+
+/// The statuses of a [`status_list`] body.
+pub fn parse_status_list(b: &[u8]) -> Vec<StatusEntry> {
+    read_statuses(b)
 }
 
 /// The HP and max HP of a [`hud_param`] body.
@@ -589,6 +670,19 @@ pub mod order_kind {
     /// The character died: arg 1 the killer (0xe0000000: none), arg 2 kept with it (@0xa55f80
     /// case 6, which writes the defeat lines to the log).
     pub const DEATH: u16 = 6;
+    /// A cast ended before it landed (@0xa55f80 case 0xf): arg 1 the LogMessage row it logs,
+    /// arg 2 the action's kind (1: an Action row), arg 3 the action, arg 4 1 when it was
+    /// interrupted. The player's own cast bar stops (@0xac2f90 on the cast @0x14bcf40, as
+    /// RequestCast's), the character's cast too (@0xaa3360).
+    pub const CAST_END: u16 = 0xf;
+}
+
+/// LogMessage rows a cast's end logs.
+pub mod log_message {
+    /// "<you> cancel(s) <action>." (row 537, 0x219)
+    pub const CAST_CANCELLED: u32 = 537;
+    /// "<actor>'s <action> is interrupted." (row 540)
+    pub const CAST_INTERRUPTED: u32 = 540;
 }
 
 /// [`opcode::ORDER`]'s body (0x18 bytes): the category u16 @0 and four u32 arguments @4 (the
@@ -626,6 +720,56 @@ impl Effect {
 
     pub fn damage(amount: u16) -> Self {
         Self { kind: Self::DAMAGE, value: amount, ..Default::default() }
+    }
+
+    /// HP restored (Sapphire's kind 4; not yet seen played by this client).
+    pub fn heal(amount: u16) -> Self {
+        Self { kind: Self::HEAL, value: amount, ..Default::default() }
+    }
+}
+
+/// [`opcode::REQUEST_CAST`]'s body (0x20 bytes), as @0xa52d10 reads it, sent as the caster:
+///
+/// ```text
+/// 0x00  u16  action (Action row)  0x02  u8   kind (1: an Action row; the log's line by its category)
+/// 0x04  u32  the action again
+/// 0x08  f32  cast time (s): the player's own cast bar (@0xac3e10), the others' (@0xac3dd0)
+/// 0x0C  u32  target (0xE0000000: none)
+/// 0x10  f32  rotation (@0xaa46b0)
+/// 0x14  u32  and 0x18 3 x u16: a ground target's place (category 0xb only)
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct RequestCast {
+    pub action: u16,
+    pub kind: u8,
+    pub cast_time: f32,
+    pub target: u32,
+    pub rotation: f32,
+}
+
+impl RequestCast {
+    pub const SIZE: usize = 0x20;
+
+    pub fn to_bytes(&self) -> Bytes {
+        let mut b = BytesMut::zeroed(Self::SIZE);
+        b[0..2].copy_from_slice(&self.action.to_le_bytes());
+        b[2] = self.kind;
+        b[4..8].copy_from_slice(&(self.action as u32).to_le_bytes());
+        b[8..0xc].copy_from_slice(&self.cast_time.to_le_bytes());
+        b[0xc..0x10].copy_from_slice(&self.target.to_le_bytes());
+        b[0x10..0x14].copy_from_slice(&self.rotation.to_le_bytes());
+        b.freeze()
+    }
+
+    pub fn parse(b: &[u8]) -> Option<Self> {
+        let b = b.get(..Self::SIZE)?;
+        Some(Self {
+            action: u16::from_le_bytes([b[0], b[1]]),
+            kind: b[2],
+            cast_time: f32::from_le_bytes(b[8..0xc].try_into().ok()?),
+            target: u32_at(b, 0xc)?,
+            rotation: f32::from_le_bytes(b[0x10..0x14].try_into().ok()?),
+        })
     }
 }
 
@@ -1198,10 +1342,33 @@ mod tests {
 
     #[test]
     fn combat_layouts() {
-        let hud = hud_param(1, 10, 80, 114, 25, 25, 1000);
+        let statuses = [
+            StatusEntry { id: 50, param: 0, remaining: 10.0, source: 0x1000_0001 },
+            StatusEntry { id: 3, param: 2, remaining: 4.5, source: 0x5020_4001 },
+        ];
+        let hud = hud_param(1, 10, 80, 114, 25, 25, 1000, &statuses);
         assert_eq!(hud.len(), 0x17c);
         assert_eq!((hud[0], hud[1]), (1, 10));
         assert_eq!(parse_hud_param(&hud), Some((80, 114)));
+        // the second slot @0x20: id, param, time, source
+        assert_eq!(&hud[0x20..0x24], &[3, 0, 2, 0]);
+        assert_eq!(&hud[0x24..0x28], &4.5f32.to_le_bytes());
+        assert_eq!(&hud[0x28..0x2c], &0x5020_4001u32.to_le_bytes());
+        assert_eq!(parse_hud_statuses(&hud), statuses);
+        let list = status_list(&statuses);
+        assert_eq!(list.len(), 0x168);
+        assert_eq!(&list[..], &hud[0x14..]);
+        assert_eq!(parse_status_list(&list), statuses);
+        // past the 30 slots: left out
+        assert_eq!(parse_status_list(&status_list(&[statuses[0]; 31])).len(), 30);
+        // a cast: the action twice, the time @8, the target @0xc
+        let cast = RequestCast { action: 120, kind: 1, cast_time: 2.0, target: 0x1000_0001, rotation: 0.5 };
+        let b = cast.to_bytes();
+        assert_eq!(b.len(), 0x20);
+        assert_eq!((&b[0..4], &b[4..8]), (&[120, 0, 1, 0][..], &120u32.to_le_bytes()[..]));
+        assert_eq!(&b[8..0xc], &2.0f32.to_le_bytes());
+        assert_eq!(RequestCast::parse(&b), Some(cast));
+        assert_eq!(Effect::heal(40).kind, Effect::HEAL);
         let hit = ActionResult {
             action: ActionResult::AUTO_ATTACK,
             kind: 1,

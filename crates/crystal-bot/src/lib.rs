@@ -55,12 +55,15 @@ pub enum Down {
         category: u16,
         args: [u32; 4],
     },
-    /// A character's HP (an HUD update sent as it).
+    /// A character's HP and statuses (an HUD update sent as it).
     Hp {
         actor: u32,
         hp: u32,
         hp_max: u32,
+        statuses: Vec<ipc::StatusEntry>,
     },
+    /// The player's own statuses.
+    Statuses(Vec<ipc::StatusEntry>),
     /// `source` acted on `target`: the action and its first effect.
     Action {
         source: u32,
@@ -289,8 +292,9 @@ fn decode(source: u32, payload: &Bytes) -> Option<Down> {
         }
         opcode::HUD_PARAM => {
             let (hp, hp_max) = ipc::parse_hud_param(body)?;
-            Down::Hp { actor: source, hp, hp_max }
+            Down::Hp { actor: source, hp, hp_max, statuses: ipc::parse_hud_statuses(body) }
         }
+        opcode::STATUS => Down::Statuses(ipc::parse_status_list(body)),
         opcode::ACTION_RESULT1 => {
             let (action, target, effect) = ipc::ActionResult::parse(body)?;
             let sequence = u32::from_le_bytes(body.get(8..12)?.try_into().ok()?);

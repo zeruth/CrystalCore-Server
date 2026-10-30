@@ -220,7 +220,12 @@ layers are empty, like its battle NPC ones). Hand placement: `.bnpc add`/`.bnpc 
   in the client; sources are captures, Sapphire's data where its patch matches, and hand placement.
 - An EXD browser in `crystal-tools`.
 
-### Phase 5: Core gameplay
+### Phase 5: Core gameplay (in progress; headless only so far, see HANDOFF.md)
+
+Done: the inventory and item moves, gear changes, levels and experience, targeting,
+auto-attack and hostile actions with placeholder numbers, death and self-revive, aggro, chase and
+leash (straight line), regeneration on the tick, statuses (slots, wearing off, sent; nothing
+applies them yet).
 
 - Inventory, equipment, the armoury chest, gil, shops.
 - Classes and jobs, levels, experience.

@@ -161,15 +161,51 @@ pub enum Event {
         /// The target's level and class (for the client's HP update; 0 for battle NPCs).
         level: u16,
         class: u8,
+        /// The target's statuses (the client's HP update replaces them all).
+        statuses: Statuses,
+        /// Its MP and TP (the client's HP update carries them).
+        mana: Mana,
     },
-    /// The actor's HP changed (healing, regeneration, a revive): its level and class too, for the
-    /// client's HP update.
+    /// The actor's HP or statuses changed (healing, regeneration, a revive, a status on or off):
+    /// its level and class too, for the client's HP update.
     Hp {
         actor: ActorId,
         hp: u32,
         hp_max: u32,
         level: u16,
         class: u8,
+        statuses: Statuses,
+        /// Its MP and TP (the client's HP update carries them).
+        mana: Mana,
+    },
+    /// `actor` starts casting `action` on `target`, landing in `time`.
+    Cast {
+        actor: ActorId,
+        action: u16,
+        target: ActorId,
+        time: std::time::Duration,
+    },
+    /// `actor`'s cast of `action` ended before it landed: cancelled by its own doing (it moved),
+    /// or interrupted.
+    CastEnd {
+        actor: ActorId,
+        action: u16,
+        interrupted: bool,
+    },
+    /// `source` restored `amount` of `target`'s HP with `action`; its HP now.
+    Heal {
+        source: ActorId,
+        target: ActorId,
+        action: u16,
+        sequence: u32,
+        amount: u32,
+        hp: u32,
+        hp_max: u32,
+        level: u16,
+        class: u8,
+        statuses: Statuses,
+        /// Its MP and TP (the client's HP update carries them).
+        mana: Mana,
     },
     /// The actor died.
     Death {
@@ -193,6 +229,22 @@ pub enum Event {
     },
 }
 
+/// The most statuses an actor has (the client's 30 slots).
+pub const STATUS_SLOTS: usize = 30;
+
+/// A status on an actor, as the client shows it: the Status row, its parameter (stacks, or
+/// what the status reads), the seconds left, and who put it there.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct StatusSlot {
+    pub id: u16,
+    pub param: u16,
+    pub remaining: f32,
+    pub source: ActorId,
+}
+
+/// An actor's statuses, in its slots' order (at most [`STATUS_SLOTS`]).
+pub type Statuses = Arc<[StatusSlot]>;
+
 /// An action a player uses, as the zone service read it from the Action sheet.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ActionUse {
@@ -205,6 +257,21 @@ pub struct ActionUse {
     pub recast: std::time::Duration,
     /// On the global cooldown (weaponskills and spells) rather than its own.
     pub gcd: bool,
+    /// How long it casts before it lands (zero: at once).
+    pub cast: std::time::Duration,
+    /// It restores HP (on the user or another player) rather than hurting a battle NPC.
+    pub heal: bool,
+    /// What it costs, paid when it lands (checked when it starts too).
+    pub mp_cost: u32,
+    pub tp_cost: u32,
+}
+
+/// A character's MP and TP, as its HP update carries them (zero for battle NPCs).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct Mana {
+    pub mp: u32,
+    pub mp_max: u32,
+    pub tp: u32,
 }
 
 /// Who is online, and where.
@@ -344,6 +411,17 @@ impl ZoneHandle {
     /// A dead player gets up (whole, where it fell).
     pub fn revive(&self, id: ActorId) {
         let _ = self.tx.try_send(Request::Revive { id });
+    }
+
+    /// Puts status `id` on `target` for `duration` (refreshed when `source`'s is already there),
+    /// or takes it off when `duration` is `None`.
+    pub fn set_status(&self, target: ActorId, id: u16, param: u16, duration: Option<std::time::Duration>, source: ActorId) {
+        let _ = self.tx.try_send(Request::Status { target, id, param, duration, source });
+    }
+
+    /// Takes every status off `target`.
+    pub fn clear_statuses(&self, target: ActorId) {
+        let _ = self.tx.try_send(Request::ClearStatuses { target });
     }
 
     /// The player uses an action on `target`.

@@ -17,6 +17,19 @@ pub const RESPAWN: Duration = Duration::from_secs(30);
 pub const SERVER_TICK: Duration = Duration::from_secs(3);
 /// How much of its maximum HP a player out of a fight gets back each server tick, percent.
 pub const REGEN_PERCENT: u32 = 10;
+/// How much of its maximum MP a player gets back each server tick, percent, rounded down: 2.x's
+/// 6 out of a fight and 2 in one (a level-50 measurement, June 2014).
+pub const MP_REGEN_PERCENT: u32 = 6;
+pub const MP_REGEN_FIGHTING_PERCENT: u32 = 2;
+/// TP: 2.x's 1000 at most, 60 back each server tick.
+pub const TP_MAX: u32 = 1000;
+pub const TP_REGEN: u32 = 60;
+
+/// An action's MP cost: its cost (`Action` col 28, cost type 3) is that percent of the level's
+/// MP base (`ParamGrow` col 5; Sapphire's `calculateMpCost`), rounded down.
+pub fn mp_cost(cost: u32, mp_base: u32) -> u32 {
+    cost * mp_base / 100
+}
 
 /// How fast a battle NPC runs after its target, yalms a second.
 pub const CHASE_SPEED: f32 = 6.0;
@@ -47,6 +60,12 @@ pub const GCD: Duration = Duration::from_millis(2500);
 /// An action's damage: the auto-attack's scaled by its potency (an auto-attack being about 100).
 pub fn action_damage(level: u8, strength: u32, potency: u32) -> u32 {
     (auto_attack_damage(level, strength) * potency / 100).max(1)
+}
+
+/// A heal's HP: the user's level and mind scaled by its potency (Cure's 400; until the β's own
+/// formula is known).
+pub fn heal_amount(level: u8, mind: u32, potency: u32) -> u32 {
+    ((mind * 2 / 5 + level as u32) * potency / 100).max(1)
 }
 
 /// The experience for defeating a battle NPC of `target_level` at `level`: more for stronger

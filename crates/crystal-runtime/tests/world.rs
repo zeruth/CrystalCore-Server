@@ -30,6 +30,20 @@ async fn line(bot: &mut Bot) -> String {
         .unwrap_or_else(|e| panic!("no chat line for {actor:#x}: {e}"))
 }
 
+/// A command's reply line and the status list it brings, in whichever order they come (the
+/// reply is the session's, the statuses the territory's).
+async fn reply_and_statuses(bot: &mut Bot) -> (String, Vec<ipc::StatusEntry>) {
+    let (mut reply, mut statuses) = (None, None);
+    while reply.is_none() || statuses.is_none() {
+        match bot.wait_for(T, |d| Some(d.clone())).await.expect("a reply and a status list") {
+            Down::Chat(c) => reply = Some(c.text),
+            Down::Statuses(s) => statuses = Some(s),
+            _ => {}
+        }
+    }
+    (reply.unwrap(), statuses.unwrap())
+}
+
 #[tokio::test]
 async fn players_see_each_other() {
     let dir = tempfile::tempdir().unwrap();
@@ -175,6 +189,25 @@ async fn players_see_each_other() {
     assert_eq!(line(&mut alpha).await, "You obtain 3 item 4551.");
     let saved = server.db.characters.inventory((a - 0x1000_0000) as i64).await.unwrap();
     assert_eq!(saved.iter().filter(|r| r.item_id == 4551).count(), 3, "no game data: stacks of 1");
+
+    // a status by hand: on Alpha's own list, and on the HUD update Beta (in range) gets
+    alpha.chat(chat::SAY, ".status 50 20 3").await.unwrap();
+    let (reply, own) = reply_and_statuses(&mut alpha).await;
+    assert_eq!(reply, "#50 for 20 s.");
+    assert_eq!(own.iter().map(|s| (s.id, s.param, s.source)).collect::<Vec<_>>(), [(50, 3, a)]);
+    assert!(own[0].remaining > 19.0 && own[0].remaining <= 20.0, "{}", own[0].remaining);
+    let seen = beta
+        .wait_for(T, |d| match d {
+            Down::Hp { actor, statuses, .. } if *actor == a => Some(statuses.clone()),
+            _ => None,
+        })
+        .await
+        .unwrap();
+    assert_eq!(seen.iter().map(|s| s.id).collect::<Vec<_>>(), [50]);
+    alpha.chat(chat::SAY, ".status clear").await.unwrap();
+    let (reply, own) = reply_and_statuses(&mut alpha).await;
+    assert_eq!(reply, "Statuses cleared.");
+    assert!(own.is_empty());
 
     // a battle NPC placed by hand: saved, and Beta (53 yalms off, in range) sees it appear
     alpha.chat(chat::SAY, ".bnpc 37 37 2").await.unwrap();

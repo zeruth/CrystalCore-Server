@@ -76,6 +76,19 @@ fn looks_gear_and_warps() {
     assert_eq!((fb.name.as_str(), fb.category, fb.class, fb.level), ("Fast Blade", 3, 1, 1));
     assert_eq!((fb.range, fb.hostile, fb.cost, fb.recast_100ms, fb.potency), (-1, true, 70, 25, 150));
     assert_eq!(crystal_data::world::potency_in("Deals damage with a potency of 40."), 40);
+    // Cure: a conjurer's spell, friendly, its 2.0 s cast and 2.5 s recast, "Cure Potency: 400"
+    let cure = world.action(120).unwrap();
+    assert_eq!(cure.name, "Cure");
+    assert_eq!((cure.hostile, cure.cast_100ms, cure.recast_100ms, cure.potency), (false, 20, 25, 400));
+    // its MP: cost type 3, 5% of the level's MP base, 2660 at 50 (2.x's measured white mage
+    // MP, `(1330 + 6.58 PIE) * 120 / 100`, has 2660 = 1330 + 6.58 x 202 at its base piety)
+    assert_eq!((cure.cost_type, cure.cost), (3, 5));
+    assert_eq!((world.mp_base(1), world.mp_base(50)), (Some(104), Some(2660)));
+    assert_eq!(cure.cost as u32 * world.mp_base(50).unwrap() / 100, 133);
+    // a white mage's MP at level 50 and base piety, the 2014 line's (1596 + 7.90 x PIE)
+    let whm = world.base_stats(24, 1, 50).unwrap();
+    let measured = 1596.0 + 7.90 * whm.piety as f64;
+    assert!((whm.mp as f64 - measured).abs() / measured < 0.02, "{} against {measured}", whm.mp);
     // layout files in the older format (f1d1's planner.lgb) are left out, not fatal
     assert!(world.layer_names(164).is_ok());
 }

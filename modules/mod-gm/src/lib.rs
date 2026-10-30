@@ -26,6 +26,70 @@ pub fn register(commands: &mut Commands) {
     commands.register(Level);
     commands.register(Exp);
     commands.register(GiveItem);
+    commands.register(StatusCommand);
+}
+
+/// `.status <Status row> (seconds) (param)`, `.status off <Status row>`, `.status clear`: statuses
+/// on the GM, to see how the client shows them.
+struct StatusCommand;
+
+/// How long a `.status` lasts when no time is given, seconds.
+const STATUS_SECONDS: u64 = 30;
+
+/// The name of a `Status` row, when the game data is there.
+fn status_name(cx: &Context<'_>, id: u32) -> String {
+    cx.data
+        .and_then(|d| d.sheet("Status").ok())
+        .and_then(|s| s.row(id).and_then(|r| r.first()).and_then(|v| v.as_str().map(str::to_owned)))
+        .filter(|n| !n.is_empty())
+        .unwrap_or_else(|| format!("#{id}"))
+}
+
+impl Command for StatusCommand {
+    fn name(&self) -> &'static str {
+        "status"
+    }
+    fn usage(&self) -> &'static str {
+        "<Status row> (seconds) (param) | off <Status row> | clear"
+    }
+    fn help(&self) -> &'static str {
+        "puts a status on you, or takes it off"
+    }
+    fn level(&self) -> u8 {
+        GAME_MASTER
+    }
+    fn run<'a>(&'a self, cx: &'a mut Context<'_>, args: &'a str) -> BoxFuture<'a, ()> {
+        Box::pin(async move {
+            let parts: Vec<&str> = args.split_whitespace().collect();
+            let zone = cx.world.zone(cx.player.territory);
+            let me = cx.player.actor;
+            match parts.as_slice() {
+                ["clear"] => {
+                    zone.clear_statuses(me);
+                    cx.reply("Statuses cleared.");
+                }
+                ["off", id] => match id.parse::<u16>() {
+                    Ok(id) => {
+                        zone.set_status(me, id, 0, None, 0);
+                        cx.reply(format!("{} off.", status_name(cx, id as u32)));
+                    }
+                    Err(_) => cx.reply("Usage: .status off <Status row>"),
+                },
+                [id, rest @ ..] if rest.len() <= 2 => {
+                    let id = id.parse::<u16>().ok().filter(|id| *id > 0);
+                    let seconds = rest.first().map_or(Some(STATUS_SECONDS), |s| s.parse::<u64>().ok()).filter(|s| *s > 0);
+                    let param = rest.get(1).map_or(Some(0), |p| p.parse::<u16>().ok());
+                    let (Some(id), Some(seconds), Some(param)) = (id, seconds, param) else {
+                        cx.reply(format!("Usage: .status {}", self.usage()));
+                        return;
+                    };
+                    zone.set_status(me, id, param, Some(std::time::Duration::from_secs(seconds)), me);
+                    cx.reply(format!("{} for {seconds} s.", status_name(cx, id as u32)));
+                }
+                _ => cx.reply(format!("Usage: .status {}", self.usage())),
+            }
+        })
+    }
 }
 
 /// `.item <id> (quantity)`: an item into the GM's bags.

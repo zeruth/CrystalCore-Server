@@ -29,7 +29,7 @@ use crystal_net::{ConnectionType, Frame, Segment, SegmentType};
 use crystal_state::State;
 use crystal_world::inventory::{Inventory, Item, container};
 use crystal_world::progress::Progress;
-use crystal_world::{ActionUse, ActorKind, ActorView, ChatRange, Entry, Event, Motion, PlayerLook, World};
+use crystal_world::{ActionUse, ActorKind, ActorView, ChatRange, Entry, Event, Mana, Motion, PlayerLook, StatusSlot, World};
 use futures_util::{SinkExt, StreamExt};
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
@@ -653,8 +653,11 @@ impl Zone {
             debug!(class = row.class, level = row.level, "  action: not this class's yet");
             return;
         }
-        if !row.hostile {
-            debug!(action = req.action, "  action: only hostile ones are carried out yet");
+        // (a friendly one with a potency heals: Cure; the others, buffs and the like, wait for
+        // their statuses)
+        let heal = !row.hostile && row.potency > 0;
+        if !row.hostile && !heal {
+            debug!(action = req.action, "  action: only hostile ones and heals are carried out yet");
             return;
         }
         let gcd = matches!(row.category, 2 | 3);
@@ -675,6 +678,17 @@ impl Zone {
             range,
             recast,
             gcd,
+            cast: Duration::from_millis(row.cast_100ms as u64 * 100),
+            heal,
+            // (Action col 27: 3 MP, a percent of the level's MP base; 5 TP as it is)
+            mp_cost: match row.cost_type {
+                3 => {
+                    let base = self.data.as_ref().and_then(|d| d.mp_base(sess.look.level)).unwrap_or(0);
+                    crystal_world::combat::mp_cost(row.cost as u32, base)
+                }
+                _ => 0,
+            },
+            tp_cost: if row.cost_type == 5 { row.cost as u32 } else { 0 },
         };
         entry.zone.use_action(sess.actor_id, target, action);
     }
@@ -1057,6 +1071,33 @@ fn actor_spawn(slot: u8, actor: &ActorView, data: Option<&WorldData>) -> ipc::Sp
     }
 }
 
+/// A character's HP update with its statuses (all of them: the client replaces its slots), and
+/// for the player's own character its status list too.
+#[allow(clippy::too_many_arguments)]
+fn hp_segments(
+    sess: &Session,
+    actor: crystal_world::ActorId,
+    hp: u32,
+    hp_max: u32,
+    level: u16,
+    class: u8,
+    statuses: &[StatusSlot],
+    mana: Mana,
+) -> Vec<Segment> {
+    let statuses: Vec<ipc::StatusEntry> = statuses
+        .iter()
+        .map(|s| ipc::StatusEntry { id: s.id, param: s.param, remaining: s.remaining, source: s.source })
+        .collect();
+    let own = actor == sess.actor_id;
+    let w = |v: u32| v.min(u16::MAX as u32) as u16;
+    let hud = ipc::hud_param(class, level.min(255) as u8, hp, hp_max, w(mana.mp), w(mana.mp_max), w(mana.tp), &statuses);
+    let mut out = vec![sess.segment(actor, opcode::HUD_PARAM, &hud)];
+    if own {
+        out.push(sess.segment(actor, opcode::STATUS, &ipc::status_list(&statuses)));
+    }
+    out
+}
+
 /// A world event as the packet the client gets, sent as the actor it is about.
 fn event_segment(sess: &Session, event: Event, data: Option<&WorldData>) -> Vec<Segment> {
     vec![match event {
@@ -1082,24 +1123,38 @@ fn event_segment(sess: &Session, event: Event, data: Option<&WorldData>) -> Vec<
         }
         // the hit, as the attacker's action (a damage effect; the request's sequence frees the
         // user's client), then the target's HP
-        Event::Damage { source, target, action, sequence, amount, hp, hp_max, level, class } => {
+        Event::Damage { source, target, action, sequence, amount, hp, hp_max, level, class, statuses, mana } => {
             let mut effects = [ipc::Effect::default(); 8];
             effects[0] = ipc::Effect::damage(amount.min(u16::MAX as u32) as u16);
             let hit = ipc::ActionResult { action, kind: 1, sequence, lock: 0.6, target, effects, ..Default::default() };
-            // the player's own HP update keeps its MP and TP
-            let (mp, tp) =
-                if target == sess.actor_id { (sess.look.mp_max.min(u16::MAX as u32) as u16, 1000) } else { (0, 0) };
-            let hud = ipc::hud_param(class, level.min(255) as u8, hp, hp_max, mp, mp, tp);
-            return vec![
-                sess.segment(source, opcode::ACTION_RESULT1, &hit.to_bytes()),
-                sess.segment(target, opcode::HUD_PARAM, &hud),
-            ];
+            let mut out = vec![sess.segment(source, opcode::ACTION_RESULT1, &hit.to_bytes())];
+            out.extend(hp_segments(sess, target, hp, hp_max, level, class, &statuses, mana));
+            return out;
         }
-        // regeneration, revives: the HP update alone
-        Event::Hp { actor, hp, hp_max, level, class } => {
-            let (mp, tp) =
-                if actor == sess.actor_id { (sess.look.mp_max.min(u16::MAX as u32) as u16, 1000) } else { (0, 0) };
-            sess.segment(actor, opcode::HUD_PARAM, &ipc::hud_param(class, level.min(255) as u8, hp, hp_max, mp, mp, tp))
+        // a heal, as the healer's action (an HP-gain effect; the request's sequence frees the
+        // user's client), then the target's HP
+        Event::Heal { source, target, action, sequence, amount, hp, hp_max, level, class, statuses, mana } => {
+            let mut effects = [ipc::Effect::default(); 8];
+            effects[0] = ipc::Effect::heal(amount.min(u16::MAX as u32) as u16);
+            let result = ipc::ActionResult { action, kind: 1, sequence, lock: 0.6, target, effects, ..Default::default() };
+            let mut out = vec![sess.segment(source, opcode::ACTION_RESULT1, &result.to_bytes())];
+            out.extend(hp_segments(sess, target, hp, hp_max, level, class, &statuses, mana));
+            return out;
+        }
+        // a cast's start, sent as the caster: its cast bar
+        Event::Cast { actor, action, target, time } => {
+            let body = ipc::RequestCast { action, kind: 1, cast_time: time.as_secs_f32(), target, rotation: 0.0 };
+            sess.segment(actor, opcode::REQUEST_CAST, &body.to_bytes())
+        }
+        // a cast's end before it landed, sent as the caster: its cast bar stops and the log says why
+        Event::CastEnd { actor, action, interrupted } => {
+            let log = if interrupted { ipc::log_message::CAST_INTERRUPTED } else { ipc::log_message::CAST_CANCELLED };
+            let args = [log, 1, action as u32, interrupted as u32];
+            sess.segment(actor, opcode::ORDER, &ipc::order(ipc::order_kind::CAST_END, args))
+        }
+        // regeneration, revives, statuses on and off: the HP update alone
+        Event::Hp { actor, hp, hp_max, level, class, statuses, mana } => {
+            return hp_segments(sess, actor, hp, hp_max, level, class, &statuses, mana);
         }
         // sent as the dead, naming the killer
         Event::Death { actor, killer, .. } => {
